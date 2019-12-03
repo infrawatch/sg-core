@@ -1,0 +1,1 @@
+Build: gcc -L< directory with libqpid-proton.so > -Wall -o bridge bridge.c -lqpid-proton
