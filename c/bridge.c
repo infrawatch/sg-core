@@ -19,6 +19,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,6 +48,9 @@ static const int BATCH = 1000; /* Batch size for unlimited receive */
 static int exit_code = 0;
 
 static int send_sock = -1;
+static char * peer_host;
+static char * peer_port;
+static struct addrinfo *peer_addrinfo = 0;
 
 /* Close the connection and the listener so so we will get a
  * PN_PROACTOR_INACTIVE event and exit, once all outstanding events
@@ -92,6 +96,28 @@ static void decode_message(pn_rwbytes_t data) {
     pn_string_t *s = pn_string(NULL);
     pn_inspect(pn_message_body(m), s);
     printf("%s\n", pn_string_get(s));
+
+    const char * msg = pn_string_get(s);
+    int send_flags = MSG_DONTWAIT;
+      
+    int sent_bytes = sendto(send_sock, msg, strlen(msg), 
+        send_flags,
+    peer_addrinfo->ai_addr,peer_addrinfo->ai_addrlen); 
+
+    char addrstr[100];
+    void *ptr;
+
+    ptr = &((struct sockaddr_in *) peer_addrinfo->ai_addr)->sin_addr;
+    inet_ntop (peer_addrinfo->ai_family, ptr, addrstr, 100);
+
+    printf("Message (%d bytes) forwarded to %s:%d: %s\n", sent_bytes, addrstr, ntohs((((struct sockaddr_in*)((struct sockaddr *)peer_addrinfo->ai_addr))->sin_port)), msg); 
+
+    if (sent_bytes < 0) {
+      fprintf(stderr, "socket send error: %d\n", errno);
+      perror("Error");
+      exit_code = 1;
+    }
+
     fflush(stdout);
     pn_free(s);
     pn_message_free(m);
@@ -294,44 +320,34 @@ void run(app_data_t *app) {
   } while(true);
 }
 
-static int prepare_send_socket(const char * listen_ip, const char * listen_port) {
+static int prepare_send_socket() {
     struct addrinfo hints = {
         .ai_family = AF_UNSPEC,
         .ai_socktype = SOCK_DGRAM,
         .ai_protocol = 0,
-        .ai_flags = AI_PASSIVE | AI_ADDRCONFIG,
+        .ai_flags = AI_ADDRCONFIG,
     };
 
-    struct addrinfo *res = 0;
-
-    int err = getaddrinfo(listen_ip, listen_port, &hints, &res);
+    int err = getaddrinfo(peer_host, peer_port, &hints, &peer_addrinfo);
 
     if (err != 0) {
       fprintf(stderr, "prepare_send_socket: getaddrinfo returned non-zero value: %d\n", errno);
       perror("Error");
-      freeaddrinfo(res);
+      freeaddrinfo(peer_addrinfo);
       return -1;
     }
 
-    send_sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    send_sock = socket(peer_addrinfo->ai_family, peer_addrinfo->ai_socktype, peer_addrinfo->ai_protocol);
     if (send_sock == -1) {
       fprintf(stderr, "prepare_send_socket: socket returned -1\n");
       perror("Error");
-      freeaddrinfo(res);
+      freeaddrinfo(peer_addrinfo);
       return -1;
     }
 
-    if (bind(send_sock, res->ai_addr, res->ai_addrlen) == -1) {
-      fprintf(stderr, "prepare_send_socket: bind returned -1\n");
-      perror("Error");
-      freeaddrinfo(res);
-      send_sock = -1;
-      return -1;
-    }
+    // freeaddrinfo(res);
 
-    freeaddrinfo(res);
-
-    fprintf(stdout, "Socket %d opened and bound\n", send_sock);
+    fprintf(stdout, "Socket %d opened\n", send_sock);
 
     return 0;
 }
@@ -345,8 +361,11 @@ int main(int argc, char **argv) {
   app.amqp_address = (argc > 3) ? argv[3] : "examples";
   app.message_count = (argc > 4) ? atoi(argv[4]) : 10;
 
+  peer_host = (argc > 5) ? strdup(argv[5]) : "127.0.0.1";
+  peer_port = (argc > 6) ? strdup(argv[6]) : "8088";
+
   // Create the send socket
-  if (prepare_send_socket(app.host, app.port) == -1) {
+  if (prepare_send_socket() == -1) {
       fprintf(stderr, "Failed to create socket -- exiting!");
       return 1;
   }
@@ -365,6 +384,10 @@ int main(int argc, char **argv) {
     close(send_sock);
     fprintf(stdout, "Socket closed\n");
   }
+
+  free(peer_host);
+  free(peer_port);
+  freeaddrinfo(peer_addrinfo);
 
   return exit_code;
 }
