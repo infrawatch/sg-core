@@ -47,10 +47,10 @@ shift
 
 case "$COMMAND" in
 cmd)
-    $SG_BINARY -servicetype metrics -mhost=127.0.0.1 -mport=8081 -amqp1MetricURL=127.0.0.1:5672/collectd/telemetry
+    $SG_BINARY -servicetype metrics -mhost=127.0.0.1 -mport=8081 -prefetch 15000 -amqp1MetricURL=127.0.0.1:5672/collectd/telemetry
     ;;
 start)
-    if ! cid=$(podman run -d --network=host --name "$CONTAINER_NAME" -p 8081:8081 quay.io/redhat-service-assurance/smart-gateway:latest -servicetype metrics -mhost=localhost -mport=8081 -amqp1MetricURL=127.0.0.1:5672/collectd/telemetry); then
+    if ! cid=$(podman run -d --network=host --name "$CONTAINER_NAME" -p 8081:8081 quay.io/redhat-service-assurance/smart-gateway:latest -servicetype metrics -mhost=localhost -mport=8081 -prefetch 15000 -amqp1MetricURL=127.0.0.1:5672/collectd/telemetry); then
         printf "Could not start %s container!\n" "$CONTAINER_NAME"
         exit 1
     fi
