@@ -24,6 +24,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <time.h>
+
 typedef struct app_data_t {
   const char *host, *port;
   const char *amqp_address;
@@ -352,17 +354,72 @@ static int prepare_send_socket() {
     return 0;
 }
 
+static void usage(void)
+{
+	fprintf(stdout,
+		"%s: bridge [OPTIONS] amqp_ip amqp_port sg_ip sg_port\n\n"
+		"The missing link between AMQP and golang.\n\n"
+		"positional args:\n"
+		"  amqp_ip   ip address to bind AMQP listener\n"
+		"  amqp_port port number to bind AMQP listener\n"
+		"  sg_ip     ip address of smart gateway\n"
+		"  sg_port   port number of smart gateway\n\n"
+		"optional args:\n"
+		" -i container_id  should be unique (defaults to sa-RND\n"
+		" -a amqp_address  AMQP address for endpoint (defaults to collectd/telemetry)\n"
+		" -c count         message count to stop (defaults to 0 for continous)\n"
+		" -h show help\n\n"
+		"\n", __func__);
+}
+
 int main(int argc, char **argv) {
   struct app_data_t app = {0};
   char addr[PN_MAX_ADDR];
-  app.container_id = argv[0];   /* Should be unique */
-  app.host = (argc > 1) ? argv[1] : "127.0.0.1";
-  app.port = (argc > 2) ? argv[2] : "5672";
-  app.amqp_address = (argc > 3) ? argv[3] : "examples";
-  app.message_count = (argc > 4) ? atoi(argv[4]) : 10;
+  char cid_buf[100];
+  int opt;
 
-  peer_host = (argc > 5) ? strdup(argv[5]) : "127.0.0.1";
-  peer_port = (argc > 6) ? strdup(argv[6]) : "8088";
+  srand(time(0)); 
+
+  sprintf(cid_buf, "sa-%x", rand() % 1024);
+
+  app.container_id = cid_buf;   /* Should be unique */
+
+  app.host = "127.0.0.1";
+  app.port = "5672";
+  app.amqp_address = "collectd/telemetry";
+  app.message_count = 0;
+
+while ((opt = getopt(argc, argv, "i:a:c:h")) != -1) {
+		switch (opt) {
+		case 'i':
+      sprintf(cid_buf,optarg);
+      break;
+		case 'a':
+      app.amqp_address = strdup(optarg);
+			break;
+		case 'c':
+      app.message_count = atoi(optarg);
+			break;
+		case 'h':
+			usage();
+			return 0;
+		default:
+			usage();
+			return 1;
+		}
+	}
+
+  if ( (argc - optind) < 4) {
+    fprintf(stderr,"Missing required arguments -- exiting!\n");
+    usage();
+
+    return 1;
+  }
+
+  app.host = strdup(argv[optind++]);
+  app.port = strdup(argv[optind++]);
+  peer_host = strdup(argv[optind++]);
+  peer_port = strdup(argv[optind++]);
 
   // Create the send socket
   if (prepare_send_socket() == -1) {
