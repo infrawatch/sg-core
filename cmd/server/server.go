@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"runtime"
 	"runtime/pprof"
 	"strconv"
 
 	"github.com/atyronesmith/sa-benchmark/pkg/udpserver"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func usage() {
@@ -28,6 +30,7 @@ func main() {
 	// parse command line option
 	port := flag.Int("port", 0, "Port to use, otherwise OS will choose")
 	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+	pport := flag.Int("pport", 8081, "Prometheus scrape port.")
 
 	flag.Parse()
 
@@ -61,8 +64,15 @@ func main() {
 		ip = net.ParseIP("127.0.0.1")
 	}
 
-	ctx := context.Background()
+	go func() {
+		err := http.ListenAndServe(":"+strconv.Itoa(*pport), promhttp.Handler())
+		if err != nil {
+			fmt.Printf("http server failed!...")
+			fmt.Printf("%+v\n", err)
+		}
+	}()
 
+	ctx := context.Background()
 	err := udpserver.Listen(ctx, ip.String()+":"+strconv.Itoa(*port))
 
 	if err != nil {

@@ -7,9 +7,22 @@ import (
 	"time"
 
 	"github.com/atyronesmith/sa-benchmark/pkg/collectd"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const maxBufferSize = 1024
+
+var (
+	msgRecvd = prometheus.NewCounter(prometheus.CounterOpts{
+		Name:        "msg_rcv_total",
+		Help:        "Number of json messages received.",
+		ConstLabels: prometheus.Labels{"version": "1234"},
+	})
+)
+
+func init() {
+	prometheus.MustRegister(msgRecvd)
+}
 
 func Listen(ctx context.Context, address string) (err error) {
 
@@ -37,6 +50,7 @@ func Listen(ctx context.Context, address string) (err error) {
 				doneChan <- err
 				return
 			}
+			msgRecvd.Inc()
 			metric, err := cd.ParseInputByte(buffer)
 			if err != nil {
 				fmt.Printf("Error parsing JSON!\n")
