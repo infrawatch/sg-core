@@ -1,0 +1,30 @@
+# my global config
+global:
+  scrape_interval: 10s
+  evaluation_interval: 30s
+  # scrape_timeout is set to the global default (10s).
+
+  external_labels:
+    monitor: codelab
+    foo: bar
+
+scrape_configs:
+  - job_name: prometheus
+
+    scrape_interval: 1s
+    honor_labels: true
+    # scrape_interval is defined by the configured global (15s).
+    # scrape_timeout is defined by the global default (10s).
+
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: smart_gateway
+
+    scrape_interval: 1s
+
+    static_configs:
+      - targets: ["127.0.0.1:8081"]
