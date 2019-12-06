@@ -99,10 +99,24 @@ static void decode_message(pn_rwbytes_t data) {
     pn_inspect(pn_message_body(m), s);
     printf("%s\n", pn_string_get(s));
 
-    const char * msg = pn_string_get(s);
     int send_flags = MSG_DONTWAIT;
+
+    // Get the string version of the message, and strip the leading
+    // b" and trailing " from it
+    const char * msg = pn_string_get(s);
+    int msg_len = strlen(msg) - 3;
+    char * msg2;
+    
+    if (msg_len > 2) {
+      msg2 = (char *) calloc(msg_len, sizeof(char));
+    } else {
+      msg2 = strdup(msg);
+    }
+
+    memcpy(msg2, &msg[2], strlen(msg)-1);
+    msg2[strlen(msg2)-1] = '\0';
       
-    int sent_bytes = sendto(send_sock, msg, strlen(msg), 
+    int sent_bytes = sendto(send_sock, msg2, strlen(msg2), 
         send_flags,
     peer_addrinfo->ai_addr,peer_addrinfo->ai_addrlen); 
 
@@ -112,7 +126,9 @@ static void decode_message(pn_rwbytes_t data) {
     ptr = &((struct sockaddr_in *) peer_addrinfo->ai_addr)->sin_addr;
     inet_ntop (peer_addrinfo->ai_family, ptr, addrstr, 100);
 
-    printf("Message (%d bytes) forwarded to %s:%d: %s\n", sent_bytes, addrstr, ntohs((((struct sockaddr_in*)((struct sockaddr *)peer_addrinfo->ai_addr))->sin_port)), msg); 
+    printf("Message (%d bytes) forwarded to %s:%d: %s\n", sent_bytes, addrstr, ntohs((((struct sockaddr_in*)((struct sockaddr *)peer_addrinfo->ai_addr))->sin_port)), msg2); 
+
+    free(msg2);
 
     if (sent_bytes < 0) {
       fprintf(stderr, "socket send error: %d\n", errno);
