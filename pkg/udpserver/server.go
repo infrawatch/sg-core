@@ -55,8 +55,7 @@ func Listen(ctx context.Context, address string) (err error) {
 			if err != nil {
 				fmt.Printf("Error parsing JSON!\n")
 				doneChan <- err
-			}
-			if (*metric)[0].Interval < 0.0 {
+			} else if (*metric)[0].Interval < 0.0 {
 				doneChan <- err
 			}
 			count++
