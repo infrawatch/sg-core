@@ -46,7 +46,12 @@ typedef struct app_data_t {
     int received;
 } app_data_t;
 
+static int verbose = 0;
+static int optimize = 0;
+
 static const int BATCH = 1000; /* Batch size for unlimited receive */
+
+static long credit_total = 0;
 
 static int exit_code = 0;
 
@@ -54,6 +59,8 @@ static int send_sock = -1;
 static char *peer_host;
 static char *peer_port;
 static struct addrinfo *peer_addrinfo = 0;
+
+clock_t total_busy = 0;
 
 /* Close the connection and the listener so so we will get a
  * PN_PROACTOR_INACTIVE event and exit, once all outstanding events
@@ -96,39 +103,50 @@ static void send_message(app_data_t *app, pn_link_t *sender) {
     pn_message_free(message);
 }
 
+pn_message_t *m_glbl = NULL;
+
 static void decode_message(pn_rwbytes_t data) {
-    pn_message_t *m = pn_message();
+    pn_message_t *m;
+
+    // Use a static message with pn_message_clear(...)
+    if ((m = m_glbl) == NULL) {
+        m_glbl = pn_message();
+        m = m_glbl;
+    } else {
+        pn_message_clear(m);
+    }
+
     int err = pn_message_decode(m, data.start, data.size);
     if (!err) {
         /* Print the decoded message */
         pn_string_t *s = pn_string(NULL);
         pn_inspect(pn_message_body(m), s);
-/*        printf("%s\n", pn_string_get(s));*/
+        //printf("%s\n", pn_string_get(s));
 
         int send_flags = MSG_DONTWAIT;
 
         // Get the string version of the message, and strip the leading
         // b" and trailing " from it
         const char *msg = pn_string_get(s);
-        int msg_len = strlen(msg) - 3;
-        char *msg2;
 
-        if (msg_len > 2) {
-            msg2 = (char *)calloc(msg_len, sizeof(char));
-        } else {
-            msg2 = strdup(msg);
+        int msg_len = strlen(msg) - 2;
+
+        char *msg_out = malloc(msg_len);
+
+        memcpy(msg_out, msg + 2, msg_len);
+        *(msg_out + msg_len) = '\0';
+
+        size_t sent_bytes = 0;
+
+        if (!optimize) {
+            sent_bytes = sendto(send_sock, (msg + 2), msg_len, send_flags,
+                                peer_addrinfo->ai_addr, peer_addrinfo->ai_addrlen);
         }
 
-        memcpy(msg2, &msg[2], strlen(msg) - 1);
-        msg2[strlen(msg2) - 1] = '\0';
-
-        int sent_bytes =
-            sendto(send_sock, msg2, strlen(msg2), send_flags,
-                   peer_addrinfo->ai_addr, peer_addrinfo->ai_addrlen);
-
-        char addrstr[100];
-        void *ptr;
-/*
+        //free(msg2);
+        //       char addrstr[100];
+        //       void *ptr;
+        /*
         ptr = &((struct sockaddr_in *)peer_addrinfo->ai_addr)->sin_addr;
         inet_ntop(peer_addrinfo->ai_family, ptr, addrstr, 100);
 
@@ -139,18 +157,18 @@ static void decode_message(pn_rwbytes_t data) {
                           ->sin_port)),
                msg2);
 
-        free(msg2);
-
+      */
         if (sent_bytes < 0) {
             fprintf(stderr, "socket send error: %d\n", errno);
             perror("Error");
             exit_code = 1;
         }
-*/
+        free(msg_out);
         fflush(stdout);
         pn_free(s);
-        pn_message_free(m);
+        //  pn_message_free(m);
         free(data.start);
+
     } else {
         fprintf(stderr, "decode error: %s\n",
                 pn_error_text(pn_message_error(m)));
@@ -160,61 +178,48 @@ static void decode_message(pn_rwbytes_t data) {
 
 /* This function handles events when we are acting as the receiver */
 static void handle_receive(app_data_t *app, pn_event_t *event) {
-/*    printf("handle_receive %s\n", app->container_id);*/
+    /*    printf("handle_receive %s\n", app->container_id);*/
 
-    switch (pn_event_type(event)) {
-        case PN_LINK_INIT: {
-            printf("PN_LINK_INIT %s\n", app->container_id);
-        } break;
-        case PN_LINK_LOCAL_OPEN: {
-            printf("PN_LINK_LOCAL_OPEN %s\n", app->container_id);
-        } break;
-        case PN_LINK_REMOTE_OPEN: {
-            printf("PN_LINK_REMOTE_OPEN %s\n", app->container_id);
-        } break;
-
-        case PN_DELIVERY: { /* Incoming message data */
-            pn_delivery_t *d = pn_event_delivery(event);
-            if (pn_delivery_readable(d)) {
-                pn_link_t *l = pn_delivery_link(d);
-                size_t size = pn_delivery_pending(d);
-                pn_rwbytes_t *m =
-                    &app->msgin; /* Append data to incoming message buffer */
-                ssize_t recv;
-                m->size += size;
-                m->start = (char *)realloc(m->start, m->size);
-                recv = pn_link_recv(l, m->start, m->size);
-                if (recv == PN_ABORTED) {
-                    printf("Message aborted\n");
-                    fflush(stdout);
-                    m->size = 0;                         /* Forget the data we accumulated */
-                    pn_delivery_settle(d);               /* Free the delivery so we can
+    pn_delivery_t *d = pn_event_delivery(event);
+    if (pn_delivery_readable(d)) {
+        pn_link_t *l = pn_delivery_link(d);
+        size_t size = pn_delivery_pending(d);
+        pn_rwbytes_t *m =
+            &app->msgin; /* Append data to incoming message buffer */
+        ssize_t recv;
+        m->size += size;
+        m->start = (char *)realloc(m->start, m->size);
+        recv = pn_link_recv(l, m->start, m->size);
+        if (recv == PN_ABORTED) {
+            printf("Message aborted\n");
+            fflush(stdout);
+            m->size = 0;                         /* Forget the data we accumulated */
+            pn_delivery_settle(d);               /* Free the delivery so we can
                                               receive the next message */
-                    pn_link_flow(l, 1);                  /* Replace credit for aborted message */
-                } else if (recv < 0 && recv != PN_EOS) { /* Unexpected error */
-                    pn_condition_format(pn_link_condition(l), "broker",
-                                        "PN_DELIVERY error: %s", pn_code(recv));
-                    pn_link_close(l);                 /* Unexpected error, close the link */
-                } else if (!pn_delivery_partial(d)) { /* Message is complete */
-                    decode_message(*m);
-                    *m = pn_rwbytes_null;
-                    pn_delivery_update(d, PN_ACCEPTED);
-                    pn_delivery_settle(d); /* settle and free d */
-                    if (app->message_count == 0) {
-                        /* receive forever - see if more credit is needed */
-                        if (pn_link_credit(l) < BATCH / 2) {
-                            pn_link_flow(l, BATCH - pn_link_credit(l));
-                        }
-                    } else if (++app->received >= app->message_count) {
-                        printf("%d messages received\n", app->received);
-                        close_all(pn_event_connection(event), app);
-                    }
-                }
+            pn_link_flow(l, 1);                  /* Replace credit for aborted message */
+        } else if (recv < 0 && recv != PN_EOS) { /* Unexpected error */
+            pn_condition_format(pn_link_condition(l), "broker",
+                                "PN_DELIVERY error: %s", pn_code(recv));
+            pn_link_close(l);                 /* Unexpected error, close the link */
+        } else if (!pn_delivery_partial(d)) { /* Message is complete */
+            decode_message(*m);
+            *m = pn_rwbytes_null;
+            pn_delivery_update(d, PN_ACCEPTED);
+            pn_delivery_settle(d); /* settle and free d */
+            ++app->received;
+            int link_credit = pn_link_credit(l);
+            credit_total = link_credit;
+            if (link_credit < BATCH / 2) {
+                pn_link_flow(l, BATCH - pn_link_credit(l));
             }
-            break;
+            if ((app->message_count > 0) && (app->received >= app->message_count)) {
+                printf("%d messages received\n", app->received);
+                close_all(pn_event_connection(event), app);
+                exit(0);
+            }
+        } else {
+            printf("partial\n");
         }
-        default:
-            break;
     }
 }
 
@@ -222,8 +227,9 @@ static void handle_receive(app_data_t *app, pn_event_t *event) {
 static void handle_send(app_data_t *app, pn_event_t *event) {
     switch (pn_event_type(event)) {
         case PN_LINK_REMOTE_OPEN: {
-            printf("send PN_LINK_REMOTE_OPEN %s\n", app->container_id);
-
+            if (verbose) {
+                printf("send PN_LINK_REMOTE_OPEN %s\n", app->container_id);
+            }
             pn_link_t *l = pn_event_link(event);
             pn_terminus_set_address(pn_link_target(l), app->amqp_address);
             pn_link_open(l);
@@ -265,7 +271,6 @@ static void handle_send(app_data_t *app, pn_event_t *event) {
    link mode. Return true to continue, false to exit
 */
 static bool handle(app_data_t *app, pn_event_t *event) {
-    pn_event_type_t eType = pn_event_type(event);
     switch (pn_event_type(event)) {
         case PN_LISTENER_OPEN: {
             char port[256]; /* Get the listening port */
@@ -280,7 +285,9 @@ static bool handle(app_data_t *app, pn_event_t *event) {
             break;
 
         case PN_CONNECTION_INIT:
-            printf("PN_CONNECTION_INIT %s\n", app->container_id);
+            if (verbose) {
+                printf("PN_CONNECTION_INIT %s\n", app->container_id);
+            }
             pn_connection_t *c = pn_event_connection(event);
             pn_connection_set_container(c, app->container_id);
             pn_connection_open(c);
@@ -291,12 +298,14 @@ static bool handle(app_data_t *app, pn_event_t *event) {
                 pn_terminus_set_address(pn_link_source(l), app->amqp_address);
                 pn_link_open(l);
                 /* cannot receive without granting credit: */
-                pn_link_flow(l, app->message_count ? app->message_count : BATCH);
+                pn_link_flow(l, BATCH);
             }
             break;
 
         case PN_CONNECTION_BOUND: {
-            printf("PN_CONNECTION_BOUND %s\n", app->container_id);
+            if (verbose) {
+                printf("PN_CONNECTION_BOUND %s\n", app->container_id);
+            }
             /* Turn off security */
             pn_transport_t *t = pn_event_transport(event);
             pn_transport_require_auth(t, false);
@@ -304,21 +313,25 @@ static bool handle(app_data_t *app, pn_event_t *event) {
             break;
         }
         case PN_CONNECTION_LOCAL_OPEN: {
-            printf("PN_CONNECTION_LOCAL_OPEN %s\n", app->container_id);
+            if (verbose) {
+                printf("PN_CONNECTION_LOCAL_OPEN %s\n", app->container_id);
+            }
             break;
         }
         case PN_CONNECTION_REMOTE_OPEN: {
-            printf("PN_CONNECTION_REMOTE_OPEN %s\n", app->container_id);
-
+            if (verbose) {
+                printf("PN_CONNECTION_REMOTE_OPEN %s\n", app->container_id);
+            }
             pn_connection_open(
                 pn_event_connection(event)); /* Complete the open */
             break;
         }
 
         case PN_SESSION_LOCAL_OPEN: {
-            printf("PN_SESSION_LOCAL_OPEN %s\n", app->container_id);
+            if (verbose) {
+                printf("PN_SESSION_LOCAL_OPEN %s\n", app->container_id);
+            }
             pn_connection_t *c = pn_event_connection(event);
-
             pn_session_t *s = pn_session(c);
             pn_link_t *l = pn_receiver(s, "my_receiver");
             pn_terminus_set_address(pn_link_source(l), app->amqp_address);
@@ -326,11 +339,15 @@ static bool handle(app_data_t *app, pn_event_t *event) {
             break;
         }
         case PN_SESSION_INIT: {
-            printf("PN_SESSION_INIT %s\n", app->container_id);
+            if (verbose) {
+                printf("PN_SESSION_INIT %s\n", app->container_id);
+            }
             break;
         }
         case PN_SESSION_REMOTE_OPEN: {
-            printf("PN_SESSION_REMOTE_OPEN %s\n", app->container_id);
+            if (verbose) {
+                printf("PN_SESSION_REMOTE_OPEN %s\n", app->container_id);
+            }
             pn_session_open(pn_event_session(event));
             break;
         }
@@ -381,7 +398,7 @@ static bool handle(app_data_t *app, pn_event_t *event) {
             return false;
             break;
 
-        default: {
+        case PN_DELIVERY: {
             pn_link_t *l = pn_event_link(event);
             if (l) { /* Only delegate link-related events */
                 if (pn_link_is_sender(l)) {
@@ -390,6 +407,9 @@ static bool handle(app_data_t *app, pn_event_t *event) {
                     handle_receive(app, event);
                 }
             }
+        }
+        default: {
+            break;
         }
     }
     return exit_code == 0;
@@ -440,8 +460,9 @@ static int prepare_send_socket() {
     }
 
     // freeaddrinfo(res);
-
-    fprintf(stdout, "Socket %d opened\n", send_sock);
+    if (verbose) {
+        fprintf(stdout, "Socket %d opened\n", send_sock);
+    }
 
     return 0;
 }
@@ -456,6 +477,7 @@ static void usage(void) {
             "  sg_ip     ip address of smart gateway\n"
             "  sg_port   port number of smart gateway\n\n"
             "optional args:\n"
+            " -v               verbose, print extra info (defaults no verbose)\n"
             " -s               standalone mode, no QDR (defaults QDR mode)\n"
             " -i container_id  should be unique (defaults to sa-RND)\n"
             " -a amqp_address  AMQP address for endpoint (defaults to "
@@ -485,7 +507,7 @@ int main(int argc, char **argv) {
     app.amqp_address = "collectd/telemetry";
     app.message_count = 0;
 
-    while ((opt = getopt(argc, argv, "i:a:c:sh")) != -1) {
+    while ((opt = getopt(argc, argv, "i:a:c:shvx")) != -1) {
         switch (opt) {
             case 'i':
                 sprintf(cid_buf, optarg);
@@ -498,6 +520,13 @@ int main(int argc, char **argv) {
                 break;
             case 's':
                 standalone = 1;
+                break;
+            case 'v':
+                verbose = 1;
+                break;
+            case 'x':
+                optimize = 1;
+                break;
             case 'h':
                 usage();
                 return 0;
