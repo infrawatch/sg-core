@@ -106,7 +106,7 @@ int main(int argc, char **argv) {
     app.peer_host = strdup(argv[optind++]);
     app.peer_port = strdup(argv[optind++]);
 
-    app.rbin = rb_alloc(100, 4096);
+    app.rbin = rb_alloc(1000, 1024);
 
     app.amqp_rcv_th_running = 1;
     pthread_create(&app.amqp_rcv_th, NULL, amqp_rcv_th, (void *)&app);
@@ -119,8 +119,8 @@ int main(int argc, char **argv) {
     while (1) {
         sleep(1);
 
-        printf("processed: %ld(%ld), overrun: %ld(%ld), decore_errors: %ld, would_block: %ld, free: %d, qb: %ld\n", app.rbin->processed,
-               app.rbin->processed - last_processed, app.rbin->overruns, app.rbin->overruns - last_overrun, app.decore_errors, app.would_block,
+        printf("processed: %ld(%ld), overrun: %ld(%ld), decore_errors: %ld, free: %d, sock_qb: %ld\n", app.rbin->processed,
+               app.rbin->processed - last_processed, app.rbin->overruns, app.rbin->overruns - last_overrun, app.decore_errors,
                rb_free_size(app.rbin), rb_get_queue_block(app.rbin));
 
         last_processed = app.rbin->processed;

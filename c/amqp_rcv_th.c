@@ -12,6 +12,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include <stdio.h>
+#include <time.h>
 
 #include "bridge.h"
 
@@ -105,11 +106,11 @@ static void handle_receive(app_data_t *app, pn_event_t *event, int *batch_done) 
                 app->max_amqp_queue_depth = qd;
 
             int link_credit = pn_link_credit(l);
-            pn_link_flow(l, rb_size(app->rbin) - link_credit);
-            // if (link_credit < MIN_CREDIT) {
-            //     pn_link_flow(l, BATCH);
-            //     *batch_done = 1;
-            // }
+            //pn_link_flow(l, rb_size(app->rbin) - link_credit);
+             if (link_credit < 100) {
+                 *batch_done = link_credit;
+                 pn_link_flow(l, rb_free_size(app->rbin));
+             }
             if ((app->message_count > 0) && (app->received >= app->message_count)) {
                 close_all(pn_event_connection(event), app);
 
@@ -315,15 +316,40 @@ static bool handle(app_data_t *app, pn_event_t *event, int *batch_done) {
     return exit_code == 0;
 }
 
+void time_diff(struct timespec t1, struct timespec t2, struct timespec *diff) {
+    if(t2.tv_nsec < t1.tv_nsec)
+	{
+		/* If nanoseconds in t1 are larger than nanoseconds in t2, it
+		   means that something like the following happened:
+		   t1.tv_sec = 1000    t1.tv_nsec = 100000
+		   t2.tv_sec = 1001    t2.tv_nsec = 10
+		   In this case, less than a second has passed but subtracting
+		   the tv_sec parts will indicate that 1 second has passed. To
+		   fix this problem, we subtract 1 second from the elapsed
+		   tv_sec and add one second to the elapsed tv_nsec. See
+		   below:
+		*/
+		diff->tv_sec  += t2.tv_sec  - t1.tv_sec  - 1;
+		diff->tv_nsec += t2.tv_nsec - t1.tv_nsec + 1000000000;
+	}
+	else
+	{
+		diff->tv_sec  += t2.tv_sec  - t1.tv_sec;
+		diff->tv_nsec += t2.tv_nsec - t1.tv_nsec;
+	}
+
+}
 void run(app_data_t *app) {
     /* Loop and handle events */
     int batch_done = 0;
 
     printf("%s: %s start...\n", __FILE__, __func__);
 
+    
     start_time = clock();
 
     do {
+        int batch_count =0;
         batch_done = 0;
         pn_event_batch_t *events = pn_proactor_wait(app->proactor);
         pn_event_t *e;
@@ -335,6 +361,7 @@ void run(app_data_t *app) {
             if (batch_done) {
                 break;
             }
+            batch_count++;
         }
         pn_proactor_done(app->proactor, events);
     } while (true);

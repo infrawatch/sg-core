@@ -1,12 +1,12 @@
+#include <assert.h>
 #include <proton/types.h>
 #include <pthread.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "rb.h"
 
 rb_rwbytes_t *rb_alloc(int count, int buf_size) {
-
     rb_rwbytes_t *rb = malloc(sizeof(rb_rwbytes_t));
 
     rb->count = count;
@@ -19,7 +19,7 @@ rb_rwbytes_t *rb_alloc(int count, int buf_size) {
     }
 
     for (int i = 0; i < count; i++) {
-        if ( (rb->ring_buffer[i].start = malloc(buf_size)) == NULL ) {
+        if ((rb->ring_buffer[i].start = malloc(buf_size)) == NULL) {
             rb_free(rb);
 
             return NULL;
@@ -76,15 +76,14 @@ pn_rwbytes_t *rb_put(rb_rwbytes_t *rb) {
     pn_rwbytes_t *next_buffer = NULL;
 
     pthread_mutex_lock(&rb->rb_mutex);
+
     int next = (rb->head + 1) % rb->count;
     if (next != rb->tail) {
         rb->head = next;
         next_buffer = &rb->ring_buffer[rb->head];
-    pthread_cond_broadcast(&rb->rb_ready);
-//printf("ok   free %d  head: %d  tail: %d\n",rb_free_size(rb), rb->head, rb->tail);
+        pthread_cond_broadcast(&rb->rb_ready);
     } else {
         rb->overruns++;
-//printf("overrun free %d  head: %d  tail: %d\n",rb_free_size(rb), rb->head, rb->tail);
         rb->ring_buffer[rb->head].size = 0;
     }
 
@@ -97,7 +96,7 @@ pn_rwbytes_t *rb_get(rb_rwbytes_t *rb) {
     if (rb == NULL) {
         return NULL;
     }
-    
+
     int next;
 
     pthread_mutex_lock(&rb->rb_mutex);
@@ -106,6 +105,7 @@ pn_rwbytes_t *rb_get(rb_rwbytes_t *rb) {
     while (next == rb->head) {
         pthread_cond_wait(&rb->rb_ready, &rb->rb_mutex);
         next = (rb->tail + 1) % rb->count;
+
         rb->queue_block++;
     }
     // set data size to zero
@@ -113,18 +113,20 @@ pn_rwbytes_t *rb_get(rb_rwbytes_t *rb) {
 
     rb->tail = next;
 
-//    pthread_cond_broadcast(&rb->rb_ready);  
+    rb->processed++;
+
+    //    pthread_cond_broadcast(&rb->rb_ready);
 
     pthread_mutex_unlock(&rb->rb_mutex);
-
-    rb->processed++;
 
     return &rb->ring_buffer[rb->tail];
 }
 
 int rb_free_size(rb_rwbytes_t *rb) {
+    assert(rb->head != rb->tail);
+
     int diff = rb->head - rb->tail;
-    return diff >= 0 ? (diff) : (rb->count+diff);
+    return rb->head > rb->tail ? (rb->count - (rb->head - rb->tail)) : (rb->tail - rb->head);
 }
 
 int rb_size(rb_rwbytes_t *rb) {
