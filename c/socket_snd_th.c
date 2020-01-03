@@ -1,4 +1,5 @@
-#define __USE_XOPEN2K
+#define _GNU_SOURCE
+#include <features.h>
 
 #include <proton/condition.h>
 #include <proton/message.h>
@@ -15,6 +16,7 @@
 
 #include "bridge.h"
 #include "rb.h"
+#include "utils.h"
 
 static struct addrinfo *peer_addrinfo;
 static pn_message_t *m_glbl = NULL;
@@ -141,6 +143,8 @@ void *socket_snd_th(void *app_ptr) {
     }
 
     printf("%s: %s start...\n", __FILE__, __func__);
+
+    clock_gettime(CLOCK_MONOTONIC, &app->rbin->total_t2);
 
     while (1) {
         pn_rwbytes_t *msg = rb_get(app->rbin);

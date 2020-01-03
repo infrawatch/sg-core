@@ -1,10 +1,15 @@
+#define _GNU_SOURCE
+#include <features.h>
+
 #include <assert.h>
 #include <proton/types.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "rb.h"
+#include "utils.h"
 
 rb_rwbytes_t *rb_alloc(int count, int buf_size) {
     rb_rwbytes_t *rb = malloc(sizeof(rb_rwbytes_t));
@@ -32,6 +37,18 @@ rb_rwbytes_t *rb_alloc(int count, int buf_size) {
     rb->overruns = 0;
     rb->processed = 0;
     rb->queue_block = 0;
+
+    rb->total_active.tv_sec = 0;
+    rb->total_active.tv_nsec = 0;
+
+    rb->total_wait.tv_sec = 0;
+    rb->total_wait.tv_nsec = 0;
+
+    rb->total_t1.tv_sec = 0;
+    rb->total_t1.tv_nsec = 0;
+
+    rb->total_t2.tv_sec = 0;
+    rb->total_t2.tv_nsec = 0;
 
     pthread_cond_init(&rb->rb_ready, NULL);
     pthread_mutex_init(&rb->rb_mutex, NULL);
@@ -103,7 +120,14 @@ pn_rwbytes_t *rb_get(rb_rwbytes_t *rb) {
 
     next = (rb->tail + 1) % rb->count;
     while (next == rb->head) {
+        clock_gettime(CLOCK_MONOTONIC, &rb->total_t1);
+        time_diff(rb->total_t2, rb->total_t1, &rb->total_active);
+
         pthread_cond_wait(&rb->rb_ready, &rb->rb_mutex);
+
+        clock_gettime(CLOCK_MONOTONIC, &rb->total_t2);
+        time_diff(rb->total_t1, rb->total_t2, &rb->total_wait);
+
         next = (rb->tail + 1) % rb->count;
 
         rb->queue_block++;
@@ -127,7 +151,7 @@ int rb_inuse_size(rb_rwbytes_t *rb) {
 int rb_free_size(rb_rwbytes_t *rb) {
     assert(rb->head != rb->tail);
 
-    return rb->head > rb->tail ? (rb->count - (rb->head - rb->tail)) : (rb->tail - rb->head);
+    return rb->head > rb->tail ? rb->count - (rb->head - rb->tail) : rb->tail - rb->head ;
 }
 
 int rb_size(rb_rwbytes_t *rb) {

@@ -2,6 +2,7 @@
 #ifndef _RB_H
 #define _RB_H 1
 
+#include <time.h>
 #include <proton/types.h>
 
 #include <pthread.h>
@@ -25,6 +26,10 @@ typedef struct {
     // Number of messages procesed
     long processed;
     long queue_block;
+
+    struct timespec total_active, total_wait;
+    struct timespec total_t1, total_t2;
+
 } rb_rwbytes_t;
 
 extern rb_rwbytes_t *rb_alloc(int count, int buf_size);

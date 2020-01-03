@@ -29,6 +29,7 @@
 #include "bridge.h"
 #include "rb.h"
 #include "socket_snd_th.h"
+#include "utils.h"
 
 static void usage(void) {
     fprintf(stdout,
@@ -115,13 +116,14 @@ int main(int argc, char **argv) {
 
     long last_processed = 0;
     long last_overrun = 0;
+    char sbuf1[80], sbuf2[80];
 
     while (1) {
         sleep(1);
 
-        printf("processed: %ld(%ld), overrun: %ld(%ld), max_q_d: %d, free: %d, sock_qb: %ld\n", app.rbin->processed,
-               app.rbin->processed - last_processed, app.rbin->overruns, app.rbin->overruns - last_overrun, app.max_q_depth,
-               rb_free_size(app.rbin), rb_get_queue_block(app.rbin));
+        printf("processed: %ld(%ld), overrun: %ld(%ld), rcv_wait: %s sec, rcv_atv: %s sec\n", app.rbin->processed,
+               app.rbin->processed - last_processed, app.rbin->overruns, app.rbin->overruns - last_overrun, 
+               time_sprintf(sbuf1,app.rbin->total_wait), time_sprintf(sbuf2,app.rbin->total_active));
 
         last_processed = app.rbin->processed;
         last_overrun = app.rbin->overruns;
