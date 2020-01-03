@@ -16,9 +16,6 @@
 
 #include "bridge.h"
 
-static const int BATCH = 100; /* Batch size for unlimited receive */
-static const int MIN_CREDIT = 20;
-
 #define LISTEN_BACKLOG 16
 
 static int exit_code = 0;
@@ -101,15 +98,15 @@ static void handle_receive(app_data_t *app, pn_event_t *event, int *batch_done) 
             pn_delivery_update(d, PN_ACCEPTED);
             pn_delivery_settle(d); /* settle and free d */
 
-            int qd = pn_link_queued(l);
-            if (qd > app->max_amqp_queue_depth)
-                app->max_amqp_queue_depth = qd;
+            int inuse = rb_inuse_size(app->rbin);
+            if (inuse > app->max_q_depth)
+                app->max_q_depth = inuse;
 
             int link_credit = pn_link_credit(l);
             //pn_link_flow(l, rb_size(app->rbin) - link_credit);
-             if (link_credit < 100) {
+             if (link_credit < rb_free_size(app->rbin)) {
                  *batch_done = link_credit;
-                 pn_link_flow(l, rb_free_size(app->rbin));
+                 pn_link_flow(l, rb_free_size(app->rbin) - link_credit);
              }
             if ((app->message_count > 0) && (app->received >= app->message_count)) {
                 close_all(pn_event_connection(event), app);
@@ -209,7 +206,7 @@ static bool handle(app_data_t *app, pn_event_t *event, int *batch_done) {
                 pn_terminus_set_address(pn_link_source(l), app->amqp_address);
                 pn_link_open(l);
                 /* cannot receive without granting credit: */
-                pn_link_flow(l, BATCH);
+                pn_link_flow(l, RING_BUFFER_COUNT);
             }
             break;
 

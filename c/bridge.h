@@ -8,10 +8,13 @@
 
 #include "rb.h"
 
+#define RING_BUFFER_COUNT 1000
+#define RING_BUFFER_SIZE  2048
+
 typedef struct  {
     int standalone;
     int verbose;
-    int max_amqp_queue_depth;
+    int max_q_depth;
 
     pthread_t amqp_rcv_th;
     pthread_t socket_snd_th;

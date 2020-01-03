@@ -115,17 +115,18 @@ pn_rwbytes_t *rb_get(rb_rwbytes_t *rb) {
 
     rb->processed++;
 
-    //    pthread_cond_broadcast(&rb->rb_ready);
-
     pthread_mutex_unlock(&rb->rb_mutex);
 
     return &rb->ring_buffer[rb->tail];
 }
 
+int rb_inuse_size(rb_rwbytes_t *rb) {
+    return rb->count - rb_free_size(rb);
+}
+
 int rb_free_size(rb_rwbytes_t *rb) {
     assert(rb->head != rb->tail);
 
-    int diff = rb->head - rb->tail;
     return rb->head > rb->tail ? (rb->count - (rb->head - rb->tail)) : (rb->tail - rb->head);
 }
 

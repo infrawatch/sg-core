@@ -41,6 +41,8 @@ extern void rb_free(rb_rwbytes_t *rb);
 
 extern int rb_free_size(rb_rwbytes_t *rb);
 
+extern int rb_inuse_size(rb_rwbytes_t *rb);
+
 extern int rb_size(rb_rwbytes_t *rb);
 
 extern long rb_get_queue_block(rb_rwbytes_t *rb);
