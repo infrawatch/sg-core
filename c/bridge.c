@@ -31,6 +31,8 @@
 #include "socket_snd_th.h"
 #include "utils.h"
 
+extern int batch_count;
+
 static void usage(void) {
     fprintf(stdout,
             "%s: bridge [OPTIONS] amqp_ip amqp_port sg_ip sg_port\n\n"
@@ -121,9 +123,9 @@ int main(int argc, char **argv) {
     while (1) {
         sleep(1);
 
-        printf("processed: %ld(%ld), overrun: %ld(%ld), rcv_wait: %s sec, rcv_atv: %s sec\n", app.rbin->processed,
+        printf("processed: %ld(%ld), overrun: %ld(%ld), rcv_wait: %s sec, rcv_atv: %s sec, bc: %d\n", app.rbin->processed,
                app.rbin->processed - last_processed, app.rbin->overruns, app.rbin->overruns - last_overrun, 
-               time_sprintf(sbuf1,app.rbin->total_wait), time_sprintf(sbuf2,app.rbin->total_active));
+               time_sprintf(sbuf1,app.rbin->total_wait), time_sprintf(sbuf2,app.rbin->total_active), batch_count);
 
         last_processed = app.rbin->processed;
         last_overrun = app.rbin->overruns;

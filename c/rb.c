@@ -92,19 +92,19 @@ pn_rwbytes_t *rb_put(rb_rwbytes_t *rb) {
     }
     pn_rwbytes_t *next_buffer = NULL;
 
-    pthread_mutex_lock(&rb->rb_mutex);
 
     int next = (rb->head + 1) % rb->count;
     if (next != rb->tail) {
         rb->head = next;
         next_buffer = &rb->ring_buffer[rb->head];
+    pthread_mutex_lock(&rb->rb_mutex);
         pthread_cond_broadcast(&rb->rb_ready);
+    pthread_mutex_unlock(&rb->rb_mutex);
     } else {
         rb->overruns++;
         rb->ring_buffer[rb->head].size = 0;
     }
 
-    pthread_mutex_unlock(&rb->rb_mutex);
 
     return next_buffer;  // May be NULL
 }
@@ -116,14 +116,15 @@ pn_rwbytes_t *rb_get(rb_rwbytes_t *rb) {
 
     int next;
 
-    pthread_mutex_lock(&rb->rb_mutex);
 
     next = (rb->tail + 1) % rb->count;
     while (next == rb->head) {
         clock_gettime(CLOCK_MONOTONIC, &rb->total_t1);
         time_diff(rb->total_t2, rb->total_t1, &rb->total_active);
 
+    pthread_mutex_lock(&rb->rb_mutex);
         pthread_cond_wait(&rb->rb_ready, &rb->rb_mutex);
+    pthread_mutex_unlock(&rb->rb_mutex);
 
         clock_gettime(CLOCK_MONOTONIC, &rb->total_t2);
         time_diff(rb->total_t1, rb->total_t2, &rb->total_wait);
@@ -139,7 +140,6 @@ pn_rwbytes_t *rb_get(rb_rwbytes_t *rb) {
 
     rb->processed++;
 
-    pthread_mutex_unlock(&rb->rb_mutex);
 
     return &rb->ring_buffer[rb->tail];
 }

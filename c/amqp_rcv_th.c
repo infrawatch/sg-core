@@ -24,6 +24,7 @@
 static int exit_code = 0;
 
 static time_t start_time;
+int batch_count = 0;
 
 /* Close the connection and the listener so so we will get a
  * PN_PROACTOR_INACTIVE event and exit, once all outstanding events
@@ -321,11 +322,9 @@ void run(app_data_t *app) {
 
     printf("%s: %s start...\n", __FILE__, __func__);
 
-    
     start_time = clock();
 
     do {
-        int batch_count =0;
         batch_done = 0;
         pn_event_batch_t *events = pn_proactor_wait(app->proactor);
         pn_event_t *e;
