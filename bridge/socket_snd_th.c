@@ -4,6 +4,7 @@
 #include <proton/condition.h>
 #include <proton/message.h>
 
+#include <arpa/inet.h>
 #include <errno.h>
 #include <netdb.h>
 #include <stdio.h>
@@ -12,7 +13,6 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <arpa/inet.h>
 
 #include "bridge.h"
 #include "rb.h"
@@ -20,7 +20,6 @@
 
 static struct addrinfo *peer_addrinfo;
 static pn_message_t *m_glbl = NULL;
-static char msg_out[4096];
 
 static int prepare_send_socket(app_data_t *app, int *send_sock) {
     struct addrinfo hints;
@@ -58,8 +57,8 @@ static int prepare_send_socket(app_data_t *app, int *send_sock) {
     void *ptr = &((struct sockaddr_in *)peer_addrinfo->ai_addr)->sin_addr;
     inet_ntop(peer_addrinfo->ai_family, ptr, addrstr, sizeof(addrstr));
 
-    printf("Peer socket(%d) %s:%d\n", 
-            *send_sock,
+    printf("Peer socket(%d) %s:%d\n",
+           *send_sock,
            addrstr,
            ntohs((((struct sockaddr_in *)((struct sockaddr *)
                                               peer_addrinfo->ai_addr))
@@ -81,34 +80,23 @@ static int decode_message(app_data_t *app, int send_sock, pn_rwbytes_t data) {
 
     int err = pn_message_decode(m, data.start, data.size);
     if (!err) {
-        /* Print the decoded message */
-        pn_string_t *s = pn_string(NULL);
-        pn_inspect(pn_message_body(m), s);
-        //printf("%s\n", pn_string_get(s));
+        pn_data_t *body = pn_message_body(m);
+        if (pn_data_next(body)) {
+            pn_bytes_t b = pn_data_get_bytes(body);
+            if (b.start != NULL) {
+                int send_flags = MSG_DONTWAIT;
 
-        int send_flags = MSG_DONTWAIT;
-
-        // Get the string version of the message, and strip the leading
-        // b" and trailing " from it
-        const char *msg = pn_string_get(s);
-
-        int msg_len = strlen(msg) - 2;
-
-        memcpy(msg_out, msg + 2, msg_len);
-        *(msg_out + msg_len - 1) = '\0';
-
-        ssize_t sent_bytes = sendto(send_sock, msg_out, msg_len, send_flags,
-                            peer_addrinfo->ai_addr, peer_addrinfo->ai_addrlen);
-        if (sent_bytes <= 0) {
-            // MSG_DONTWAIT is set
-            app->would_block++;
-            perror("error send\n");
-            return 1;
+                ssize_t sent_bytes = sendto(send_sock, b.start, b.size, send_flags,
+                                            peer_addrinfo->ai_addr, peer_addrinfo->ai_addrlen);
+                if (sent_bytes <= 0) {
+                    // MSG_DONTWAIT is set
+                    app->would_block++;
+                    perror("error send\n");
+                    return 1;
+                }
+                app->received++;
+            }
         }
-        app->received++;
-
-        //fflush(stdout);
-        pn_free(s);
     } else {
         // Record the error.  Don't exit immediately
         //
