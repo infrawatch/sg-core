@@ -16,10 +16,11 @@ DEPS := $(patsubst %,$(DEPDIR)/%.d,$(basename $(SRCS)))
 $(shell mkdir -p $(dir $(OBJS)) >/dev/null)
 $(shell mkdir -p $(dir $(DEPS)) >/dev/null)
 
+PG=
 CC=gcc
-CFLAGS=-Wall -O3
+CFLAGS=-Wall -O2 $(PG)
 LDLIBS=-lqpid-proton -lpthread
-LDFLAGS=
+LDFLAGS=$(PG)
 
 DEPFLAGS = -MT $@ -MD -MP -MF $(DEPDIR)/$*.Td
 

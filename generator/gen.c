@@ -34,19 +34,20 @@ extern int batch_count;
 static void usage(void) {
     fprintf(stdout,
             "%s: gen [OPTIONS] amqp_ip amqp_port\n\n"
-            "The missing link between AMQP and golang.\n\n"
+            "Generate Collectd traffic on AMQP...\n\n"
             "positional args:\n"
-            "  amqp_ip   ip address of QDR\n"
-            "  amqp_port port number of the QDR\n"
+            " amqp_ip          ip address of QDR\n"
+            " amqp_port        port number of the QDR\n"
             "optional args:\n"
-            " -v               verbose, print extra info (defaults no verbose)\n"
             " -s               standalone mode, no QDR (defaults QDR mode)\n"
             " -i container_id  should be unique (defaults to sa-RND)\n"
-            " -a amqp_address  AMQP address for endpoint (defaults to "
-            "collectd/telemetry)\n"
-            " -c count         message count to stop (defaults to 0 for "
-            "continous)\n"
-            " -h show help\n\n"
+            " -a amqp_address  AMQP address for endpoint (defaults to collectd/telemetry)\n"
+            " -c count         message count to stop (defaults to 0 for continuous)\n"
+            " -n cd_per_mesg   number of collectd messages per AMQP message (defaults to 1)\n"
+            " -b burst_size    maximum number of AMQP msgs to send per credit interval (defaults to # of credits)\n"
+            " -b sleep_usec    number of usec to sleep per credit interval (defaults to 0 for no sleep)\n"
+            " -v               verbose, print extra info (additional -v increases verbosity)\n"
+            " -h               show help\n\n"
             "\n",
             __func__);
 }
@@ -66,8 +67,9 @@ int main(int argc, char **argv) {
     app.message_count = 0;
     app.burst_size = 0;
     app.sleep_usec = 0;
-    
-    while ((opt = getopt(argc, argv, "i:a:c:hvb:s:")) != -1) {
+    app.num_cd_per_mesg = 1;
+
+    while ((opt = getopt(argc, argv, "i:a:c:hvb:s:n:")) != -1) {
         switch (opt) {
             case 'i':
                 sprintf(cid_buf, optarg);
@@ -89,6 +91,9 @@ int main(int argc, char **argv) {
                 break;
             case 's':
                 app.sleep_usec = atoi(optarg);
+                break;
+            case 'n':
+                app.num_cd_per_mesg = atoi(optarg);
                 break;
             default:
                 usage();

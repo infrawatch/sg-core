@@ -13,6 +13,7 @@ typedef struct  {
     int max_q_depth;
     int burst_size;
     int sleep_usec;
+    int num_cd_per_mesg;
     
     pthread_t amqp_snd_th;
 
