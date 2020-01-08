@@ -50,14 +50,50 @@ static void check_condition(pn_event_t *e, pn_condition_t *cond,
     }
 }
 
+char *CD_VALUES[] = {"1.0", "2.0", "3.0"};
+
+char *CD_MSG =
+    "{\"values\": [0.4593], \"dstypes\": [\"derive\"], \"dsnames\": [\"samples\"], \"time\": 1578337518.8668, \"interval\": 1,\
+  \"host\": \"hostname270\", \"plugin\": \"metrics000\",\"plugin_instance\": \"pluginInst71\",\"type\": \"type0\",\"type_instance\": \"typInst0\"}";
+
 char *JSON_MSG =
     "[{\"values\": [0.4593], \"dstypes\": [\"derive\"], \"dsnames\": [\"samples\"], \"time\": 1578337518.8668, \"interval\": 1,\
   \"host\": \"hostname270\", \"plugin\": \"metrics000\",\"plugin_instance\": \"pluginInst71\",\"type\": \"type0\",\"type_instance\": \"typInst0\"}]";
-int JSON_MSG_SIZE = sizeof(JSON_MSG);
 
-static void gen_mesg(pn_rwbytes_t *buf, int host_num, int metric_num, int64_t stime) {
-    buf->size = strlen(JSON_MSG);
-    buf->start = JSON_MSG;
+char *CD_MSG1 = "{\"values\": [0.4593], \"dstypes\": [\"derive\"], \"dsnames\": [\"samples\"], \"time\": ";
+char *CD_MSG2 = ", \"interval\": 1,\"host\": \"hostname270\", \"plugin\": \"metrics000\",\"plugin_instance\": \"pluginInst71\",\"type\": \"type0\",\"type_instance\": \"typInst0\"}";
+
+static char MSG_BUFFER[4096];
+static char now_buf[100];
+
+static char *build_mesg(int num_msgs, char *time_buf) {
+    char *p = MSG_BUFFER;
+
+    *p++ = '[';
+
+    for (int i = 0; i < num_msgs;) {
+        p = memccpy(p, CD_MSG1, '\0', sizeof(MSG_BUFFER));
+        p--;
+        p = memccpy(p, time_buf, '\0', sizeof(MSG_BUFFER));
+        p--;
+        p = memccpy(p, CD_MSG2, '\0', sizeof(MSG_BUFFER));
+        p--;
+
+        if (++i < num_msgs) {
+            *p++ = ',';
+        }
+    }
+    
+    *p++ = ']';
+    *p = '\0';
+
+    return MSG_BUFFER;
+}
+
+static void gen_mesg(pn_rwbytes_t *buf, int host_num, int metric_num, int num_mesgs, char *time_buf) {
+    buf->start = build_mesg(num_mesgs, time_buf);
+
+    buf->size = strlen(buf->start);
 }
 
 /* Create a message with a map { "sequence" : number } encode it and return the
@@ -111,24 +147,27 @@ static bool handle(app_data_t *app, pn_event_t *event) {
             /* The peer has given us some credit, now we can send messages */
             int burst = 0;
 
+            struct timespec now;
+
+            clock_gettime(CLOCK_REALTIME, &now);
+            time_sprintf(now_buf, now);
+
             while (pn_link_credit(sender) > 0) {
                 if (app->message_count > 0 && app->sent == app->message_count) {
                     break;
                 }
-                // if (app->verbose) {
-                //     printf("\tcredits %d\n",pn_link_credit(sender) );
-                // }
                 ++app->sent;
                 /* Use sent counter as unique delivery tag. */
                 pn_delivery(sender, pn_dtag((const char *)&app->sent,
                                             sizeof(app->sent)));
                 pn_rwbytes_t data;
-                gen_mesg(&data, 1, 1, now());
+
+                gen_mesg(&data, 1, 1, app->num_cd_per_mesg, now_buf);
                 send_message(app, sender, &data);
                 if (app->burst_size > 0 && ++burst >= app->burst_size)
                     break;
             }
-            if ( app->sleep_usec)
+            if (app->sleep_usec)
                 usleep(app->sleep_usec);
 
             break;

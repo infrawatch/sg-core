@@ -58,10 +58,11 @@ func Listen(ctx context.Context, address string) (err error) {
 			} else if (*metric)[0].Interval < 0.0 {
 				doneChan <- err
 			}
-			count++
+			count += len(*metric)
 		}
 	}()
 
+	lastCount := 0
 	for {
 		select {
 		case <-ctx.Done():
@@ -71,8 +72,9 @@ func Listen(ctx context.Context, address string) (err error) {
 		case err = <-doneChan:
 			goto done
 		default:
-			time.Sleep(time.Second * 5)
-			fmt.Printf("Count %d\n", count)
+			time.Sleep(time.Second * 1)
+			fmt.Printf("Rcv'd: %d(%d)\n", count, count-lastCount)
+			lastCount = count
 		}
 	}
 done:
