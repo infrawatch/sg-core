@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"fmt"
@@ -31,7 +32,7 @@ func main() {
 	port := flag.Int("port", 0, "Port to use, otherwise OS will choose")
 	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 	pport := flag.Int("pport", 8081, "Prometheus scrape port.")
-
+	capture := flag.Bool("capture", false, "Catpure json output.")
 	flag.Parse()
 
 	if *cpuprofile != "" {
@@ -72,10 +73,28 @@ func main() {
 		}
 	}()
 
+	// open output file
+	fo, err := os.Create("cd-capture.txt")
+	if err != nil {
+		panic(err)
+	}
+	// close fo on exit and check for its returned error
+	defer func() {
+		if err := fo.Close(); err != nil {
+			panic(err)
+		}
+	}()
+	// make a write buffer
+	w := bufio.NewWriter(fo)
+
 	ctx := context.Background()
-	err := udpserver.Listen(ctx, ip.String()+":"+strconv.Itoa(*port))
+	err = udpserver.Listen(ctx, ip.String()+":"+strconv.Itoa(*port), w, *capture)
 
 	if err != nil {
 		fmt.Printf("Error occurred")
+	}
+
+	if err = w.Flush(); err != nil {
+		panic(err)
 	}
 }

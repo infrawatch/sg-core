@@ -1,6 +1,7 @@
 package udpserver
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"net"
@@ -12,6 +13,8 @@ import (
 
 const maxBufferSize = 1024
 
+var msgBuffer []byte
+
 var (
 	msgRecvd = prometheus.NewCounter(prometheus.CounterOpts{
 		Name:        "msg_rcv_total",
@@ -22,9 +25,10 @@ var (
 
 func init() {
 	prometheus.MustRegister(msgRecvd)
+	msgBuffer = make([]byte, maxBufferSize)
 }
 
-func Listen(ctx context.Context, address string) (err error) {
+func Listen(ctx context.Context, address string, w *bufio.Writer, capture bool) (err error) {
 
 	pc, err := net.ListenPacket("udp", address)
 	if err != nil {
@@ -37,7 +41,6 @@ func Listen(ctx context.Context, address string) (err error) {
 	defer pc.Close()
 
 	doneChan := make(chan error, 1)
-	buffer := make([]byte, maxBufferSize)
 
 	count := 0
 
@@ -45,13 +48,20 @@ func Listen(ctx context.Context, address string) (err error) {
 		cd := new(collectd.Collectd)
 
 		for {
-			n, _, err := pc.ReadFrom(buffer)
+			n, _, err := pc.ReadFrom(msgBuffer)
 			if err != nil || n < 1 {
 				doneChan <- err
 				return
 			}
 			msgRecvd.Inc()
-			metric, err := cd.ParseInputByte(buffer)
+
+			if capture {
+				if _, err := w.WriteString(string(append(msgBuffer[:n], "\n"...))); err != nil {
+					panic(err)
+				}
+			}
+
+			metric, err := cd.ParseInputByte(msgBuffer)
 			if err != nil {
 				fmt.Printf("Error parsing JSON!\n")
 				doneChan <- err
