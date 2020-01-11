@@ -1,2 +1,15 @@
-Build: gcc -L< directory with libqpid-proton.so > -Wall -o bridge bridge.c -lqpid-proton
-Example Usage: ./bridge 127.0.0.1 5672 sg 0 127.0.0.1 5673
+# Generate collectd JSON AMQP messages
+
+Connects to a QDR.  Generates collectd JSON formated metrics.  Sends the metrics to the bridge.
+
+## Build
+
+```bash
+make
+```
+
+## Usage
+
+```bash
+./gen -v -n 4 127.0.0.1 5672
+```

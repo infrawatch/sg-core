@@ -1,17 +1,18 @@
-package udpserver
+package sharedserver
 
 import (
 	"bufio"
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/atyronesmith/sa-benchmark/pkg/collectd"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const maxBufferSize = 1024
+const maxBufferSize = 4096
 
 var msgBuffer []byte
 
@@ -30,15 +31,21 @@ func init() {
 func Listen(ctx context.Context, address string, w *bufio.Writer) (err error) {
 	prometheus.MustRegister(msgRecvd)
 
-	pc, err := net.ListenPacket("udp", address)
+	var laddr net.UnixAddr
+
+	laddr.Name = address
+	laddr.Net = "unixgram"
+
+	os.Remove(address)
+
+	pc, err := net.ListenUnixgram("unixgram", &laddr)
 	if err != nil {
 		return
 	}
+	defer os.Remove(address)
 
 	myAddr := pc.LocalAddr()
 	fmt.Printf("Listening on %s\n", myAddr)
-
-	defer pc.Close()
 
 	doneChan := make(chan error, 1)
 
@@ -48,7 +55,7 @@ func Listen(ctx context.Context, address string, w *bufio.Writer) (err error) {
 		cd := new(collectd.Collectd)
 
 		for {
-			n, _, err := pc.ReadFrom(msgBuffer)
+			n, err := pc.Read(msgBuffer[:])
 			if err != nil || n < 1 {
 				doneChan <- err
 				return
