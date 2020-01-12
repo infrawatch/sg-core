@@ -43,13 +43,13 @@ static void usage(void) {
             "  sg_ip     ip address of smart gateway\n"
             "  sg_port   port number of smart gateway\n\n"
             "optional args:\n"
-            " -v               verbose, print extra info (defaults no verbose)\n"
             " -s               standalone mode, no QDR (defaults QDR mode)\n"
             " -i container_id  should be unique (defaults to sa-RND)\n"
             " -a amqp_address  AMQP address for endpoint (defaults to "
             "collectd/telemetry)\n"
             " -c count         message count to stop (defaults to 0 for "
             "continous)\n"
+            " -v               verbose, print extra info (defaults no verbose)\n"
             " -h show help\n\n"
             "\n",
             __func__);
@@ -70,9 +70,14 @@ int main(int argc, char **argv) {
     app.port = "5672";
     app.amqp_address = "collectd/telemetry";
     app.message_count = 0;
+    app.unix_socket_name = UNIX_SOCKET_PATH;
+    app.domain = AF_UNIX;
 
-    while ((opt = getopt(argc, argv, "i:a:c:shv")) != -1) {
+    while ((opt = getopt(argc, argv, "i:a:c:shvr")) != -1) {
         switch (opt) {
+            case 'r':
+                app.domain = AF_INET;
+                break;
             case 'i':
                 sprintf(cid_buf, optarg);
                 break;
@@ -97,7 +102,12 @@ int main(int argc, char **argv) {
         }
     }
 
-    if ((argc - optind) < 4) {
+    int req_args = 2;
+    if ( app.domain == AF_INET ) {
+        req_args = 4;
+    }
+
+    if ((argc - optind) < req_args) {
         fprintf(stderr, "Missing required arguments -- exiting!\n");
         usage();
 
@@ -106,9 +116,11 @@ int main(int argc, char **argv) {
 
     app.host = strdup(argv[optind++]);
     app.port = strdup(argv[optind++]);
-    app.peer_host = strdup(argv[optind++]);
-    app.peer_port = strdup(argv[optind++]);
 
+    if (app.domain == AF_INET) {
+        app.peer_host = strdup(argv[optind++]);
+        app.peer_port = strdup(argv[optind++]);
+    }
     app.rbin = rb_alloc(RING_BUFFER_COUNT, RING_BUFFER_SIZE);
 
     app.amqp_rcv_th_running = true;
@@ -124,8 +136,8 @@ int main(int argc, char **argv) {
         sleep(1);
 
         printf("processed: %ld(%ld), overrun: %ld(%ld), rcv_wait: %s sec, rcv_atv: %s sec, bc: %d\n", app.rbin->processed,
-               app.rbin->processed - last_processed, app.rbin->overruns, app.rbin->overruns - last_overrun, 
-               time_sprintf(sbuf1,app.rbin->total_wait), time_sprintf(sbuf2,app.rbin->total_active), batch_count);
+               app.rbin->processed - last_processed, app.rbin->overruns, app.rbin->overruns - last_overrun,
+               time_sprintf(sbuf1, app.rbin->total_wait), time_sprintf(sbuf2, app.rbin->total_active), batch_count);
 
         last_processed = app.rbin->processed;
         last_overrun = app.rbin->overruns;

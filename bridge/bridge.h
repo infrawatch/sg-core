@@ -8,12 +8,14 @@
 
 #include "rb.h"
 
+#define UNIX_SOCKET_PATH "/tmp/smartgateway"
 #define RING_BUFFER_COUNT 1000
 #define RING_BUFFER_SIZE  2048
 
 typedef struct  {
     int standalone;
     int verbose;
+    int domain;  // connection to SG, AF_UNIX || AF_INET
     int max_q_depth;
 
     pthread_t amqp_rcv_th;
@@ -21,6 +23,8 @@ typedef struct  {
 
     int amqp_rcv_th_running;
     int socket_snd_th_running;
+
+    const char *unix_socket_name;
 
     const char *host, *port;
     char *peer_host, *peer_port;

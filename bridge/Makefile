@@ -35,6 +35,8 @@ PRECOMPILE =
 POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
 all: $(BIN)
+debug: CFLAGS=-Wall -g
+debug: all
 
 .PHONY: clean
 clean:

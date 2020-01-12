@@ -13,10 +13,12 @@ import (
 	"runtime/pprof"
 	"strconv"
 
-	"github.com/atyronesmith/sa-benchmark/pkg/sharedserver"
-	"github.com/atyronesmith/sa-benchmark/pkg/udpserver"
+	"github.com/atyronesmith/sa-benchmark/pkg/inetserver"
+	"github.com/atyronesmith/sa-benchmark/pkg/unixserver"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+const UNIX_SOCKET_PATH string = "/tmp/smartgateway"
 
 func main() {
 	if os.Getenv("DEBUG") != "" {
@@ -24,29 +26,40 @@ func main() {
 		runtime.SetMutexProfileFraction(20)
 	}
 
+	inetCommand := flag.NewFlagSet("inet", flag.ExitOnError)
+	unixCommand := flag.NewFlagSet("unix", flag.ExitOnError)
+
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: %s [options] udp [ip_address]\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "usage: %s [options] <command> [options]\n", os.Args[0])
 		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nusage: %s [options] inet [options]\n", os.Args[0])
+		inetCommand.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nusage: %s [options] unix [options]\n\n", os.Args[0])
+		unixCommand.PrintDefaults()
 	}
 
-	netCommand := flag.NewFlagSet("net", flag.ExitOnError)
-	sharedCommand := flag.NewFlagSet("shared", flag.ExitOnError)
+	promport := flag.Int("promport", 8081, "Prometheus scrape port.")
+	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
+	capture := flag.Bool("capture", false, "Catpure json output.")
 
 	// Add Flags for net command
 	// parse command line option
-	port := netCommand.Int("port", 0, "Port to use, otherwise OS will choose")
-	var cpuprofile = netCommand.String("cpuprofile", "", "write cpu profile to file")
-	pport := netCommand.Int("pport", 8081, "Prometheus scrape port.")
-	capture := netCommand.Bool("capture", false, "Catpure json output.")
+	ipAddress := inetCommand.String("ip", "127.0.0.1", "Listening IP address")
+	port := inetCommand.Int("port", 0, "Port to use, otherwise OS will choose")
 
 	// Add Flags for shared command
-	socketPath := sharedCommand.String("path", "/tmp/sg", "Path/file for the shared memeory socket")
+	socketPath := unixCommand.String("path", UNIX_SOCKET_PATH, "Path/file for the shared memeory socket")
+
+	flag.Parse()
+
+	commandArgs := flag.Args()
 
 	// Verify that a subcommand has been provided
 	// os.Arg[0] is the main command
 	// os.Arg[1] will be the subcommand
-	if len(os.Args) < 2 {
-		fmt.Println("net or shared subcommand is required")
+	if len(commandArgs) < 1 {
+		fmt.Println("inet or unix subcommand is required")
+		flag.Usage()
 		os.Exit(1)
 	}
 
@@ -54,19 +67,19 @@ func main() {
 	// Parse the flags for appropriate FlagSet
 	// FlagSet.Parse() requires a set of arguments to parse as input
 	// os.Args[2:] will be all arguments starting after the subcommand at os.Args[1]
-	switch os.Args[1] {
-	case "net":
-		err := netCommand.Parse(os.Args[2:])
+	switch commandArgs[0] {
+	case "inet":
+		err := inetCommand.Parse(commandArgs[1:])
 		if err != nil {
 			panic(err)
 		}
-	case "shared":
-		err := sharedCommand.Parse(os.Args[2:])
+	case "unix":
+		err := unixCommand.Parse(commandArgs[1:])
 		if err != nil {
 			panic(err)
 		}
 	default:
-		flag.PrintDefaults()
+		flag.Usage()
 		os.Exit(1)
 	}
 
@@ -91,7 +104,7 @@ func main() {
 	}
 
 	go func() {
-		err := http.ListenAndServe(":"+strconv.Itoa(*pport), promhttp.Handler())
+		err := http.ListenAndServe(":"+strconv.Itoa(*promport), promhttp.Handler())
 		if err != nil {
 			fmt.Printf("http server failed!...")
 			fmt.Printf("%+v\n", err)
@@ -100,43 +113,31 @@ func main() {
 
 	ctx := context.Background()
 
-	if netCommand.Parsed() {
-		var ip net.IP
-
-		if *cpuprofile != "" {
-			f, err := os.Create(*cpuprofile)
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer f.Close()
-			if err := pprof.StartCPUProfile(f); err != nil {
-				log.Fatal("could not start CPU profile: ", err)
-			}
-			defer pprof.StopCPUProfile()
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
 		}
-		netArgs := netCommand.Args()
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
+	}
 
-		if len(netArgs) == 1 {
-			ip = net.ParseIP(netArgs[0])
-			if ip == nil {
-				fmt.Fprintf(os.Stderr, "Invalid target IP addres %s...", ip)
-				flag.Usage()
-				os.Exit(1)
-			}
-		} else if len(netArgs) > 1 {
-			fmt.Fprintln(os.Stderr, "Invalid number of arguments...")
+	if inetCommand.Parsed() {
+		ip := net.ParseIP(*ipAddress)
+		if ip == nil {
+			fmt.Fprintf(os.Stderr, "Invalid target IP addres %s...", *ipAddress)
 			flag.Usage()
 			os.Exit(1)
-		} else {
-			ip = net.ParseIP("127.0.0.1")
 		}
-
-		err = udpserver.Listen(ctx, ip.String()+":"+strconv.Itoa(*port), w)
+		err = inetserver.Listen(ctx, ip.String()+":"+strconv.Itoa(*port), w)
 		if err != nil {
 			fmt.Printf("Error occurred")
 		}
-	} else if sharedCommand.Parsed() {
-		err = sharedserver.Listen(ctx, *socketPath, w)
+	} else if unixCommand.Parsed() {
+		err = unixserver.Listen(ctx, *socketPath, w)
 		if err != nil {
 			fmt.Printf("Error occurred")
 		}
