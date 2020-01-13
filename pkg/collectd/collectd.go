@@ -31,8 +31,10 @@ func (c *Collectd) ParseInputString(jsonString string) (*[]Collectd, error) {
 //ParseInputJSON   ...
 func (c *Collectd) ParseInputByte(jsonBlob []byte) (*[]Collectd, error) {
 	collect := []Collectd{}
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary.BorrowIterator(jsonBlob)
-	defer jsoniter.ConfigCompatibleWithStandardLibrary.ReturnIterator(json)
+	//var json = jsoniter.ConfigCompatibleWithStandardLibrary.BorrowIterator(jsonBlob)
+	var json = jsoniter.ConfigFastest.BorrowIterator(jsonBlob)
+	//defer jsoniter.ConfigCompatibleWithStandardLibrary.ReturnIterator(json)
+	defer jsoniter.ConfigFastest.ReturnIterator(json)
 	json.ReadVal(&collect)
 	//	err := json.Unmarshal(jsonBlob, &collect)
 	if json.Error != nil {

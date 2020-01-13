@@ -40,6 +40,7 @@ func Listen(ctx context.Context, address string, w *bufio.Writer) (err error) {
 
 	pc, err := net.ListenUnixgram("unixgram", &laddr)
 	if err != nil {
+
 		return
 	}
 	defer os.Remove(address)
@@ -76,6 +77,7 @@ func Listen(ctx context.Context, address string, w *bufio.Writer) (err error) {
 				doneChan <- err
 			}
 			count += len(*metric)
+
 		}
 	}()
 

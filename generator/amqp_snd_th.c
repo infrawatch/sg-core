@@ -156,7 +156,7 @@ static bool handle(app_data_t *app, pn_event_t *event) {
                 if (app->message_count > 0 && app->sent == app->message_count) {
                     break;
                 }
-                ++app->sent;
+                app->sent += app->num_cd_per_mesg;
                 /* Use sent counter as unique delivery tag. */
                 pn_delivery(sender, pn_dtag((const char *)&app->sent,
                                             sizeof(app->sent)));

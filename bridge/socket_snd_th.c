@@ -26,17 +26,28 @@ static int prepare_send_socket_unix(app_data_t *app, int *send_sock, struct sock
     struct sockaddr_un name;
 
     /* Create socket on which to send. */
-    *send_sock = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+    *send_sock = socket(AF_UNIX, SOCK_DGRAM, 0);
     if (send_sock < 0) {
         perror("opening datagram socket");
         return -1;
     }
+    memset(&name, 0, sizeof(name));
+
     /* Construct name of socket to send to. */
     name.sun_family = AF_UNIX;
     strcpy(name.sun_path, app->unix_socket_name);
 
+    printf("socket: %d, path: %s, %ld\n", *send_sock, name.sun_path, sizeof(name));
+
     memcpy(sa, &name, sizeof(name));
-    *sa_len = sizeof( name );
+    *sa_len = sizeof(name);
+
+    int ret = connect(*send_sock, (const struct sockaddr *)sa,
+                      *sa_len);
+    if (ret == -1) {
+        perror("connect");
+        exit(EXIT_FAILURE);
+    }
 
     return 0;
 }
@@ -106,14 +117,15 @@ static int decode_message(app_data_t *app, int send_sock, struct sockaddr *addr,
         if (pn_data_next(body)) {
             pn_bytes_t b = pn_data_get_bytes(body);
             if (b.start != NULL) {
-                int send_flags = MSG_DONTWAIT;
-
+                //int send_flags = MSG_DONTWAIT;
+                int send_flags = 0;
+                
                 ssize_t sent_bytes = sendto(send_sock, b.start, b.size, send_flags,
                                             addr, addr_len);
                 if (sent_bytes <= 0) {
                     // MSG_DONTWAIT is set
                     app->would_block++;
-                    perror("error send\n");
+                    perror("send");
                     return 1;
                 }
                 app->received++;
@@ -147,8 +159,8 @@ void *socket_snd_th(void *app_ptr) {
     int send_sock = AF_UNIX;
 
     // Use a struct big enough more most things
-    struct sockaddr_storage sa;
-    socklen_t sa_len = sizeof(struct sockaddr_storage);
+    struct sockaddr_un sa;
+    socklen_t sa_len = sizeof(struct sockaddr_un);
     memset(&sa, 0, sa_len);
 
     // Create the send socket
