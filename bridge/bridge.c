@@ -33,94 +33,136 @@
 
 extern int batch_count;
 
-static void usage(void) {
+enum program_args {
+    ARG_QDR_HOST,
+    ARG_QDR_PORT,
+    ARG_AMQP_ADDR,
+    ARG_DOMAIN,
+    ARG_UNIX,
+    ARG_INET_HOST,
+    ARG_INET_PORT,
+    ARG_STANDALONE,
+    ARG_CID,
+    ARG_COUNT,
+    ARG_VERBOSE,
+    ARG_HELP
+};
+
+struct option longopts[] = {
+    {"qdr_host", required_argument, 0, ARG_QDR_HOST},    // --qdr_host 127.0.0.1
+    {"qdr_port", required_argument, 0, ARG_QDR_PORT},    // --qdr_host 5672
+    {"amqp_addr", required_argument, 0, ARG_AMQP_ADDR},  // --amqp_addr collectd/telemetry
+    {"inet_host", required_argument, 0, ARG_INET_HOST},  // --inet 127.0.0.1
+    {"inet_port", required_argument, 0, ARG_INET_PORT},  // --inet 30000
+    {"unix", required_argument, 0, ARG_UNIX},            // --unix /tmp/sgw_socket
+    {"standalone", no_argument, 0, ARG_STANDALONE},
+    {"cid", required_argument, 0, ARG_CID},      // --cid sa-sender-00
+    {"count", required_argument, 0, ARG_COUNT},  // --count 1000000
+    {"verbose", no_argument, 0, ARG_VERBOSE},
+    {"help", no_argument, 0, ARG_HELP}};
+
+static void usage(char *program) {
     fprintf(stdout,
-            "%s: bridge [OPTIONS] amqp_ip amqp_port sg_ip sg_port\n\n"
+            "usage: %s [OPTIONS]\n\n"
             "The missing link between AMQP and golang.\n\n"
-            "positional args:\n"
-            "  amqp_ip   ip address to bind AMQP listener\n"
-            "  amqp_port port number to bind AMQP listener\n"
-            "  sg_ip     ip address of smart gateway\n"
-            "  sg_port   port number of smart gateway\n\n"
             "optional args:\n"
-            " -s               standalone mode, no QDR (defaults QDR mode)\n"
-            " -i container_id  should be unique (defaults to sa-RND)\n"
-            " -a amqp_address  AMQP address for endpoint (defaults to "
-            "collectd/telemetry)\n"
-            " -c count         message count to stop (defaults to 0 for "
-            "continous)\n"
-            " -v               verbose, print extra info (defaults no verbose)\n"
-            " -h show help\n\n"
+            " --qdr_host dns_or_ip   DNS name or IP of the Qpid Dispatch Router (%s)\n"
+            " --qdr_port port_num    numeric port of the Qpid Dispatch Router (%s)\n"
+            " --amqp_addr addr       AMQP address for the bridge endpoint (%s)\n"
+            " --domain unix|inet     SG socket domain (unix)\n"
+            " --unix socket_path     unix socket location (%s)\n"
+            " --inet_host dns_or_ip  SmartGateway Socket IP (%s)\n"
+            " --inet_port port_num   SmartGateway Socket port (%s)\n"
+            " --cid name             AMQP container ID (%s)\n"
+            " --count num            Number of AMQP mesg to rcv before exit, 0 for continous (0)\n"
+            " --standalone           no QDR mode (QDR mode)\n"
+            " --(v)erbose            print extra info, multiple instance increase verbosity.\n"
+            " --(h)elp               print usage.\n"
             "\n",
-            __func__);
+            program, DEFAULT_AMQP_HOST, DEFAULT_AMQP_PORT, DEFAULT_AMQP_ADDR,
+                DEFAULT_UNIX_SOCKET_PATH, DEFAULT_INET_HOST, DEFAULT_INET_PORT,
+                DEFAULT_CID);
 }
+
 
 int main(int argc, char **argv) {
     app_data_t app = {0};
     char cid_buf[100];
-    int opt;
+    int opt, index;
 
     srand(time(0));
 
     sprintf(cid_buf, "sa-%x", rand() % 1024);
 
     app.container_id = cid_buf; /* Should be unique */
-
-    app.host = "127.0.0.1";
-    app.port = "5672";
-    app.amqp_address = "collectd/telemetry";
+    app.host = DEFAULT_AMQP_HOST;
+    app.port = DEFAULT_AMQP_PORT;
+    app.amqp_address = DEFAULT_AMQP_ADDR;
     app.message_count = 0;
-    app.unix_socket_name = UNIX_SOCKET_PATH;
+    app.unix_socket_name = DEFAULT_UNIX_SOCKET_PATH;
     app.domain = AF_UNIX;
 
-    while ((opt = getopt(argc, argv, "i:a:c:shvr")) != -1) {
+    while ((opt = getopt_long(argc, argv, "hv",
+                              longopts, &index)) != -1) {
         switch (opt) {
-            case 'r':
-                app.domain = AF_INET;
+            case ARG_QDR_HOST:
+                app.host = strdup(optarg);
                 break;
-            case 'i':
-                sprintf(cid_buf, optarg);
+            case ARG_QDR_PORT:
+                app.host = strdup(optarg);
                 break;
-            case 'a':
+            case ARG_AMQP_ADDR:
                 app.amqp_address = strdup(optarg);
                 break;
-            case 'c':
+            case ARG_INET_HOST:
+                app.peer_host = strdup(optarg);
+                app.domain = AF_INET;
+                break;
+            case ARG_INET_PORT:
+                app.peer_port = strdup(optarg);
+                app.domain = AF_INET;
+                break;
+            case ARG_UNIX:
+                app.unix_socket_name = strdup(optarg);
+                app.domain = AF_UNIX;
+                break;
+            case ARG_CID:
+                sprintf(cid_buf, optarg);
+                break;
+            case ARG_COUNT:
                 app.message_count = atoi(optarg);
                 break;
-            case 's':
+            case ARG_STANDALONE:
                 app.standalone = 1;
                 break;
+            case ARG_VERBOSE:
             case 'v':
                 app.verbose = 1;
                 break;
             case 'h':
-                usage();
+            case ARG_HELP:
+                usage(argv[0]);
                 return 0;
             default:
-                usage();
+                usage(argv[0]);
                 return 1;
         }
     }
 
-    int req_args = 2;
-    if ( app.domain == AF_INET ) {
-        req_args = 4;
+    if ( app.standalone ) {
+        printf("standalone mode\n");
+    } else {
+        printf("QDR %s:%s\n", app.host, app.port);
     }
 
-    if ((argc - optind) < req_args) {
-        fprintf(stderr, "Missing required arguments -- exiting!\n");
-        usage();
-
-        return 1;
+    if ( app.domain == AF_UNIX ) {
+        printf("Unix Socket: %s\n", app.unix_socket_name);
+    } else {
+        printf("Inet Socket at %s:%s\n", app.peer_host, app.peer_port);
     }
 
-    app.host = strdup(argv[optind++]);
-    app.port = strdup(argv[optind++]);
+    printf("AMQP Address: %s, CID %s\n", app.amqp_address, app.container_id);
 
-    if (app.domain == AF_INET) {
-        app.peer_host = strdup(argv[optind++]);
-        app.peer_port = strdup(argv[optind++]);
-    }
     app.rbin = rb_alloc(RING_BUFFER_COUNT, RING_BUFFER_SIZE);
 
     app.amqp_rcv_th_running = true;

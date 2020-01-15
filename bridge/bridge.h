@@ -8,7 +8,13 @@
 
 #include "rb.h"
 
-#define UNIX_SOCKET_PATH "/tmp/smartgateway"
+#define DEFAULT_UNIX_SOCKET_PATH "/tmp/smartgateway"
+#define DEFAULT_AMQP_HOST "127.0.0.1"
+#define DEFAULT_AMQP_PORT "5672"
+#define DEFAULT_AMQP_ADDR "collectd/telemetry"
+#define DEFAULT_INET_HOST "127.0.0.1"
+#define DEFAULT_INET_PORT "30000"
+#define DEFAULT_CID       "bridge-%x"
 #define RING_BUFFER_COUNT 1000
 #define RING_BUFFER_SIZE  2048
 
