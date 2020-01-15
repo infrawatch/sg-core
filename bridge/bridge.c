@@ -42,6 +42,7 @@ enum program_args {
     ARG_INET_HOST,
     ARG_INET_PORT,
     ARG_STANDALONE,
+    ARG_STAT_PERIOD,
     ARG_CID,
     ARG_COUNT,
     ARG_VERBOSE,
@@ -56,6 +57,7 @@ struct option longopts[] = {
     {"inet_port", required_argument, 0, ARG_INET_PORT},  // --inet 30000
     {"unix", required_argument, 0, ARG_UNIX},            // --unix /tmp/sgw_socket
     {"standalone", no_argument, 0, ARG_STANDALONE},
+    {"stat_period", required_argument, 0, ARG_STAT_PERIOD},
     {"cid", required_argument, 0, ARG_CID},      // --cid sa-sender-00
     {"count", required_argument, 0, ARG_COUNT},  // --count 1000000
     {"verbose", no_argument, 0, ARG_VERBOSE},
@@ -76,14 +78,14 @@ static void usage(char *program) {
             " --cid name             AMQP container ID (%s)\n"
             " --count num            Number of AMQP mesg to rcv before exit, 0 for continous (0)\n"
             " --standalone           no QDR mode (QDR mode)\n"
+            " --stat_period seconds  How often to print stats, 0 for no stats (0)\n"
             " --(v)erbose            print extra info, multiple instance increase verbosity.\n"
             " --(h)elp               print usage.\n"
             "\n",
             program, DEFAULT_AMQP_HOST, DEFAULT_AMQP_PORT, DEFAULT_AMQP_ADDR,
-                DEFAULT_UNIX_SOCKET_PATH, DEFAULT_INET_HOST, DEFAULT_INET_PORT,
-                DEFAULT_CID);
+            DEFAULT_UNIX_SOCKET_PATH, DEFAULT_INET_HOST, DEFAULT_INET_PORT,
+            DEFAULT_CID);
 }
-
 
 int main(int argc, char **argv) {
     app_data_t app = {0};
@@ -94,6 +96,7 @@ int main(int argc, char **argv) {
 
     sprintf(cid_buf, "sa-%x", rand() % 1024);
 
+    app.stat_period = 0;        /* disabled */
     app.container_id = cid_buf; /* Should be unique */
     app.host = DEFAULT_AMQP_HOST;
     app.port = DEFAULT_AMQP_PORT;
@@ -135,6 +138,9 @@ int main(int argc, char **argv) {
             case ARG_STANDALONE:
                 app.standalone = 1;
                 break;
+            case ARG_STAT_PERIOD:
+                app.stat_period = atoi(optarg);
+                break;
             case ARG_VERBOSE:
             case 'v':
                 app.verbose = 1;
@@ -149,13 +155,13 @@ int main(int argc, char **argv) {
         }
     }
 
-    if ( app.standalone ) {
+    if (app.standalone) {
         printf("standalone mode\n");
     } else {
         printf("QDR %s:%s\n", app.host, app.port);
     }
 
-    if ( app.domain == AF_UNIX ) {
+    if (app.domain == AF_UNIX) {
         printf("Unix Socket: %s\n", app.unix_socket_name);
     } else {
         printf("Inet Socket at %s:%s\n", app.peer_host, app.peer_port);
@@ -170,19 +176,25 @@ int main(int argc, char **argv) {
     app.socket_snd_th_running = true;
     pthread_create(&app.socket_snd_th, NULL, socket_snd_th, (void *)&app);
 
-    long last_processed = 0;
+    long last_amqp_received = 0;
     long last_overrun = 0;
-    char sbuf1[80], sbuf2[80];
+    long last_out = 0;
+
+    long sleep_count = 1;
 
     while (1) {
         sleep(1);
 
-        printf("processed: %ld(%ld), overrun: %ld(%ld), rcv_wait: %s sec, rcv_atv: %s sec, bc: %d\n", app.rbin->processed,
-               app.rbin->processed - last_processed, app.rbin->overruns, app.rbin->overruns - last_overrun,
-               time_sprintf(sbuf1, app.rbin->total_wait), time_sprintf(sbuf2, app.rbin->total_active), batch_count);
-
-        last_processed = app.rbin->processed;
+        if (sleep_count == app.stat_period) {
+            printf("in: %ld(%ld), overrun: %ld(%ld), out: %ld(%ld)\n",
+                   app.amqp_received, app.amqp_received - last_amqp_received,
+                   app.rbin->overruns, app.rbin->overruns - last_overrun,
+                   app.sock_sent, app.sock_sent - last_out);
+            sleep_count = 1;
+        }
+        last_amqp_received = app.amqp_received;
         last_overrun = app.rbin->overruns;
+        last_out = app.sock_sent;
 
         if (app.socket_snd_th_running == 0) {
             pthread_join(app.socket_snd_th, NULL);

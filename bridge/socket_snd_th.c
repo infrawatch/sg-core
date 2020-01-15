@@ -22,12 +22,12 @@
 static struct addrinfo *peer_addrinfo;
 static pn_message_t *m_glbl = NULL;
 
-static int prepare_send_socket_unix(app_data_t *app, int *send_sock, struct sockaddr *sa, socklen_t *sa_len) {
+static int prepare_send_socket_unix(app_data_t *app) {
     struct sockaddr_un name;
 
     /* Create socket on which to send. */
-    *send_sock = socket(AF_UNIX, SOCK_DGRAM, 0);
-    if (send_sock < 0) {
+    app->send_sock = socket(AF_UNIX, SOCK_DGRAM, 0);
+    if (app->send_sock < 0) {
         perror("opening datagram socket");
         return -1;
     }
@@ -37,22 +37,15 @@ static int prepare_send_socket_unix(app_data_t *app, int *send_sock, struct sock
     name.sun_family = AF_UNIX;
     strcpy(name.sun_path, app->unix_socket_name);
 
-    printf("socket: %d, path: %s, %ld\n", *send_sock, name.sun_path, sizeof(name));
+    printf("socket: %d, path: %s, %ld\n", app->send_sock, name.sun_path, sizeof(name));
 
-    memcpy(sa, &name, sizeof(name));
-    *sa_len = sizeof(name);
-
-    int ret = connect(*send_sock, (const struct sockaddr *)sa,
-                      *sa_len);
-    if (ret == -1) {
-        perror("connect");
-        exit(EXIT_FAILURE);
-    }
+    memcpy(&app->sa, &name, sizeof(name));
+    app->sa_len = sizeof(name);
 
     return 0;
 }
 
-static int prepare_send_socket_inet(app_data_t *app, int *send_sock, struct sockaddr *sa, socklen_t *sa_len) {
+static int prepare_send_socket_inet(app_data_t *app) {
     struct addrinfo hints;
 
     memset(&hints, 0, sizeof(struct addrinfo));
@@ -73,9 +66,9 @@ static int prepare_send_socket_inet(app_data_t *app, int *send_sock, struct sock
         return -1;
     }
 
-    *send_sock = socket(peer_addrinfo->ai_family, peer_addrinfo->ai_socktype,
+    app->send_sock = socket(peer_addrinfo->ai_family, peer_addrinfo->ai_socktype,
                         peer_addrinfo->ai_protocol);
-    if (*send_sock == -1) {
+    if (app->send_sock == -1) {
         fprintf(stderr, "%s: socket returned -1\n", __func__);
         perror("Error");
         freeaddrinfo(peer_addrinfo);
@@ -88,19 +81,19 @@ static int prepare_send_socket_inet(app_data_t *app, int *send_sock, struct sock
     inet_ntop(peer_addrinfo->ai_family, ptr, addrstr, sizeof(addrstr));
 
     printf("Peer socket(%d) %s:%d\n",
-           *send_sock,
+           app->send_sock,
            addrstr,
            ntohs((((struct sockaddr_in *)((struct sockaddr *)
                                               peer_addrinfo->ai_addr))
                       ->sin_port)));
 
-    memcpy(sa, peer_addrinfo->ai_addr, peer_addrinfo->ai_addrlen);
-    *sa_len = peer_addrinfo->ai_addrlen;
+    memcpy(&app->sa, peer_addrinfo->ai_addr, peer_addrinfo->ai_addrlen);
+    app->sa_len = peer_addrinfo->ai_addrlen;
 
     return 0;
 }
 
-static int decode_message(app_data_t *app, int send_sock, struct sockaddr *addr, socklen_t addr_len, pn_rwbytes_t data) {
+static int decode_message(app_data_t *app, pn_rwbytes_t data) {
     pn_message_t *m;
 
     // Use a static message with pn_message_clear(...)
@@ -117,24 +110,39 @@ static int decode_message(app_data_t *app, int send_sock, struct sockaddr *addr,
         if (pn_data_next(body)) {
             pn_bytes_t b = pn_data_get_bytes(body);
             if (b.start != NULL) {
-                //int send_flags = MSG_DONTWAIT;
-                int send_flags = 0;
-                
-                ssize_t sent_bytes = sendto(send_sock, b.start, b.size, send_flags,
-                                            addr, addr_len);
+                int send_flags = MSG_DONTWAIT;
+
+                ssize_t sent_bytes = sendto(app->send_sock, b.start, b.size, send_flags,
+                                            &app->sa, app->sa_len);
                 if (sent_bytes <= 0) {
                     // MSG_DONTWAIT is set
-                    app->would_block++;
-                    perror("send");
-                    return 1;
+                    switch (errno) {
+                        case EAGAIN:
+                            // Normal backup
+                            app->sock_would_block++;
+                            break;
+                        case EBADF:
+                        case ENOTSOCK:
+                            // sockfd is not a valid file descriptor
+                            // TODO reopen socket
+                            perror("SG Send");
+                            return 1; 
+                            break;
+                        case ECONNREFUSED:
+                            break;
+                        default:
+                            perror("SG Send");
+                            printf("%d ",errno);
+                            return 1;
+                    }
                 }
-                app->received++;
+                app->sock_sent++;
             }
         }
     } else {
         // Record the error.  Don't exit immediately
         //
-        app->decore_errors++;
+        app->amqp_decode_errs++;
 
         return 1;
     }
@@ -156,24 +164,21 @@ void *socket_snd_th(void *app_ptr) {
     pthread_cleanup_push(socket_snd_th_cleanup, app_ptr);
 
     app_data_t *app = (app_data_t *)app_ptr;
-    int send_sock = AF_UNIX;
 
-    // Use a struct big enough more most things
-    struct sockaddr_un sa;
-    socklen_t sa_len = sizeof(struct sockaddr_un);
-    memset(&sa, 0, sa_len);
+    app->sa_len = sizeof(app->sa);
+    memset(&app->sa, 0, app->sa_len);
 
     // Create the send socket
     switch (app->domain) {
         case AF_UNIX:
-            if (prepare_send_socket_unix(app, &send_sock, (struct sockaddr *)&sa, &sa_len) == -1) {
+            if (prepare_send_socket_unix(app) == -1) {
                 fprintf(stderr, "Failed to create socket... exiting!");
                 return NULL;
             }
             break;
 
         case AF_INET:
-            if (prepare_send_socket_inet(app, &send_sock, (struct sockaddr *)&sa, &sa_len) == -1) {
+            if (prepare_send_socket_inet(app) == -1) {
                 fprintf(stderr, "Failed to create socket... exiting!");
                 return NULL;
             }
@@ -190,11 +195,11 @@ void *socket_snd_th(void *app_ptr) {
 
     while (1) {
         pn_rwbytes_t *msg = rb_get(app->rbin);
-        decode_message(app, send_sock, (struct sockaddr *)&sa, sa_len, *msg);
+        decode_message(app, *msg);
     }
 
-    if (send_sock != -1) {
-        close(send_sock);
+    if (app->send_sock != -1) {
+        close(app->send_sock);
         fprintf(stdout, "Socket closed\n");
     }
 

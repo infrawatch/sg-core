@@ -1,6 +1,9 @@
 #ifndef _BRIDGE_H
 #define _BRIDGE_H 1
 
+#include <sys/socket.h>
+#include <sys/un.h>
+
 #include <proton/condition.h>
 #include <proton/listener.h>
 #include <proton/proactor.h>
@@ -23,6 +26,7 @@ typedef struct  {
     int verbose;
     int domain;  // connection to SG, AF_UNIX || AF_INET
     int max_q_depth;
+    int stat_period;
 
     pthread_t amqp_rcv_th;
     pthread_t socket_snd_th;
@@ -46,14 +50,17 @@ typedef struct  {
     rb_rwbytes_t *rbin;
 
     /* Sender values */
-    int sent;
-    int acknowledged;
-    pn_link_t *sender;
+    long amqp_received;
 
     /* Receiver values */
-    long received;
-    long decore_errors;
-    long would_block;
+    long sock_sent;
+    long amqp_decode_errs;
+    long sock_would_block;
+
+    // Use a struct big enough more most things
+    struct sockaddr_un sa;
+    socklen_t sa_len;
+    int send_sock;
 } app_data_t;
 
 #endif

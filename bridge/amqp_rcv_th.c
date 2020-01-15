@@ -46,27 +46,6 @@ static void check_condition(pn_event_t *e, pn_condition_t *cond,
     }
 }
 
-/* Create a message with a map { "sequence" : number } encode it and return the
- * encoded buffer. */
-static void send_message(app_data_t *app, pn_link_t *sender) {
-    /* Construct a message with the map { "sequence": app.sent } */
-    pn_message_t *message = pn_message();
-    pn_data_t *body = pn_message_body(message);
-    pn_data_put_int(pn_message_id(message),
-                    app->sent); /* Set the message_id also */
-    pn_data_put_map(body);
-    pn_data_enter(body);
-    pn_data_put_string(body, pn_bytes(sizeof("sequence") - 1, "sequence"));
-    pn_data_put_int(body, app->sent); /* The sequence number */
-    pn_data_exit(body);
-    if (pn_message_send(message, sender, &app->msgout) < 0) {
-        fprintf(stderr, "send error: %s\n",
-                pn_error_text(pn_message_error(message)));
-        exit_code = 1;
-    }
-    pn_message_free(message);
-}
-
 /* This function handles events when we are acting as the receiver */
 static void handle_receive(app_data_t *app, pn_event_t *event, int *batch_done) {
     /*    printf("handle_receive %s\n", app->container_id);*/
@@ -98,6 +77,8 @@ static void handle_receive(app_data_t *app, pn_event_t *event, int *batch_done) 
             // Place in the ring buffer HERE
             rb_put(app->rbin);
 
+            app->amqp_received++;
+
             pn_delivery_update(d, PN_ACCEPTED);
             pn_delivery_settle(d); /* settle and free d */
 
@@ -111,7 +92,7 @@ static void handle_receive(app_data_t *app, pn_event_t *event, int *batch_done) 
                  *batch_done = link_credit;
                  pn_link_flow(l, rb_free_size(app->rbin) - link_credit);
              }
-            if ((app->message_count > 0) && (app->received >= app->message_count)) {
+            if ((app->message_count > 0) && (app->sock_sent >= app->message_count)) {
                 close_all(pn_event_connection(event), app);
 
                 exit_code = 1;
@@ -119,50 +100,6 @@ static void handle_receive(app_data_t *app, pn_event_t *event, int *batch_done) 
         } else {
             printf("partial\n");
         }
-    }
-}
-
-/* This function handles events when we are acting as the sender */
-static void handle_send(app_data_t *app, pn_event_t *event) {
-    switch (pn_event_type(event)) {
-        case PN_LINK_REMOTE_OPEN: {
-            if (app->verbose) {
-                printf("send PN_LINK_REMOTE_OPEN %s\n", app->container_id);
-            }
-            pn_link_t *l = pn_event_link(event);
-            pn_terminus_set_address(pn_link_target(l), app->amqp_address);
-            pn_link_open(l);
-        } break;
-
-        case PN_LINK_FLOW: {
-            /* The peer has given us some credit, now we can send messages */
-            pn_link_t *sender = pn_event_link(event);
-            while (pn_link_credit(sender) > 0 &&
-                   app->sent < app->message_count) {
-                ++app->sent;
-                /* Use sent counter as unique delivery tag. */
-                pn_delivery(sender, pn_dtag((const char *)&app->sent,
-                                            sizeof(app->sent)));
-                send_message(app, sender);
-            }
-            break;
-        }
-
-        case PN_DELIVERY: {
-            /* We received acknowledgement from the peer that a message was
-             * delivered. */
-            pn_delivery_t *d = pn_event_delivery(event);
-            if (pn_delivery_remote_state(d) == PN_ACCEPTED) {
-                if (++app->acknowledged == app->message_count) {
-                    printf("%d messages sent and acknowledged\n",
-                           app->acknowledged);
-                    close_all(pn_event_connection(event), app);
-                }
-            }
-        } break;
-
-        default:
-            break;
     }
 }
 
@@ -174,11 +111,7 @@ static bool handle(app_data_t *app, pn_event_t *event, int *batch_done) {
         case PN_DELIVERY: {
             pn_link_t *l = pn_event_link(event);
             if (l) { /* Only delegate link-related events */
-                if (pn_link_is_sender(l)) {
-                    handle_send(app, event);
-                } else {
                     handle_receive(app, event, batch_done);
-                }
             }
             break;
         }
@@ -294,9 +227,6 @@ static bool handle(app_data_t *app, pn_event_t *event, int *batch_done) {
             break;
 
         case PN_PROACTOR_TIMEOUT:
-            /* Wake the sender's connection */
-            pn_connection_wake(
-                pn_session_connection(pn_link_session(app->sender)));
             break;
 
         case PN_LISTENER_CLOSE:
