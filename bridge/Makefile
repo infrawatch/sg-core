@@ -1,4 +1,9 @@
 
+MAJOR?=0
+MINOR?=1
+ 
+VERSION=$(MAJOR).$(MINOR)
+
 BIN := bridge
 
 SRCS = $(wildcard *.c)
@@ -34,6 +39,10 @@ PRECOMPILE =
 # postcompile step
 POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
+HUB_NAMESPACE = "localhost"
+BUILDER_IMAGE_NAME = "sgbridge-builder"
+BRIDGE_IMAGE_NAME = "sgbridge"
+
 all: $(BIN)
 debug: CFLAGS=-Wall -g
 debug: all
@@ -41,6 +50,24 @@ debug: all
 .PHONY: clean
 clean:
 	rm -fr $(OBJDIR) $(DEPDIR)
+
+.PHONY: clean-images
+clean-images: version-check
+	@echo "+ $@"
+	@podman rmi ${HUB_NAMESPACE}/${BUILDER_IMAGE_NAME}:latest  || true
+	@podman rmi ${HUB_NAMESPACE}/${BRIDGE_IMAGE_NAME}:latest  || true
+
+.PHONY: builder-image
+builder-image: version-check
+	@echo "+ $@"
+	@buildah bud -t ${HUB_NAMESPACE}/${BUILDER_IMAGE_NAME}:latest -f build/Dockerfile.builder
+	@echo 'Done.'
+
+.PHONY: bridge-image
+bridge-image: version-check
+	@echo "+ $@"
+	@buildah bud --build-arg=BUILDER_IMAGE_NAME=${BUILDER_IMAGE_NAME} -t ${HUB_NAMESPACE}/${BRIDGE_IMAGE_NAME}:latest -f build/Dockerfile.sgbridge
+	@echo 'Done.'
 
 $(BIN): $(OBJS)
 	$(CC) -o $@ $^ $(LDFLAGS) $(LDLIBS)
@@ -56,5 +83,19 @@ $(OBJDIR)/%.o : %.c $(DEPDIR)/%.d | $(DEPDIR)
 
 .PRECIOUS: $(DEPDIR)/%.d
 $(DEPDIR)/%.d: ;
+
+#################################
+# Utilities
+#################################
+
+.PHONY: version-check
+version-check:
+	@echo "+ $@"
+    ifdef VERSION
+		@echo "VERSION is ${VERSION}"
+    else
+		@echo "VERSION is not set!"
+		@false;
+    endif
 
 -include $(DEPS)
