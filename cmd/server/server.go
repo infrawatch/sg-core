@@ -15,10 +15,40 @@ import (
 
 	"github.com/atyronesmith/sa-benchmark/pkg/inetserver"
 	"github.com/atyronesmith/sa-benchmark/pkg/unixserver"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const UNIX_SOCKET_PATH string = "/tmp/smartgateway"
+
+func startPromHttp(host string, port int) (registry *prometheus.Registry) {
+	registry = prometheus.NewRegistry()
+
+	//Set up Metric Exporter
+	handler := http.NewServeMux()
+	handler.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+	handler.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte(`<html>
+                                <head><title>Collectd Exporter</title></head>
+                                <body>cacheutil
+                                <h1>Collectd Exporter</h1>
+                                <p><a href='/metrics'>Metrics</a></p>
+                                </body>
+								</html>`))
+		if err != nil {
+			log.Printf("HTTP: %v", err)
+		}
+	})
+
+	//run exporter fro prometheus to scrape
+	go func() {
+		metricsURL := fmt.Sprintf("%s:%d", host, port)
+		log.Printf("Metric server at : %s\n", metricsURL)
+		log.Fatal(http.ListenAndServe(metricsURL, handler))
+	}()
+
+	return
+}
 
 func main() {
 	if os.Getenv("DEBUG") != "" {
@@ -37,7 +67,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\nusage: %s [options] unix [options]\n\n", os.Args[0])
 		unixCommand.PrintDefaults()
 	}
-
+	promhost := flag.String("promhost", "localhost", "Prometheus scrape host.")
 	promport := flag.Int("promport", 8081, "Prometheus scrape port.")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
 	capture := flag.Bool("capture", false, "Catpure json output.")
@@ -103,14 +133,6 @@ func main() {
 		w = bufio.NewWriter(fo)
 	}
 
-	go func() {
-		err := http.ListenAndServe(":"+strconv.Itoa(*promport), promhttp.Handler())
-		if err != nil {
-			fmt.Printf("http server failed!...")
-			fmt.Printf("%+v\n", err)
-		}
-	}()
-
 	ctx := context.Background()
 
 	if *cpuprofile != "" {
@@ -125,6 +147,8 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
+	registry := startPromHttp(*promhost, *promport)
+
 	if inetCommand.Parsed() {
 		ip := net.ParseIP(*ipAddress)
 		if ip == nil {
@@ -137,7 +161,7 @@ func main() {
 			fmt.Printf("Error occurred")
 		}
 	} else if unixCommand.Parsed() {
-		err = unixserver.Listen(ctx, *socketPath, w)
+		err = unixserver.Listen(ctx, *socketPath, w, registry)
 		if err != nil {
 			fmt.Printf("Error occurred")
 		}
