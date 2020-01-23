@@ -193,7 +193,8 @@ static bool handle(app_data_t *app, pn_event_t *event) {
 
             if (pn_delivery_remote_state(d) == PN_ACCEPTED) {
                 pn_delivery_settle(d);
-                if (++app->acknowledged == app->message_count) {
+                app->acknowledged += app->num_cd_per_mesg;
+                if (app->acknowledged == app->message_count) {
                     printf("%ld messages sent and acknowledged\n",
                            app->acknowledged);
                     close_all(pn_event_connection(event), app);

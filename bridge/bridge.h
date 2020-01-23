@@ -49,10 +49,11 @@ typedef struct  {
 
     rb_rwbytes_t *rbin;
 
-    /* Sender values */
+    /* Rcv stats */
     long amqp_received;
+    long amqp_partial;
 
-    /* Receiver values */
+    /* Snd stats */
     long sock_sent;
     long amqp_decode_errs;
     long sock_would_block;

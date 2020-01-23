@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
 
     srand(time(0));
 
-    sprintf(cid_buf, "sa-%x", rand() % 1024);
+    sprintf(cid_buf, "sagen-%x", rand() % 1024);
 
     app.container_id = cid_buf; /* Should be unique */
 

@@ -98,7 +98,7 @@ static void handle_receive(app_data_t *app, pn_event_t *event, int *batch_done) 
                 exit_code = 1;
             }
         } else {
-            printf("partial\n");
+            app->amqp_partial++;
         }
     }
 }
