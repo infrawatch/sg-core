@@ -39,6 +39,7 @@ enum program_args {
     ARG_AMQP_ADDR,
     ARG_DOMAIN,
     ARG_UNIX,
+    ARG_BLOCK,
     ARG_INET_HOST,
     ARG_INET_PORT,
     ARG_STANDALONE,
@@ -56,6 +57,7 @@ struct option longopts[] = {
     {"inet_host", required_argument, 0, ARG_INET_HOST},  // --inet 127.0.0.1
     {"inet_port", required_argument, 0, ARG_INET_PORT},  // --inet 30000
     {"unix", required_argument, 0, ARG_UNIX},            // --unix /tmp/sgw_socket
+    {"block", no_argument, 0, ARG_BLOCK},            // --unix /tmp/sgw_socket
     {"standalone", no_argument, 0, ARG_STANDALONE},
     {"stat_period", required_argument, 0, ARG_STAT_PERIOD},
     {"cid", required_argument, 0, ARG_CID},      // --cid sa-sender-00
@@ -73,6 +75,7 @@ static void usage(char *program) {
             " --amqp_addr addr       AMQP address for the bridge endpoint (%s)\n"
             " --domain unix|inet     SG socket domain (unix)\n"
             " --unix socket_path     unix socket location (%s)\n"
+            " --block                SG socket send can block (can block)\n"
             " --inet_host dns_or_ip  SmartGateway Socket IP (%s)\n"
             " --inet_port port_num   SmartGateway Socket port (%s)\n"
             " --cid name             AMQP container ID (%s)\n"
@@ -104,6 +107,7 @@ int main(int argc, char **argv) {
     app.message_count = 0;
     app.unix_socket_name = DEFAULT_UNIX_SOCKET_PATH;
     app.domain = AF_UNIX;
+    app.socket_flags = MSG_DONTWAIT;
 
     while ((opt = getopt_long(argc, argv, "hv",
                               longopts, &index)) != -1) {
@@ -120,6 +124,9 @@ int main(int argc, char **argv) {
             case ARG_INET_HOST:
                 app.peer_host = strdup(optarg);
                 app.domain = AF_INET;
+                break;
+            case ARG_BLOCK:
+                app.socket_flags ^= MSG_DONTWAIT;
                 break;
             case ARG_INET_PORT:
                 app.peer_port = strdup(optarg);

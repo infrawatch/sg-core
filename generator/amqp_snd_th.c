@@ -1,6 +1,6 @@
 #define _GNU_SOURCE
+#include <assert.h>
 #include <features.h>
-
 #include <proton/connection.h>
 #include <proton/delivery.h>
 #include <proton/link.h>
@@ -11,14 +11,12 @@
 #include <proton/session.h>
 #include <proton/transport.h>
 #include <proton/types.h>
-
-#include <assert.h>
 #include <pthread.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <stdlib.h>
 
 #include "gen.h"
 #include "utils.h"
@@ -79,7 +77,7 @@ static char *build_mesg(app_data_t *app, char *time_buf) {
     for (int i = 0; i < app->num_cd_per_mesg;) {
         p = memccpy(p, CD_MSG1, '\0', sizeof(MSG_BUFFER));
         p--;
-        sprintf(val_buff,"%ld", app->metrics_sent + i);
+        sprintf(val_buff, "%ld", app->metrics_sent + i);
         p = memccpy(p, val_buff, '\0', sizeof(MSG_BUFFER));
         p--;
         p = memccpy(p, CD_MSG2, '\0', sizeof(MSG_BUFFER));
@@ -102,14 +100,14 @@ static char *build_mesg(app_data_t *app, char *time_buf) {
         }
 
         app->curr_host++;
-        if ( app->curr_host >= app->host_list_len )
+        if (app->curr_host >= app->host_list_len)
             app->curr_host = 0;
     }
-    
+
     *p++ = ']';
     *p = '\0';
 
-//    printf("\n%s\n", MSG_BUFFER);
+    //    printf("\n%s\n", MSG_BUFFER);
 
     return MSG_BUFFER;
 }
@@ -158,6 +156,41 @@ static void send_message(app_data_t *app, pn_link_t *sender, pn_rwbytes_t *data)
     }
 }
 
+static bool send_burst(app_data_t *app, pn_event_t *event) {
+//    pn_link_t *sender = pn_event_link(event);
+    pn_link_t *sender = app->sender;
+
+    /* The peer has given us some credit, now we can send messages */
+    int burst = 0;
+
+    struct timespec now;
+
+    clock_gettime(CLOCK_REALTIME, &now);
+    time_sprintf(now_buf, now);
+
+    while (pn_link_credit(sender) > 0) {
+        if (app->message_count > 0 && app->metrics_sent == app->message_count) {
+            break;
+        }
+        app->amqp_sent++;
+        app->metrics_sent += app->num_cd_per_mesg;
+
+        /* Use sent counter as unique delivery tag. */
+        pn_delivery(sender, pn_dtag((const char *)&app->metrics_sent,
+                                    sizeof(app->metrics_sent)));
+        pn_rwbytes_t data;
+
+        gen_mesg(&data, app, now_buf);
+        send_message(app, sender, &data);
+        if (app->burst_size > 0 && ++burst >= app->burst_size)
+            break;
+    }
+     if (app->sleep_usec)
+         usleep(app->sleep_usec);
+
+    return 0;
+}
+
 /* Handle all events, delegate to handle_send or handle_receive depending on
    link mode. Return true to continue, false to exit
 */
@@ -166,36 +199,10 @@ static bool handle(app_data_t *app, pn_event_t *event) {
         case PN_LINK_FLOW: {
             pn_link_t *sender = pn_event_link(event);
             if (app->verbose > 1) {
-                printf("PN_LINK_FLOW %d\n", pn_link_credit(sender));
+                printf("%p %p\n", sender, app->sender);
+                printf("PN_LINK_FLOW %d\n", pn_link_credit(app->sender));
             }
-            /* The peer has given us some credit, now we can send messages */
-            int burst = 0;
-
-            struct timespec now;
-
-            clock_gettime(CLOCK_REALTIME, &now);
-            time_sprintf(now_buf, now);
-
-            while (pn_link_credit(sender) > 0) {
-                if (app->message_count > 0 && app->metrics_sent == app->message_count) {
-                    break;
-                }
-                app->amqp_sent++;
-                app->metrics_sent += app->num_cd_per_mesg;
-
-                /* Use sent counter as unique delivery tag. */
-                pn_delivery(sender, pn_dtag((const char *)&app->metrics_sent,
-                                            sizeof(app->metrics_sent)));
-                pn_rwbytes_t data;
-
-                gen_mesg(&data, app, now_buf);
-                send_message(app, sender, &data);
-                if (app->burst_size > 0 && ++burst >= app->burst_size)
-                    break;
-            }
-            if (app->sleep_usec)
-                usleep(app->sleep_usec);
-
+            send_burst(app, event);
             break;
         }
 
@@ -252,6 +259,7 @@ static bool handle(app_data_t *app, pn_event_t *event) {
             pn_session_open(s);
             {
                 pn_link_t *sender = pn_sender(s, "sa_gen");
+                app->sender = sender;
                 pn_terminus_set_address(pn_link_target(sender), app->amqp_address);
                 pn_link_set_snd_settle_mode(sender, PN_SND_UNSETTLED);
                 pn_link_set_rcv_settle_mode(sender, PN_RCV_FIRST);
@@ -365,7 +373,7 @@ static bool handle(app_data_t *app, pn_event_t *event) {
             }
             /* Wake the sender's connection */
             pn_connection_wake(
-                pn_session_connection(pn_link_session(app->sender)));
+                 pn_session_connection(pn_link_session(app->sender)));
             break;
 
         case PN_PROACTOR_INACTIVE:

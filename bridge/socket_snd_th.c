@@ -110,7 +110,7 @@ static int decode_message(app_data_t *app, pn_rwbytes_t data) {
         if (pn_data_next(body)) {
             pn_bytes_t b = pn_data_get_bytes(body);
             if (b.start != NULL) {
-                int send_flags = MSG_DONTWAIT;
+                int send_flags = app->socket_flags;
 
                 ssize_t sent_bytes = sendto(app->send_sock, b.start, b.size, send_flags,
                                             &app->sa, app->sa_len);

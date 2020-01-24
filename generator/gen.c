@@ -47,7 +47,7 @@ static void usage(void) {
             " -c count         message count to stop (defaults to 0 for continuous)\n"
             " -n cd_per_mesg   number of collectd messages per AMQP message (defaults to 1)\n"
             " -b burst_size    maximum number of AMQP msgs to send per credit interval (defaults to # of credits)\n"
-            " -b sleep_usec    number of usec to sleep per credit interval (defaults to 0 for no sleep)\n"
+            " -s sleep_usec    number of usec to sleep per credit interval (defaults to 0 for no sleep)\n"
             " -v               verbose, print extra info (additional -v increases verbosity)\n"
             " -h               show help\n\n"
             "\n",

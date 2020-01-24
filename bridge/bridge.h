@@ -22,27 +22,27 @@
 #define RING_BUFFER_SIZE  2048
 
 typedef struct  {
+    // Parameters section
     int standalone;
     int verbose;
-    int domain;  // connection to SG, AF_UNIX || AF_INET
-    int max_q_depth;
+    int domain;         // connection to SG, AF_UNIX || AF_INET
     int stat_period;
+    const char *amqp_address;
+    const char *container_id;
+    int message_count;
+    const char *unix_socket_name;
+    int socket_flags;
 
+    const char *host, *port;
+    char *peer_host, *peer_port;
+
+    // Runtime 
     pthread_t amqp_rcv_th;
     pthread_t socket_snd_th;
 
     int amqp_rcv_th_running;
     int socket_snd_th_running;
-
-    const char *unix_socket_name;
-
-    const char *host, *port;
-    char *peer_host, *peer_port;
     
-    const char *amqp_address;
-    const char *container_id;
-    int message_count;
-
     pn_proactor_t *proactor;
     pn_listener_t *listener;
     pn_rwbytes_t msgout; /* Buffers for incoming/outgoing messages */
@@ -52,6 +52,9 @@ typedef struct  {
     /* Rcv stats */
     long amqp_received;
     long amqp_partial;
+
+    /* Ring buffer stats */
+    int max_q_depth;
 
     /* Snd stats */
     long sock_sent;
