@@ -186,10 +186,11 @@ int main(int argc, char **argv) {
         sleep(1);
 
         if (sleep_count == app.stat_period) {
-            printf("in: %ld(%ld), overrun: %ld(%ld), out: %ld(%ld)\n",
+            printf("in: %ld(%ld), overrun: %ld(%ld), out: %ld(%ld), would_block: %ld\n",
                    app.amqp_received, app.amqp_received - last_amqp_received,
                    app.rbin->overruns, app.rbin->overruns - last_overrun,
-                   app.sock_sent, app.sock_sent - last_out);
+                   app.sock_sent, app.sock_sent - last_out,
+                   app.sock_would_block);
             sleep_count = 1;
         }
         last_amqp_received = app.amqp_received;

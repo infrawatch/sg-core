@@ -6,6 +6,12 @@
 #include <proton/proactor.h>
 #include <proton/sasl.h>
 #include <proton/connection.h>
+#include <proton/message.h>
+
+typedef struct {
+    char *hostname;
+    char *metric;
+} host_info_t;
 
 typedef struct  {
     int standalone;
@@ -14,6 +20,9 @@ typedef struct  {
     int burst_size;
     int sleep_usec;
     int num_cd_per_mesg;
+    int num_hosts;
+    int num_metrics;
+    int metrics_per_second;
     
     pthread_t amqp_snd_th;
 
@@ -34,8 +43,14 @@ typedef struct  {
     pn_rwbytes_t msgout; /* Buffers for incoming/outgoing messages */
 
     /* Sender values */
-    long sent;
+    long metrics_sent;
+    long amqp_sent;
     long acknowledged;
+
+    host_info_t *host_list;
+    int host_list_len;
+    int curr_host;
+
 } app_data_t;
 
 #endif

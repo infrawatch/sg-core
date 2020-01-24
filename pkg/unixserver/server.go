@@ -14,10 +14,12 @@ import (
 
 //AMQPHandler ...
 type PromIntf struct {
-	totalReceived         uint64
-	totalDecodeErrors     uint64
-	totalReceivedDesc     *prometheus.Desc
-	totalDecodeErrorsDesc *prometheus.Desc
+	totalMetricsReceived     uint64
+	totalAmqpReceived        uint64
+	totalDecodeErrors        uint64
+	totalMetricsReceivedDesc *prometheus.Desc
+	totalAmqpReceivedDesc    *prometheus.Desc
+	totalDecodeErrorsDesc    *prometheus.Desc
 }
 
 //NewAMQPHandler  ...
@@ -25,10 +27,15 @@ func NewPromIntf(source string) *PromIntf {
 	plabels := prometheus.Labels{}
 	plabels["source"] = source
 	return &PromIntf{
-		totalReceived:     0,
-		totalDecodeErrors: 0,
-		totalReceivedDesc: prometheus.NewDesc("cd_total_metric_rcv_count",
+		totalMetricsReceived: 0,
+		totalDecodeErrors:    0,
+		totalAmqpReceived:    0,
+		totalMetricsReceivedDesc: prometheus.NewDesc("cd_total_metric_rcv_count",
 			"Total count of collectd metrics rcv'd.",
+			nil, plabels,
+		),
+		totalAmqpReceivedDesc: prometheus.NewDesc("cd_total_amqp_rcv_count",
+			"Total count of amqp msq rcv'd.",
 			nil, plabels,
 		),
 		totalDecodeErrorsDesc: prometheus.NewDesc("cd_total_metric_decode_error_count",
@@ -38,19 +45,29 @@ func NewPromIntf(source string) *PromIntf {
 	}
 }
 
-//IncTotalReceived ...
-func (a *PromIntf) IncTotalReceived() {
-	a.totalReceived++
+//IncTotalMetricsReceived ...
+func (a *PromIntf) IncTotalMetricsReceived() {
+	a.totalMetricsReceived++
+}
+
+//IncTtoalAmqpReceived ...
+func (a *PromIntf) IncTotalAmqpReceived() {
+	a.totalAmqpReceived++
 }
 
 //AddTotalReceived ...
 func (a *PromIntf) AddTotalReceived(num int) {
-	a.totalReceived += uint64(num)
+	a.totalMetricsReceived += uint64(num)
 }
 
 //GetTotalReceived ...
-func (a *PromIntf) GetTotalReceived() uint64 {
-	return a.totalReceived
+func (a *PromIntf) GetTotalMetricsReceived() uint64 {
+	return a.totalMetricsReceived
+}
+
+//GetTotalReceived ...
+func (a *PromIntf) GetTotalAmqpReceived() uint64 {
+	return a.totalAmqpReceived
 }
 
 //IncTotalDecodeErrors ...
@@ -65,13 +82,15 @@ func (a *PromIntf) GetTotalDecodeErrors() uint64 {
 
 //Describe ...
 func (a *PromIntf) Describe(ch chan<- *prometheus.Desc) {
-	ch <- a.totalReceivedDesc
+	ch <- a.totalMetricsReceivedDesc
+	ch <- a.totalAmqpReceivedDesc
 	ch <- a.totalDecodeErrorsDesc
 }
 
 //Collect implements prometheus.Collector.
 func (a *PromIntf) Collect(ch chan<- prometheus.Metric) {
-	ch <- prometheus.MustNewConstMetric(a.totalReceivedDesc, prometheus.CounterValue, float64(a.totalReceived))
+	ch <- prometheus.MustNewConstMetric(a.totalMetricsReceivedDesc, prometheus.CounterValue, float64(a.totalMetricsReceived))
+	ch <- prometheus.MustNewConstMetric(a.totalAmqpReceivedDesc, prometheus.CounterValue, float64(a.totalAmqpReceived))
 	ch <- prometheus.MustNewConstMetric(a.totalDecodeErrorsDesc, prometheus.CounterValue, float64(a.totalDecodeErrors))
 }
 
@@ -122,19 +141,20 @@ func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prom
 					panic(err)
 				}
 			}
+			promIntfMetrics.IncTotalAmqpReceived()
 
 			metric, err := cd.ParseInputByte(msgBuffer)
 			if err != nil {
 				promIntfMetrics.IncTotalDecodeErrors()
+				fmt.Printf("dd\n")
 			} else if (*metric)[0].Interval < 0.0 {
 				doneChan <- err
 			}
-
 			promIntfMetrics.AddTotalReceived(len(*metric))
 		}
 	}()
 
-	var lastCount uint64
+	var lastMetricCount, lastAmqpCount uint64
 
 	for {
 		select {
@@ -146,8 +166,11 @@ func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prom
 			goto done
 		default:
 			time.Sleep(time.Second * 1)
-			fmt.Printf("Rcv'd: %d(%d)\n", promIntfMetrics.GetTotalReceived(), promIntfMetrics.GetTotalReceived()-lastCount)
-			lastCount = promIntfMetrics.GetTotalReceived()
+			fmt.Printf("Rcv'd: %d(%d) metrics, %d(%d) msgs\n", promIntfMetrics.GetTotalMetricsReceived(), promIntfMetrics.GetTotalMetricsReceived()-lastMetricCount,
+				promIntfMetrics.GetTotalAmqpReceived(), promIntfMetrics.GetTotalAmqpReceived()-lastAmqpCount)
+			lastMetricCount = promIntfMetrics.GetTotalMetricsReceived()
+			lastAmqpCount = promIntfMetrics.GetTotalAmqpReceived()
+
 		}
 	}
 done:

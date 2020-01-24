@@ -1,3 +1,13 @@
+#define _GNU_SOURCE
+
+#include "gen.h"
+
+#include <arpa/inet.h>
+#include <ctype.h>
+#include <errno.h>
+#include <getopt.h>
+#include <inttypes.h>
+#include <netdb.h>
 #include <proton/condition.h>
 #include <proton/connection.h>
 #include <proton/delivery.h>
@@ -9,13 +19,6 @@
 #include <proton/sasl.h>
 #include <proton/session.h>
 #include <proton/transport.h>
-
-#include <arpa/inet.h>
-#include <ctype.h>
-#include <errno.h>
-#include <getopt.h>
-#include <inttypes.h>
-#include <netdb.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,7 +29,6 @@
 #include <unistd.h>
 
 #include "amqp_snd_th.h"
-#include "gen.h"
 #include "utils.h"
 
 extern int batch_count;
@@ -52,6 +54,35 @@ static void usage(void) {
             __func__);
 }
 
+void gen_hosts(app_data_t *app) {
+    app->curr_host = 0;
+
+    app->host_list_len = app->num_hosts * app->num_metrics;
+
+    // Allocate the host array
+    app->host_list = malloc( sizeof(host_info_t) * app->host_list_len );
+
+    for (int i = 0; i < app->num_hosts; i++) {
+        for (int j = 0; j < app->num_metrics; j++) {
+            asprintf(&app->host_list[i+j].hostname, "host_%d", i);
+            asprintf(&app->host_list[i+j].metric, "metric_%d", j);
+        }
+    }
+
+    srand(time(NULL));
+
+    host_info_t tmp_host;
+    // Random swap of list items
+    for (int i = 0; i < app->host_list_len; i++) {
+        int swap_host = rand() % app->host_list_len;
+
+        tmp_host = app->host_list[i];
+
+        app->host_list[i] = app->host_list[swap_host];
+        app->host_list[swap_host] = tmp_host;
+    }
+}
+
 int main(int argc, char **argv) {
     app_data_t app = {0};
     char cid_buf[100];
@@ -68,6 +99,8 @@ int main(int argc, char **argv) {
     app.burst_size = 0;
     app.sleep_usec = 0;
     app.num_cd_per_mesg = 1;
+    app.num_hosts = 1;
+    app.num_metrics = 100;
 
     while ((opt = getopt(argc, argv, "i:a:c:hvb:s:n:")) != -1) {
         switch (opt) {
@@ -112,20 +145,26 @@ int main(int argc, char **argv) {
     app.port = strdup(argv[optind++]);
 
     app.amqp_snd_th_running = true;
+
+    gen_hosts(&app);
+
     pthread_create(&app.amqp_snd_th, NULL, amqp_snd_th, (void *)&app);
 
-    long last_processed = 0;
+    long last_metrics_sent = 0;
+    long last_amqp_sent = 0;
     long last_acknowledged = 0;
 
     while (1) {
         sleep(1);
 
-        printf("sent: %ld(%ld), ack'd: %ld(%ld), miss: %ld\n",
-               app.sent, app.sent - last_processed,
+        printf("metrics_sent: %ld(%ld), amqp_sent: %ld(%ld), ack'd: %ld(%ld), miss: %ld\n",
+               app.metrics_sent, app.metrics_sent - last_metrics_sent,
+               app.amqp_sent, app.amqp_sent - last_amqp_sent,
                app.acknowledged, app.acknowledged - last_acknowledged,
-               app.sent - app.acknowledged);
+               app.metrics_sent - app.acknowledged);
 
-        last_processed = app.sent;
+        last_metrics_sent = app.metrics_sent;
+        last_amqp_sent = app.amqp_sent;
         last_acknowledged = app.acknowledged;
 
         if (app.amqp_snd_th_running == 0) {

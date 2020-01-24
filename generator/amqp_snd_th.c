@@ -18,6 +18,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "gen.h"
 #include "utils.h"
@@ -60,38 +61,61 @@ char *JSON_MSG =
     "[{\"values\": [0.4593], \"dstypes\": [\"derive\"], \"dsnames\": [\"samples\"], \"time\": 1578337518.8668, \"interval\": 1,\
   \"host\": \"hostname270\", \"plugin\": \"metrics000\",\"plugin_instance\": \"pluginInst71\",\"type\": \"type0\",\"type_instance\": \"typInst0\"}]";
 
-char *CD_MSG1 = "{\"values\": [0.4593], \"dstypes\": [\"derive\"], \"dsnames\": [\"samples\"], \"time\": ";
-char *CD_MSG2 = ", \"interval\": 1,\"host\": \"hostname270\", \"plugin\": \"metrics000\",\"plugin_instance\": \"pluginInst71\",\"type\": \"type0\",\"type_instance\": \"typInst0\"}";
+char *CD_MSG1 = "{\"values\": [";
+char *CD_MSG2 = "], \"dstypes\": [\"derive\"], \"dsnames\": [\"samples\"], \"time\": ";
+char *CD_MSG3 = ", \"interval\": 1,\"host\": \"";
+char *CD_MSG4 = "\", \"plugin\": \"";
+char *CD_MSG5 = "\", \"plugin_instance\": \"pluginInst0\",\"type\": \"type0\",\"type_instance\": \"typInst0\"}";
 
 static char MSG_BUFFER[4096];
 static char now_buf[100];
 
-static char *build_mesg(int num_msgs, char *time_buf) {
+static char *build_mesg(app_data_t *app, char *time_buf) {
     char *p = MSG_BUFFER;
+    char val_buff[20];
 
     *p++ = '[';
 
-    for (int i = 0; i < num_msgs;) {
+    for (int i = 0; i < app->num_cd_per_mesg;) {
         p = memccpy(p, CD_MSG1, '\0', sizeof(MSG_BUFFER));
         p--;
-        p = memccpy(p, time_buf, '\0', sizeof(MSG_BUFFER));
+        sprintf(val_buff,"%ld", app->metrics_sent + i);
+        p = memccpy(p, val_buff, '\0', sizeof(MSG_BUFFER));
         p--;
         p = memccpy(p, CD_MSG2, '\0', sizeof(MSG_BUFFER));
         p--;
+        p = memccpy(p, time_buf, '\0', sizeof(MSG_BUFFER));
+        p--;
+        p = memccpy(p, CD_MSG3, '\0', sizeof(MSG_BUFFER));
+        p--;
+        p = memccpy(p, app->host_list[app->curr_host].hostname, '\0', sizeof(MSG_BUFFER));
+        p--;
+        p = memccpy(p, CD_MSG4, '\0', sizeof(MSG_BUFFER));
+        p--;
+        p = memccpy(p, app->host_list[app->curr_host].metric, '\0', sizeof(MSG_BUFFER));
+        p--;
+        p = memccpy(p, CD_MSG5, '\0', sizeof(MSG_BUFFER));
+        p--;
 
-        if (++i < num_msgs) {
+        if (++i < app->num_cd_per_mesg) {
             *p++ = ',';
         }
+
+        app->curr_host++;
+        if ( app->curr_host >= app->host_list_len )
+            app->curr_host = 0;
     }
     
     *p++ = ']';
     *p = '\0';
 
+//    printf("\n%s\n", MSG_BUFFER);
+
     return MSG_BUFFER;
 }
 
-static void gen_mesg(pn_rwbytes_t *buf, int host_num, int metric_num, int num_mesgs, char *time_buf) {
-    buf->start = build_mesg(num_mesgs, time_buf);
+static void gen_mesg(pn_rwbytes_t *buf, app_data_t *app, char *time_buf) {
+    buf->start = build_mesg(app, time_buf);
 
     buf->size = strlen(buf->start);
 }
@@ -153,16 +177,18 @@ static bool handle(app_data_t *app, pn_event_t *event) {
             time_sprintf(now_buf, now);
 
             while (pn_link_credit(sender) > 0) {
-                if (app->message_count > 0 && app->sent == app->message_count) {
+                if (app->message_count > 0 && app->metrics_sent == app->message_count) {
                     break;
                 }
-                app->sent += app->num_cd_per_mesg;
+                app->amqp_sent++;
+                app->metrics_sent += app->num_cd_per_mesg;
+
                 /* Use sent counter as unique delivery tag. */
-                pn_delivery(sender, pn_dtag((const char *)&app->sent,
-                                            sizeof(app->sent)));
+                pn_delivery(sender, pn_dtag((const char *)&app->metrics_sent,
+                                            sizeof(app->metrics_sent)));
                 pn_rwbytes_t data;
 
-                gen_mesg(&data, 1, 1, app->num_cd_per_mesg, now_buf);
+                gen_mesg(&data, app, now_buf);
                 send_message(app, sender, &data);
                 if (app->burst_size > 0 && ++burst >= app->burst_size)
                     break;
@@ -195,7 +221,7 @@ static bool handle(app_data_t *app, pn_event_t *event) {
                 pn_delivery_settle(d);
                 app->acknowledged += app->num_cd_per_mesg;
                 if (app->acknowledged == app->message_count) {
-                    printf("%ld messages sent and acknowledged\n",
+                    printf("%ld messages metrics_sent and acknowledged\n",
                            app->acknowledged);
                     close_all(pn_event_connection(event), app);
                 }
