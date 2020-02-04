@@ -30,15 +30,15 @@ func NewPromIntf(source string) *PromIntf {
 		totalMetricsReceived: 0,
 		totalDecodeErrors:    0,
 		totalAmqpReceived:    0,
-		totalMetricsReceivedDesc: prometheus.NewDesc("cd_total_metric_rcv_count",
+		totalMetricsReceivedDesc: prometheus.NewDesc("sa_total_metric_rcv_count",
 			"Total count of collectd metrics rcv'd.",
 			nil, plabels,
 		),
-		totalAmqpReceivedDesc: prometheus.NewDesc("cd_total_amqp_rcv_count",
+		totalAmqpReceivedDesc: prometheus.NewDesc("sa_total_amqp_rcv_count",
 			"Total count of amqp msq rcv'd.",
 			nil, plabels,
 		),
-		totalDecodeErrorsDesc: prometheus.NewDesc("cd_total_metric_decode_error_count",
+		totalDecodeErrorsDesc: prometheus.NewDesc("sa_total_metric_decode_error_count",
 			"Total count of amqp message processed.",
 			nil, plabels,
 		),
@@ -214,8 +214,8 @@ func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int) error {
 	} else {
 		metric := &CDMetric{
 			host:           cd.Host,
-			pluginInstance: cd.PluginInstance,
-			typeInstance:   cd.TypeInstance,
+			pluginInstance: pluginInstance,
+			typeInstance:   typeInstance,
 			metric:         value,
 			metricDesc:     desc,
 			valueType:      valueType,
@@ -230,9 +230,9 @@ func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int) error {
 	return nil
 }
 
-func (a *CDMetrics) updateOrAddMetrics(cdMetric *[]collectd.Collectd) {
-	for index, m := range *cdMetric {
-		err := a.updateOrAddMetric(&m, index)
+func (a *CDMetrics) updateOrAddMetrics(cdMetric *collectd.Collectd) {
+	for index := range cdMetric.Dsnames {
+		err := a.updateOrAddMetric(cdMetric, index)
 		if err != nil {
 			fmt.Printf("%+v\n", err)
 		}
@@ -310,7 +310,9 @@ func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prom
 			}
 			promIntfMetrics.AddTotalReceived(len(*metrics))
 
-			allMetrics.updateOrAddMetrics(metrics)
+			for _, m := range *metrics {
+				allMetrics.updateOrAddMetrics(&m)
+			}
 		}
 	}()
 
