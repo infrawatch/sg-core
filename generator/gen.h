@@ -11,6 +11,7 @@
 typedef struct {
     char *hostname;
     char *metric;
+    long count;
 } host_info_t;
 
 typedef struct  {

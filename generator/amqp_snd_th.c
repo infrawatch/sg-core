@@ -77,7 +77,7 @@ static char *build_mesg(app_data_t *app, char *time_buf) {
     for (int i = 0; i < app->num_cd_per_mesg;) {
         p = memccpy(p, CD_MSG1, '\0', sizeof(MSG_BUFFER));
         p--;
-        sprintf(val_buff, "%ld", app->metrics_sent + i);
+        sprintf(val_buff, "%ld", app->host_list[app->curr_host].count++);
         p = memccpy(p, val_buff, '\0', sizeof(MSG_BUFFER));
         p--;
         p = memccpy(p, CD_MSG2, '\0', sizeof(MSG_BUFFER));
@@ -100,7 +100,7 @@ static char *build_mesg(app_data_t *app, char *time_buf) {
         }
 
         app->curr_host++;
-        if (app->curr_host >= app->host_list_len)
+        if (app->curr_host == (app->host_list_len - 1))
             app->curr_host = 0;
     }
 

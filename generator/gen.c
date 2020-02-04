@@ -47,6 +47,10 @@ static void usage(void) {
             " -c count         message count to stop (defaults to 0 for continuous)\n"
             " -n cd_per_mesg   number of collectd messages per AMQP message (defaults to 1)\n"
             " -b burst_size    maximum number of AMQP msgs to send per credit interval (defaults to # of credits)\n"
+
+
+
+
             " -s sleep_usec    number of usec to sleep per credit interval (defaults to 0 for no sleep)\n"
             " -v               verbose, print extra info (additional -v increases verbosity)\n"
             " -h               show help\n\n"
@@ -61,11 +65,12 @@ void gen_hosts(app_data_t *app) {
 
     // Allocate the host array
     app->host_list = malloc( sizeof(host_info_t) * app->host_list_len );
-
     for (int i = 0; i < app->num_hosts; i++) {
         for (int j = 0; j < app->num_metrics; j++) {
-            asprintf(&app->host_list[i+j].hostname, "host_%d", i);
-            asprintf(&app->host_list[i+j].metric, "metric_%d", j);
+            int index = (i*app->num_metrics)+j;
+            asprintf(&app->host_list[index].hostname, "host_%d", i);
+            asprintf(&app->host_list[index].metric, "metric_%d", j);
+            app->host_list[index].count = 0;
         }
     }
 
@@ -77,8 +82,8 @@ void gen_hosts(app_data_t *app) {
         int swap_host = rand() % app->host_list_len;
 
         tmp_host = app->host_list[i];
-
         app->host_list[i] = app->host_list[swap_host];
+
         app->host_list[swap_host] = tmp_host;
     }
 }
@@ -102,7 +107,7 @@ int main(int argc, char **argv) {
     app.num_hosts = 1;
     app.num_metrics = 100;
 
-    while ((opt = getopt(argc, argv, "i:a:c:hvb:s:n:")) != -1) {
+    while ((opt = getopt(argc, argv, "i:a:c:hvb:s:n:o:")) != -1) {
         switch (opt) {
             case 'i':
                 sprintf(cid_buf, optarg);
@@ -119,6 +124,9 @@ int main(int argc, char **argv) {
             case 'h':
                 usage();
                 return 0;
+            case 'o':
+                app.num_hosts = atoi(optarg);
+                break;
             case 'b':
                 app.burst_size = atoi(optarg);
                 break;
