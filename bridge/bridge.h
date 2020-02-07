@@ -12,14 +12,30 @@
 #include "rb.h"
 
 #define DEFAULT_UNIX_SOCKET_PATH "/tmp/smartgateway"
-#define DEFAULT_AMQP_HOST "127.0.0.1"
-#define DEFAULT_AMQP_PORT "5672"
-#define DEFAULT_AMQP_ADDR "collectd/telemetry"
+#define DEFAULT_AMQP_URL "amqp://127.0.0.1:5672/collectd/telemetry"
 #define DEFAULT_INET_HOST "127.0.0.1"
 #define DEFAULT_INET_PORT "30000"
 #define DEFAULT_CID       "bridge-%x"
+#define DEFAULT_CONTAINER_ID_PATTERN "sa-%x"
+#define DEFAULT_STATS_PERIOD "0"
+#define DEFAULT_SOCKET_BLOCK "false"
+#define DEFAULT_STOP_COUNT "0"
+
 #define RING_BUFFER_COUNT 1000
 #define RING_BUFFER_SIZE  2048
+
+#define AMQP_URL_REGEX "^amqp://(([a-z]+)(:([a-z]+))*@)*([a-zA-Z_0-9.]+)(:([0-9]+))*(.+)$"
+//#define AMQP_URL_REGEX "^amqp://"
+
+typedef struct {
+    char *user;
+    char *password;
+    char *address;
+    char *host;
+    char *port;
+    char *url;
+} amqp_connection;
+
 
 typedef struct  {
     // Parameters section
@@ -27,13 +43,13 @@ typedef struct  {
     int verbose;
     int domain;         // connection to SG, AF_UNIX || AF_INET
     int stat_period;
-    const char *amqp_address;
+
+    amqp_connection amqp_con;
     const char *container_id;
     int message_count;
     const char *unix_socket_name;
     int socket_flags;
 
-    const char *host, *port;
     char *peer_host, *peer_port;
 
     // Runtime 

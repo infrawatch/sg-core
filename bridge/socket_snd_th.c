@@ -37,7 +37,7 @@ static int prepare_send_socket_unix(app_data_t *app) {
     name.sun_family = AF_UNIX;
     strcpy(name.sun_path, app->unix_socket_name);
 
-    printf("socket: %d, path: %s, %ld\n", app->send_sock, name.sun_path, sizeof(name));
+    printf("%s ==> (%s)\n", app->container_id, name.sun_path);
 
     memcpy(&app->sa, &name, sizeof(name));
     app->sa_len = sizeof(name);
@@ -80,12 +80,9 @@ static int prepare_send_socket_inet(app_data_t *app) {
     void *ptr = &((struct sockaddr_in *)peer_addrinfo->ai_addr)->sin_addr;
     inet_ntop(peer_addrinfo->ai_family, ptr, addrstr, sizeof(addrstr));
 
-    printf("Peer socket(%d) %s:%d\n",
-           app->send_sock,
-           addrstr,
-           ntohs((((struct sockaddr_in *)((struct sockaddr *)
-                                              peer_addrinfo->ai_addr))
-                      ->sin_port)));
+
+    printf("%s ==> (%s:%d)\n", app->container_id, addrstr, 
+        ntohs((((struct sockaddr_in *)((struct sockaddr *)peer_addrinfo->ai_addr))->sin_port)));
 
     memcpy(&app->sa, peer_addrinfo->ai_addr, peer_addrinfo->ai_addrlen);
     app->sa_len = peer_addrinfo->ai_addrlen;
@@ -188,9 +185,7 @@ void *socket_snd_th(void *app_ptr) {
             fprintf(stderr, "Unknown domain type: %d", app->domain);
             break;
     }
-
-    printf("%s: %s start...\n", __FILE__, __func__);
-
+    
     clock_gettime(CLOCK_MONOTONIC, &app->rbin->total_t2);
 
     while (1) {

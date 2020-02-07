@@ -442,8 +442,6 @@ void *amqp_snd_th(void *app_ptr) {
     /* Create the proactor and connect */
     app->proactor = pn_proactor();
 
-    fprintf(stdout, "Connecting to amqp addr-> %s\n", addr);
-
     pn_proactor_connect2(app->proactor, NULL, NULL, addr);
 
     run(app);

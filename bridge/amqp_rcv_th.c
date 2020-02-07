@@ -139,7 +139,7 @@ static bool handle(app_data_t *app, pn_event_t *event, int *batch_done) {
             pn_session_open(s);
             {
                 pn_link_t *l = pn_receiver(s, "sa_receiver");
-                pn_terminus_set_address(pn_link_source(l), app->amqp_address);
+                pn_terminus_set_address(pn_link_source(l), app->amqp_con.address);
                 pn_link_open(l);
                 /* cannot receive without granting credit: */
                 pn_link_flow(l, RING_BUFFER_COUNT);
@@ -168,6 +168,7 @@ static bool handle(app_data_t *app, pn_event_t *event, int *batch_done) {
             }
             pn_connection_open(
                 pn_event_connection(event)); /* Complete the open */
+            printf("%s ==> (%s)\n", app->container_id, app->amqp_con.url);
             break;
         }
 
@@ -178,7 +179,7 @@ static bool handle(app_data_t *app, pn_event_t *event, int *batch_done) {
             pn_connection_t *c = pn_event_connection(event);
             pn_session_t *s = pn_session(c);
             pn_link_t *l = pn_receiver(s, "my_receiver");
-            pn_terminus_set_address(pn_link_source(l), app->amqp_address);
+            pn_terminus_set_address(pn_link_source(l), app->amqp_con.address);
 
             break;
         }
@@ -250,8 +251,6 @@ void run(app_data_t *app) {
     /* Loop and handle events */
     int batch_done = 0;
 
-    printf("%s: %s start...\n", __FILE__, __func__);
-
     start_time = clock();
 
     do {
@@ -300,8 +299,7 @@ void *amqp_rcv_th(void *app_ptr) {
     if (app->standalone) {
         app->listener = pn_listener();
     }
-    pn_proactor_addr(addr, sizeof(addr), app->host, app->port);
-    fprintf(stdout, "Connecting to amqp addr: %s\n", addr);
+    pn_proactor_addr(addr, sizeof(addr), app->amqp_con.host, app->amqp_con.port);
     if (app->standalone) {
         pn_proactor_listen(app->proactor, app->listener, addr, LISTEN_BACKLOG);
     } else {
