@@ -1,5 +1,0 @@
-bridge
-gmon.out
-*.o
-perf.data*
-obj
