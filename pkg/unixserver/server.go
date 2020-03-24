@@ -31,25 +31,21 @@ func NewPromIntf(source string) *PromIntf {
 		totalDecodeErrors:    0,
 		totalAmqpReceived:    0,
 		//***** There are metrics missing here:
-		// collectd_last_pull_timestamp_seconds
-		// collectd_qpid_router_status
-		// collectd_total_amqp_reconnect_count
-		//
-		// I think the prefix should actually be sg_ rather than collectd_ or sa_
-		// The names also need to change in service-telemetry-operator/tests/performance-test/grafana/perftest-dashboard-with-events.json
-		// It's unlikely they are used anywhere else, so we can probably safely change them at the moment
-
-		//***** Replace sg_total_amqp_processed_message_count with sg_total_metric_rcv_count?
-		totalMetricsReceivedDesc: prometheus.NewDesc("sa_total_metric_rcv_count",
+		// collectd_last_pull_timestamp_seconds (Unused)
+		// collectd_qpid_router_status (Used in perftest dashboard, but not that useful in practice, also hard to propagate via the bridge)
+		// collectd_total_amqp_reconnect_count (Unused, same as above though)
+		// collectd_elasticsearch_status (Unused, events specific so not for this codebase yet)
+		// collectd_last_metric_for_host_status (Used in rhos-dashboard - could the be done a different way?)
+		// collectd_metric_per_host (Unused)
+		totalMetricsReceivedDesc: prometheus.NewDesc("sg_total_metric_rcv_count",
 			"Total count of collectd metrics rcv'd.",
 			nil, plabels,
 		),
-		//***** Replaces sg_total_amqp_message_recv_count
-		totalAmqpReceivedDesc: prometheus.NewDesc("sa_total_amqp_rcv_count",
+		totalAmqpReceivedDesc: prometheus.NewDesc("sg_total_amqp_rcv_count",
 			"Total count of amqp msq rcv'd.",
 			nil, plabels,
 		),
-		totalDecodeErrorsDesc: prometheus.NewDesc("sa_total_metric_decode_error_count",
+		totalDecodeErrorsDesc: prometheus.NewDesc("sg_total_metric_decode_error_count",
 			"Total count of amqp message processed.",
 			nil, plabels,
 		),
