@@ -30,15 +30,22 @@ func NewPromIntf(source string) *PromIntf {
 		totalMetricsReceived: 0,
 		totalDecodeErrors:    0,
 		totalAmqpReceived:    0,
-		totalMetricsReceivedDesc: prometheus.NewDesc("sa_total_metric_rcv_count",
+		//***** There are metrics missing here:
+		// collectd_last_pull_timestamp_seconds (Unused)
+		// collectd_qpid_router_status (Used in perftest dashboard, but not that useful in practice, also hard to propagate via the bridge)
+		// collectd_total_amqp_reconnect_count (Unused, same as above though)
+		// collectd_elasticsearch_status (Unused, events specific so not for this codebase yet)
+		// collectd_last_metric_for_host_status (Used in rhos-dashboard - could the be done a different way?)
+		// collectd_metric_per_host (Unused)
+		totalMetricsReceivedDesc: prometheus.NewDesc("sg_total_metric_rcv_count",
 			"Total count of collectd metrics rcv'd.",
 			nil, plabels,
 		),
-		totalAmqpReceivedDesc: prometheus.NewDesc("sa_total_amqp_rcv_count",
+		totalAmqpReceivedDesc: prometheus.NewDesc("sg_total_amqp_rcv_count",
 			"Total count of amqp msq rcv'd.",
 			nil, plabels,
 		),
-		totalDecodeErrorsDesc: prometheus.NewDesc("sa_total_metric_decode_error_count",
+		totalDecodeErrorsDesc: prometheus.NewDesc("sg_total_metric_decode_error_count",
 			"Total count of amqp message processed.",
 			nil, plabels,
 		),
@@ -104,9 +111,9 @@ func init() {
 
 func genMetricName(cd *collectd.Collectd, index int) (name string) {
 
-	name = "cd_" + cd.Plugin + "_" + cd.Type
+	name = "collectd_" + cd.Plugin + "_" + cd.Type
 	if cd.Type == cd.Plugin {
-		name = "cd_" + cd.Plugin
+		name = "collectd_" + cd.Plugin
 	}
 
 	if dsname := cd.Dsnames[index]; dsname != "value" {
@@ -158,6 +165,7 @@ type CDMetric struct {
 	pluginInstance string
 	typeInstance   string
 	metric         float64
+	timeStamp      time.Time
 	valueType      prometheus.ValueType
 	metricDesc     *prometheus.Desc
 }
@@ -170,6 +178,7 @@ type CDMetrics struct {
 
 func NewCDMetrics() (m *CDMetrics) {
 	m = &CDMetrics{descriptions: NewCDMetricDescriptions(),
+		// Indexed by metricName, then by "" + cd.Host + pluginInstance + typeInstance
 		metrics: make(map[string]map[string]*CDMetric)}
 
 	return
@@ -211,12 +220,14 @@ func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int) error {
 	labelKey := cd.Host + pluginInstance + typeInstance
 	if metric, found := a.metrics[metricName][labelKey]; found {
 		metric.metric = value
+		metric.timeStamp = cd.Time.Time()
 	} else {
 		metric := &CDMetric{
 			host:           cd.Host,
 			pluginInstance: pluginInstance,
 			typeInstance:   typeInstance,
 			metric:         value,
+			timeStamp:      cd.Time.Time(),
 			metricDesc:     desc,
 			valueType:      valueType,
 		}
@@ -250,8 +261,8 @@ func (a *CDMetrics) Describe(ch chan<- *prometheus.Desc) {
 func (a *CDMetrics) Collect(ch chan<- prometheus.Metric) {
 	for _, metric := range a.metrics {
 		for _, labeled_metric := range metric {
-			ch <- prometheus.MustNewConstMetric(labeled_metric.metricDesc, labeled_metric.valueType, labeled_metric.metric,
-				labeled_metric.host, labeled_metric.pluginInstance, labeled_metric.typeInstance)
+			ch <- prometheus.NewMetricWithTimestamp(labeled_metric.timeStamp, prometheus.MustNewConstMetric(labeled_metric.metricDesc, labeled_metric.valueType, labeled_metric.metric,
+				labeled_metric.host, labeled_metric.pluginInstance, labeled_metric.typeInstance))
 		}
 	}
 }
