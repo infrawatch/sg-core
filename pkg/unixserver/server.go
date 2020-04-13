@@ -12,6 +12,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+//MAXTTL for removing metrics after <value> seconds of inactivity
+var MAXTTL float64 = 300
+
 //AMQPHandler ...
 type PromIntf struct {
 	totalMetricsReceived     uint64
@@ -168,6 +171,19 @@ type CDMetric struct {
 	timeStamp      time.Time
 	valueType      prometheus.ValueType
 	metricDesc     *prometheus.Desc
+	lastArrival    time.Time
+}
+
+func (b *CDMetric) keepAlive() {
+	b.lastArrival = time.Now()
+}
+
+func (b *CDMetric) staleTime() float64 {
+	return time.Now().Sub(b.lastArrival).Seconds()
+}
+
+func (b *CDMetric) expired() bool {
+	return (b.staleTime() >= MAXTTL)
 }
 
 type CDMetrics struct {
@@ -221,6 +237,7 @@ func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int) error {
 	if metric, found := a.metrics[metricName][labelKey]; found {
 		metric.metric = value
 		metric.timeStamp = cd.Time.Time()
+		metric.keepAlive()
 	} else {
 		metric := &CDMetric{
 			host:           cd.Host,
@@ -231,6 +248,7 @@ func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int) error {
 			metricDesc:     desc,
 			valueType:      valueType,
 		}
+		metric.keepAlive()
 		if a.metrics[metricName] == nil {
 			a.metrics[metricName] = make(map[string]*CDMetric)
 		}
@@ -257,16 +275,31 @@ func (a *CDMetrics) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
-//Collect implements prometheus.Collector.
+//Collect implements prometheus.Collector
 func (a *CDMetrics) Collect(ch chan<- prometheus.Metric) {
-	for _, metric := range a.metrics {
-		for _, labeled_metric := range metric {
-			ch <- prometheus.NewMetricWithTimestamp(labeled_metric.timeStamp, prometheus.MustNewConstMetric(labeled_metric.metricDesc, labeled_metric.valueType, labeled_metric.metric,
-				labeled_metric.host, labeled_metric.pluginInstance, labeled_metric.typeInstance))
+	for metricName, metric := range a.metrics {
+		for labelName, labeledMetric := range metric {
+
+			//Delete expired label metrics
+			if labeledMetric.expired() {
+				delete(metric, labelName)
+				fmt.Printf("Label %s in metric %s deleted after %fs of inactivity\n", labelName, metricName, labeledMetric.staleTime())
+				continue
+			}
+
+			ch <- prometheus.NewMetricWithTimestamp(labeledMetric.timeStamp, prometheus.MustNewConstMetric(labeledMetric.metricDesc, labeledMetric.valueType, labeledMetric.metric,
+				labeledMetric.host, labeledMetric.pluginInstance, labeledMetric.typeInstance))
+		}
+
+		//Delete whole metric if no more labels exist
+		if len(metric) == 0 {
+			delete(a.metrics, metricName)
+			fmt.Printf("Metrics %s deleted\n", metricName)
 		}
 	}
 }
 
+//Listen ...
 func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prometheus.Registry) (err error) {
 	var laddr net.UnixAddr
 
