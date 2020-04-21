@@ -11,7 +11,7 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/atyronesmith/sa-benchmark/pkg/collectd"
+	"github.com/infrawatch/sg2/pkg/collectd"
 )
 
 func usage() {

@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/atyronesmith/sa-benchmark/pkg/collectd"
+	"github.com/infrawatch/sg2/pkg/collectd"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

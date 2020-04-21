@@ -11,8 +11,8 @@ import (
 	"runtime/pprof"
 	"strconv"
 
-	"github.com/atyronesmith/sa-benchmark/pkg/collectd"
-	"github.com/atyronesmith/sa-benchmark/pkg/udpclient"
+	"github.com/infrawatch/sg2/pkg/collectd"
+	"github.com/infrawatch/sg2/pkg/udpclient"
 )
 
 func usage() {
