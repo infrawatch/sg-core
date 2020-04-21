@@ -203,7 +203,7 @@ func NewCDMetrics() (m *CDMetrics) {
 func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int) error {
 
 	if cd.Host == "" {
-		return fmt.Errorf("Missing host: %v !", cd)
+		return fmt.Errorf("missing host: %v ", cd)
 	}
 
 	pluginInstance := cd.PluginInstance
