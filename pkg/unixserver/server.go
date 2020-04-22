@@ -8,12 +8,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/infrawatch/sg2/pkg/cacheutil"
 	"github.com/infrawatch/sg2/pkg/collectd"
 	"github.com/prometheus/client_golang/prometheus"
 )
-
-//MAXTTL for removing metrics after <value> seconds of inactivity
-var MAXTTL float64 = 300
 
 //AMQPHandler ...
 type PromIntf struct {
@@ -163,6 +161,8 @@ func (a *CDMetricDescriptions) getOrAddMetricDescription(cd *collectd.Collectd, 
 	return
 }
 
+type deleteFn func()
+
 type CDMetric struct {
 	host           string
 	pluginInstance string
@@ -171,7 +171,10 @@ type CDMetric struct {
 	timeStamp      time.Time
 	valueType      prometheus.ValueType
 	metricDesc     *prometheus.Desc
-	lastArrival    time.Time
+	interval       float64
+
+	lastArrival time.Time
+	deleteFn    deleteFn
 }
 
 func (b *CDMetric) keepAlive() {
@@ -182,8 +185,14 @@ func (b *CDMetric) staleTime() float64 {
 	return time.Now().Sub(b.lastArrival).Seconds()
 }
 
-func (b *CDMetric) expired() bool {
-	return (b.staleTime() >= MAXTTL)
+// Expired implements cacheutil.Expiry
+func (b *CDMetric) Expired() bool {
+	return (b.staleTime() >= b.interval)
+}
+
+// Delete implements cacheutil.Expiry
+func (b *CDMetric) Delete() {
+	b.deleteFn()
 }
 
 type CDMetrics struct {
@@ -192,6 +201,7 @@ type CDMetrics struct {
 	metrics map[string]map[string]*CDMetric
 }
 
+// NewCDMetrics  CDMetrics factory
 func NewCDMetrics() (m *CDMetrics) {
 	m = &CDMetrics{descriptions: NewCDMetricDescriptions(),
 		// Indexed by metricName, then by "" + cd.Host + pluginInstance + typeInstance
@@ -200,7 +210,7 @@ func NewCDMetrics() (m *CDMetrics) {
 	return
 }
 
-func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int) error {
+func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int, cs *cacheutil.CacheServer) error {
 
 	if cd.Host == "" {
 		return fmt.Errorf("missing host: %v ", cd)
@@ -247,21 +257,35 @@ func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int) error {
 			timeStamp:      cd.Time.Time(),
 			metricDesc:     desc,
 			valueType:      valueType,
+			interval:       cd.Interval * 5,
 		}
 		metric.keepAlive()
 		if a.metrics[metricName] == nil {
 			a.metrics[metricName] = make(map[string]*CDMetric)
 		}
+
 		a.metrics[metricName][labelKey] = metric
 		fmt.Printf("Add metric: %v\n", cd)
+
+		metric.deleteFn = func() {
+			fmt.Printf("Label %s in metric %s deleted after %fs of inactivity\n", labelKey, metricName, a.metrics[metricName][labelKey].staleTime())
+			delete(a.metrics[metricName], labelKey)
+
+			if len(a.metrics[metricName]) == 0 {
+				delete(a.metrics, metricName)
+				fmt.Printf("Metrics %s deleted\n", metricName)
+			}
+		}
+
+		cs.Register(metric)
 	}
 
 	return nil
 }
 
-func (a *CDMetrics) updateOrAddMetrics(cdMetric *collectd.Collectd) {
+func (a *CDMetrics) updateOrAddMetrics(cdMetric *collectd.Collectd, cs *cacheutil.CacheServer) {
 	for index := range cdMetric.Dsnames {
-		err := a.updateOrAddMetric(cdMetric, index)
+		err := a.updateOrAddMetric(cdMetric, index, cs)
 		if err != nil {
 			fmt.Printf("%+v\n", err)
 		}
@@ -277,24 +301,12 @@ func (a *CDMetrics) Describe(ch chan<- *prometheus.Desc) {
 
 //Collect implements prometheus.Collector
 func (a *CDMetrics) Collect(ch chan<- prometheus.Metric) {
-	for metricName, metric := range a.metrics {
-		for labelName, labeledMetric := range metric {
+	for _, metric := range a.metrics {
+		for _, labeledMetric := range metric {
 
-			//Delete expired label metrics
-			if labeledMetric.expired() {
-				delete(metric, labelName)
-				fmt.Printf("Label %s in metric %s deleted after %fs of inactivity\n", labelName, metricName, labeledMetric.staleTime())
-				continue
-			}
-
+			// get this from cache instead
 			ch <- prometheus.NewMetricWithTimestamp(labeledMetric.timeStamp, prometheus.MustNewConstMetric(labeledMetric.metricDesc, labeledMetric.valueType, labeledMetric.metric,
 				labeledMetric.host, labeledMetric.pluginInstance, labeledMetric.typeInstance))
-		}
-
-		//Delete whole metric if no more labels exist
-		if len(metric) == 0 {
-			delete(a.metrics, metricName)
-			fmt.Printf("Metrics %s deleted\n", metricName)
 		}
 	}
 }
@@ -328,6 +340,10 @@ func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prom
 
 	doneChan := make(chan error, 1)
 
+	// cache server
+	cache := cacheutil.NewCacheServer()
+	go cache.Run(ctx)
+
 	go func() {
 		cd := new(collectd.Collectd)
 
@@ -355,13 +371,12 @@ func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prom
 			promIntfMetrics.AddTotalReceived(len(*metrics))
 
 			for _, m := range *metrics {
-				allMetrics.updateOrAddMetrics(&m)
+				allMetrics.updateOrAddMetrics(&m, cache)
 			}
 		}
 	}()
 
 	var lastMetricCount, lastAmqpCount uint64
-
 	for {
 		select {
 		case <-ctx.Done():
