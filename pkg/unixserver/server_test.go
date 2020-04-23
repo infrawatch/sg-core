@@ -26,11 +26,12 @@ func TestCDMetrics(t *testing.T) {
 		// ch := make(chan prometheus.Metric)
 
 		cs := cacheutil.NewCacheServer()
+		cs.Interval = 1
 		ctx := context.Background()
 
 		go cs.Run(ctx)
 
-		cdmetrics.updateOrAddMetrics(cd, cs)
+		cdmetrics.updateOrAddMetrics(cd, cs, 1.0)
 		assert.Equals(t, 1, len(cdmetrics.metrics))
 		for i := 0; i < 3; i++ {
 			// go cdmetrics.Collect(ch)

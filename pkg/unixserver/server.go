@@ -260,7 +260,7 @@ func NewCDMetrics() (m *CDMetrics) {
 	return m
 }
 
-func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int, cs *cacheutil.CacheServer) error {
+func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int, cs *cacheutil.CacheServer, staleTime float64) error {
 
 	if cd.Host == "" {
 		return fmt.Errorf("missing host: %v ", cd)
@@ -321,7 +321,12 @@ func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int, cs *cach
 			timeStamp:      cd.Time.Time(),
 			metricDesc:     desc,
 			valueType:      valueType,
-			interval:       cd.Interval * 5,
+			interval: func() float64 {
+				if cd.Interval != 0.0 && (cd.Interval*5) > staleTime {
+					staleTime = cd.Interval * 5
+				}
+				return staleTime
+			}(),
 		}
 		labelSeries.keepAlive()
 
@@ -342,11 +347,11 @@ func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int, cs *cach
 	return nil
 }
 
-func (a *CDMetrics) updateOrAddMetrics(cdMetric *collectd.Collectd, cs *cacheutil.CacheServer) {
+func (a *CDMetrics) updateOrAddMetrics(cdMetric *collectd.Collectd, cs *cacheutil.CacheServer, staleTime float64) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	for index := range cdMetric.Dsnames {
-		err := a.updateOrAddMetric(cdMetric, index, cs)
+		err := a.updateOrAddMetric(cdMetric, index, cs, staleTime)
 		if err != nil {
 			fmt.Printf("%+v\n", err)
 		}
@@ -434,7 +439,7 @@ func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prom
 			promIntfMetrics.AddTotalReceived(len(*metrics))
 
 			for _, m := range *metrics {
-				allMetrics.updateOrAddMetrics(&m, cache)
+				allMetrics.updateOrAddMetrics(&m, cache, 300.0)
 			}
 		}
 	}()

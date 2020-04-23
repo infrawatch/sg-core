@@ -15,14 +15,14 @@ type Expiry interface {
 // CacheServer for now used only to expire Expiry types
 type CacheServer struct {
 	entries  *list.List
-	interval time.Duration
+	Interval time.Duration
 }
 
 // NewCacheServer CacheServer factory that sets expiry interval to 1s
 func NewCacheServer() *CacheServer {
 	return &CacheServer{
 		entries:  list.New(),
-		interval: 1,
+		Interval: 5,
 	}
 }
 
@@ -58,7 +58,7 @@ func (cs *CacheServer) Run(ctx context.Context) error {
 				}
 				e = e.Next()
 			}
-			time.Sleep(time.Second * cs.interval)
+			time.Sleep(time.Second * cs.Interval)
 		}
 	}
 done:

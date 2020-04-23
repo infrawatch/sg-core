@@ -21,9 +21,6 @@ func usage() {
 }
 
 func sendMetrics(ctx context.Context, address string, count int, hostsCount int, mesg []byte) (err error) {
-	// Resolve the UDP address so that we can make use of DialUDP
-	// with an actual IP and port instead of a name (in case a
-	// hostname is specified).
 	raddr, err := net.ResolveUnixAddr("unixgram", address)
 	if err != nil {
 		return
