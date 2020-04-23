@@ -8,7 +8,6 @@ import (
 	"github.com/infrawatch/sg2/pkg/assert"
 	"github.com/infrawatch/sg2/pkg/cacheutil"
 	"github.com/infrawatch/sg2/pkg/collectd"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 func TestCDMetrics(t *testing.T) {
@@ -24,7 +23,7 @@ func TestCDMetrics(t *testing.T) {
 		}
 
 		cdmetrics := NewCDMetrics()
-		ch := make(chan prometheus.Metric)
+		// ch := make(chan prometheus.Metric)
 
 		cs := cacheutil.NewCacheServer()
 		ctx := context.Background()
@@ -33,8 +32,8 @@ func TestCDMetrics(t *testing.T) {
 
 		cdmetrics.updateOrAddMetrics(cd, cs)
 		assert.Equals(t, 1, len(cdmetrics.metrics))
-		for i := 0; i < 2; i++ {
-			go cdmetrics.Collect(ch)
+		for i := 0; i < 3; i++ {
+			// go cdmetrics.Collect(ch)
 			time.Sleep(time.Second * 1)
 		}
 

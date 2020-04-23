@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/infrawatch/sg2/pkg/cacheutil"
@@ -163,7 +164,8 @@ func (a *CDMetricDescriptions) getOrAddMetricDescription(cd *collectd.Collectd, 
 
 type deleteFn func()
 
-type CDMetric struct {
+// CDLabelSeries represents collectd data_set_t which is a data series mapped to a label in a metric. NOT concurrent
+type CDLabelSeries struct {
 	host           string
 	pluginInstance string
 	typeInstance   string
@@ -177,37 +179,85 @@ type CDMetric struct {
 	deleteFn    deleteFn
 }
 
-func (b *CDMetric) keepAlive() {
-	b.lastArrival = time.Now()
+func (cdls *CDLabelSeries) keepAlive() {
+	cdls.lastArrival = time.Now()
 }
 
-func (b *CDMetric) staleTime() float64 {
-	return time.Now().Sub(b.lastArrival).Seconds()
+func (cdls *CDLabelSeries) staleTime() float64 {
+	return time.Now().Sub(cdls.lastArrival).Seconds()
 }
 
 // Expired implements cacheutil.Expiry
-func (b *CDMetric) Expired() bool {
-	return (b.staleTime() >= b.interval)
+func (cdls *CDLabelSeries) Expired() bool {
+	return (cdls.staleTime() >= cdls.interval)
 }
 
 // Delete implements cacheutil.Expiry
-func (b *CDMetric) Delete() {
-	b.deleteFn()
+func (cdls *CDLabelSeries) Delete() {
+	cdls.deleteFn()
 }
 
+// CDMetric represents a collectd metric which can have several dataseries marked with labels. Concurrent
+type CDMetric struct {
+	// map[labelName]
+	labels   map[string]*CDLabelSeries
+	mu       sync.RWMutex
+	deleteFn deleteFn
+}
+
+func NewCDMetric() *CDMetric {
+	return &CDMetric{
+		labels: make(map[string]*CDLabelSeries),
+		mu:     sync.RWMutex{},
+	}
+}
+
+func (cdm *CDMetric) Set(labelName string, cdlm *CDLabelSeries) {
+	cdm.mu.Lock()
+	defer cdm.mu.Unlock()
+
+	cdm.labels[labelName] = cdlm
+}
+
+func (cdm *CDMetric) Get(labelName string) *CDLabelSeries {
+	cdm.mu.RLock()
+	defer cdm.mu.RUnlock()
+	return cdm.labels[labelName]
+}
+
+// Expired implements cacheutil.Expiry
+func (cdm *CDMetric) Expired() bool {
+	cdm.mu.RLock()
+	defer cdm.mu.RUnlock()
+
+	if len(cdm.labels) == 0 {
+		return true
+	}
+	return false
+}
+
+// Delete implements cacheutil.Expiry
+func (cdm *CDMetric) Delete() {
+	cdm.deleteFn()
+}
+
+// CDMetrics stash of CDMetric types. Concurrent
 type CDMetrics struct {
+	mu           sync.RWMutex
 	descriptions *CDMetricDescriptions
 	// map[metricName]
-	metrics map[string]map[string]*CDMetric
+	metrics map[string]*CDMetric
 }
 
 // NewCDMetrics  CDMetrics factory
 func NewCDMetrics() (m *CDMetrics) {
-	m = &CDMetrics{descriptions: NewCDMetricDescriptions(),
-		// Indexed by metricName, then by "" + cd.Host + pluginInstance + typeInstance
-		metrics: make(map[string]map[string]*CDMetric)}
+	m = &CDMetrics{
+		descriptions: NewCDMetricDescriptions(),
+		metrics:      make(map[string]*CDMetric),
+		mu:           sync.RWMutex{},
+	}
 
-	return
+	return m
 }
 
 func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int, cs *cacheutil.CacheServer) error {
@@ -243,13 +293,27 @@ func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int, cs *cach
 	default:
 		return fmt.Errorf("unknown name of value type: %s", cd.Dstypes[index])
 	}
+
 	labelKey := cd.Host + pluginInstance + typeInstance
-	if metric, found := a.metrics[metricName][labelKey]; found {
-		metric.metric = value
-		metric.timeStamp = cd.Time.Time()
-		metric.keepAlive()
+
+	if a.metrics[metricName] == nil {
+		a.metrics[metricName] = NewCDMetric()
+
+		a.metrics[metricName].deleteFn = func() {
+			a.mu.Lock()
+			defer a.mu.Unlock()
+			delete(a.metrics, metricName)
+			fmt.Printf("Metric %s deleted\n", metricName)
+		}
+		cs.Register(a.metrics[metricName])
+	}
+
+	if labelSeries := a.metrics[metricName].Get(labelKey); labelSeries != nil {
+		labelSeries.metric = value
+		labelSeries.timeStamp = cd.Time.Time()
+		labelSeries.keepAlive()
 	} else {
-		metric := &CDMetric{
+		labelSeries := &CDLabelSeries{
 			host:           cd.Host,
 			pluginInstance: pluginInstance,
 			typeInstance:   typeInstance,
@@ -259,31 +323,28 @@ func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int, cs *cach
 			valueType:      valueType,
 			interval:       cd.Interval * 5,
 		}
-		metric.keepAlive()
-		if a.metrics[metricName] == nil {
-			a.metrics[metricName] = make(map[string]*CDMetric)
-		}
+		labelSeries.keepAlive()
 
-		a.metrics[metricName][labelKey] = metric
+		a.metrics[metricName].Set(labelKey, labelSeries)
 		fmt.Printf("Add metric: %v\n", cd)
 
-		metric.deleteFn = func() {
-			fmt.Printf("Label %s in metric %s deleted after %fs of inactivity\n", labelKey, metricName, a.metrics[metricName][labelKey].staleTime())
-			delete(a.metrics[metricName], labelKey)
+		labelSeries.deleteFn = func() {
+			a.metrics[metricName].mu.Lock()
+			defer a.metrics[metricName].mu.Unlock()
 
-			if len(a.metrics[metricName]) == 0 {
-				delete(a.metrics, metricName)
-				fmt.Printf("Metrics %s deleted\n", metricName)
-			}
+			fmt.Printf("Label %s in metric %s deleted after %fs of inactivity\n", labelKey, metricName, labelSeries.staleTime())
+			delete(a.metrics[metricName].labels, labelKey)
 		}
 
-		cs.Register(metric)
+		cs.Register(labelSeries)
 	}
 
 	return nil
 }
 
 func (a *CDMetrics) updateOrAddMetrics(cdMetric *collectd.Collectd, cs *cacheutil.CacheServer) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	for index := range cdMetric.Dsnames {
 		err := a.updateOrAddMetric(cdMetric, index, cs)
 		if err != nil {
@@ -301,10 +362,12 @@ func (a *CDMetrics) Describe(ch chan<- *prometheus.Desc) {
 
 //Collect implements prometheus.Collector
 func (a *CDMetrics) Collect(ch chan<- prometheus.Metric) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
 	for _, metric := range a.metrics {
-		for _, labeledMetric := range metric {
-
-			// get this from cache instead
+		metric.mu.RLock()
+		defer metric.mu.RUnlock()
+		for _, labeledMetric := range metric.labels {
 			ch <- prometheus.NewMetricWithTimestamp(labeledMetric.timeStamp, prometheus.MustNewConstMetric(labeledMetric.metricDesc, labeledMetric.valueType, labeledMetric.metric,
 				labeledMetric.host, labeledMetric.pluginInstance, labeledMetric.typeInstance))
 		}
