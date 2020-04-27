@@ -172,8 +172,9 @@ type CDMetric struct {
 
 type CDMetrics struct {
 	descriptions *CDMetricDescriptions
-	// map[metricName]
-	metrics map[string]map[string]*CDMetric
+	// Indexed by metricName, then by "" + cd.Host + pluginInstance + typeInstance
+	metrics      map[string]map[string]*CDMetric
+	usetimestamp bool
 }
 
 func NewCDMetrics() (m *CDMetrics) {
@@ -261,13 +262,19 @@ func (a *CDMetrics) Describe(ch chan<- *prometheus.Desc) {
 func (a *CDMetrics) Collect(ch chan<- prometheus.Metric) {
 	for _, metric := range a.metrics {
 		for _, labeled_metric := range metric {
-			ch <- prometheus.NewMetricWithTimestamp(labeled_metric.timeStamp, prometheus.MustNewConstMetric(labeled_metric.metricDesc, labeled_metric.valueType, labeled_metric.metric,
-				labeled_metric.host, labeled_metric.pluginInstance, labeled_metric.typeInstance))
+			if a.usetimestamp {
+				ch <- prometheus.NewMetricWithTimestamp(labeled_metric.timeStamp, prometheus.MustNewConstMetric(labeled_metric.metricDesc, labeled_metric.valueType, labeled_metric.metric,
+					labeled_metric.host, labeled_metric.pluginInstance, labeled_metric.typeInstance))
+			} else {
+				ch <- prometheus.MustNewConstMetric(labeled_metric.metricDesc, labeled_metric.valueType, labeled_metric.metric,
+					labeled_metric.host, labeled_metric.pluginInstance, labeled_metric.typeInstance)
+			}
+			fmt.Printf("Collecting metrics: %v %v\n", labeled_metric, labeled_metric.timeStamp)
 		}
 	}
 }
 
-func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prometheus.Registry) (err error) {
+func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prometheus.Registry, usetimestamp bool) (err error) {
 	var laddr net.UnixAddr
 
 	laddr.Name = address
@@ -287,6 +294,7 @@ func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prom
 	registry.MustRegister(promIntfMetrics)
 
 	allMetrics := NewCDMetrics()
+	allMetrics.usetimestamp = usetimestamp
 
 	registry.MustRegister(allMetrics)
 

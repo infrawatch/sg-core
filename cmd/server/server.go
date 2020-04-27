@@ -71,6 +71,7 @@ func main() {
 	promport := flag.Int("promport", 8081, "Prometheus scrape port.")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
 	capture := flag.Bool("capture", false, "Catpure json output.")
+	usetimestamp := flag.Bool("usetimestamp", false, "Propagate collectd timestamps to prometheus metrics (requires reliable time sync)")
 
 	// Add Flags for net command
 	// parse command line option
@@ -161,7 +162,7 @@ func main() {
 			fmt.Printf("Error occurred")
 		}
 	} else if unixCommand.Parsed() {
-		err = unixserver.Listen(ctx, *socketPath, w, registry)
+		err = unixserver.Listen(ctx, *socketPath, w, registry, *usetimestamp)
 		if err != nil {
 			fmt.Printf("Error occurred")
 		}
