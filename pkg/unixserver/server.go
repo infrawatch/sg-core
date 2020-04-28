@@ -235,7 +235,7 @@ func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int) error {
 			a.metrics[metricName] = make(map[string]*CDMetric)
 		}
 		a.metrics[metricName][labelKey] = metric
-		fmt.Printf("Add metric: %v\n", cd)
+
 	}
 
 	return nil

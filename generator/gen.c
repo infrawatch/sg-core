@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
     app.num_hosts = 1;
     app.num_metrics = 100;
 
-    while ((opt = getopt(argc, argv, "i:a:c:hvb:s:n:o:")) != -1) {
+    while ((opt = getopt(argc, argv, "i:a:c:hvb:s:n:m:o:")) != -1) {
         switch (opt) {
             case 'i':
                 sprintf(cid_buf, optarg);
