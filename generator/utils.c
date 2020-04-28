@@ -25,7 +25,7 @@ void time_diff(struct timespec t1, struct timespec t2, struct timespec *diff) {
 }
 
 char *time_sprintf(char *buf, struct timespec t1) {
-	double pct = (t1.tv_sec * 1000000000.0) + t1.tv_nsec / 1000000000.0;
+	double pct = t1.tv_sec + t1.tv_nsec / 1000000000.0;
 
 	sprintf(buf, "%f", pct);
 
