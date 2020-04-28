@@ -269,7 +269,6 @@ func (a *CDMetrics) Collect(ch chan<- prometheus.Metric) {
 				ch <- prometheus.MustNewConstMetric(labeled_metric.metricDesc, labeled_metric.valueType, labeled_metric.metric,
 					labeled_metric.host, labeled_metric.pluginInstance, labeled_metric.typeInstance)
 			}
-			fmt.Printf("Collecting metrics: %v %v\n", labeled_metric, labeled_metric.timeStamp)
 		}
 	}
 }
