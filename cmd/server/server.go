@@ -89,7 +89,7 @@ func main() {
 	// os.Arg[0] is the main command
 	// os.Arg[1] will be the subcommand
 	if len(commandArgs) < 1 {
-		fmt.Println("inet or unix subcommand is required")
+		fmt.Println("inet or unix subcommand is required!")
 		flag.Usage()
 		os.Exit(1)
 	}
