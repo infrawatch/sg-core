@@ -236,7 +236,6 @@ func (a *CDMetrics) updateOrAddMetric(cd *collectd.Collectd, index int) error {
 			a.metrics[metricName] = make(map[string]*CDMetric)
 		}
 		a.metrics[metricName][labelKey] = metric
-		fmt.Printf("Add metric: %v\n", cd)
 	}
 
 	return nil
@@ -246,7 +245,7 @@ func (a *CDMetrics) updateOrAddMetrics(cdMetric *collectd.Collectd) {
 	for index := range cdMetric.Dsnames {
 		err := a.updateOrAddMetric(cdMetric, index)
 		if err != nil {
-			fmt.Printf("%+v\n", err)
+			fmt.Printf("Error: updateOrAddMetrics -> %+v\n", err)
 		}
 	}
 }
@@ -322,7 +321,6 @@ func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prom
 			metrics, err := cd.ParseInputByte(msgBuffer)
 			if err != nil {
 				promIntfMetrics.IncTotalDecodeErrors()
-				fmt.Printf("dd\n")
 			} else if (*metrics)[0].Interval < 0.0 {
 				doneChan <- err
 			}

@@ -107,8 +107,6 @@ static char *build_mesg(app_data_t *app, char *time_buf) {
     *p++ = ']';
     *p = '\0';
 
-    //    printf("\n%s\n", MSG_BUFFER);
-
     return MSG_BUFFER;
 }
 
@@ -239,7 +237,9 @@ static bool handle(app_data_t *app, pn_event_t *event) {
             char port[256]; /* Get the listening port */
             pn_netaddr_host_port(pn_listener_addr(pn_event_listener(event)),
                                  NULL, 0, port, sizeof(port));
-            printf("listening on %s\n", port);
+            if (app->verbose > 0) {
+                printf("listening on %s\n", port);
+            }
             fflush(stdout);
             break;
         }
