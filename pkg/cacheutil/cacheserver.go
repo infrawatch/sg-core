@@ -18,7 +18,7 @@ type CacheServer struct {
 	Interval time.Duration
 }
 
-// NewCacheServer CacheServer factory that sets expiry interval to 1s
+// NewCacheServer CacheServer factory that sets expiry interval in seconds
 func NewCacheServer() *CacheServer {
 	return &CacheServer{
 		entries:  list.New(),
