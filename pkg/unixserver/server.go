@@ -246,7 +246,8 @@ type CDMetrics struct {
 	mu           sync.RWMutex
 	descriptions *CDMetricDescriptions
 	// map[metricName]
-	metrics map[string]*CDMetric
+	metrics      map[string]*CDMetric
+	usetimestamp bool
 }
 
 // NewCDMetrics  CDMetrics factory
@@ -353,7 +354,7 @@ func (a *CDMetrics) updateOrAddMetrics(cdMetric *collectd.Collectd, cs *cacheuti
 	for index := range cdMetric.Dsnames {
 		err := a.updateOrAddMetric(cdMetric, index, cs, staleTime)
 		if err != nil {
-			fmt.Printf("%+v\n", err)
+			fmt.Printf("Error: updateOrAddMetrics -> %+v\n", err)
 		}
 	}
 }
@@ -373,14 +374,18 @@ func (a *CDMetrics) Collect(ch chan<- prometheus.Metric) {
 		metric.mu.RLock()
 		defer metric.mu.RUnlock()
 		for _, labeledMetric := range metric.labels {
-			ch <- prometheus.NewMetricWithTimestamp(labeledMetric.timeStamp, prometheus.MustNewConstMetric(labeledMetric.metricDesc, labeledMetric.valueType, labeledMetric.metric,
-				labeledMetric.host, labeledMetric.pluginInstance, labeledMetric.typeInstance))
+			if a.usetimestamp {
+				ch <- prometheus.NewMetricWithTimestamp(labeledMetric.timeStamp, prometheus.MustNewConstMetric(labeledMetric.metricDesc, labeledMetric.valueType, labeledMetric.metric,
+					labeledMetric.host, labeledMetric.pluginInstance, labeledMetric.typeInstance))
+			} else {
+				ch <- prometheus.MustNewConstMetric(labeledMetric.metricDesc, labeledMetric.valueType, labeledMetric.metric,
+					labeledMetric.host, labeledMetric.pluginInstance, labeledMetric.typeInstance)
+			}
 		}
 	}
 }
 
-//Listen ...
-func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prometheus.Registry) (err error) {
+func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prometheus.Registry, usetimestamp bool) (err error) {
 	var laddr net.UnixAddr
 
 	laddr.Name = address
@@ -400,6 +405,7 @@ func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prom
 	registry.MustRegister(promIntfMetrics)
 
 	allMetrics := NewCDMetrics()
+	allMetrics.usetimestamp = usetimestamp
 
 	registry.MustRegister(allMetrics)
 
@@ -432,7 +438,6 @@ func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prom
 			metrics, err := cd.ParseInputByte(msgBuffer)
 			if err != nil {
 				promIntfMetrics.IncTotalDecodeErrors()
-				fmt.Printf("dd\n")
 			} else if (*metrics)[0].Interval < 0.0 {
 				doneChan <- err
 			}

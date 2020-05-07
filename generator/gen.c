@@ -46,11 +46,9 @@ static void usage(void) {
             " -a amqp_address  AMQP address for endpoint (defaults to collectd/telemetry)\n"
             " -c count         message count to stop (defaults to 0 for continuous)\n"
             " -n cd_per_mesg   number of collectd messages per AMQP message (defaults to 1)\n"
+            " -o num_hosts     number of hosts to simulate (defaults to 1)\n"
+            " -m metrics_hosts number of metrics per hosts to simulate (defaults to 100)\n"
             " -b burst_size    maximum number of AMQP msgs to send per credit interval (defaults to # of credits)\n"
-
-
-
-
             " -s sleep_usec    number of usec to sleep per credit interval (defaults to 0 for no sleep)\n"
             " -v               verbose, print extra info (additional -v increases verbosity)\n"
             " -h               show help\n\n"
@@ -107,7 +105,7 @@ int main(int argc, char **argv) {
     app.num_hosts = 1;
     app.num_metrics = 100;
 
-    while ((opt = getopt(argc, argv, "i:a:c:hvb:s:n:o:")) != -1) {
+    while ((opt = getopt(argc, argv, "i:a:c:hvb:s:n:o:m:")) != -1) {
         switch (opt) {
             case 'i':
                 sprintf(cid_buf, optarg);
@@ -126,6 +124,9 @@ int main(int argc, char **argv) {
                 return 0;
             case 'o':
                 app.num_hosts = atoi(optarg);
+                break;
+            case 'm':
+                app.num_metrics = atoi(optarg);
                 break;
             case 'b':
                 app.burst_size = atoi(optarg);
