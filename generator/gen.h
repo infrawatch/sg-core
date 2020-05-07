@@ -20,6 +20,8 @@ typedef struct  {
     int max_q_depth;
     int burst_size;
     int sleep_usec;
+    long total_bursts;
+    long burst_credit;    
     int num_cd_per_mesg;
     int num_hosts;
     int num_metrics;

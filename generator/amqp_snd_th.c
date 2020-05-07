@@ -158,6 +158,10 @@ static bool send_burst(app_data_t *app, pn_event_t *event) {
 //    pn_link_t *sender = pn_event_link(event);
     pn_link_t *sender = app->sender;
 
+    int credits = pn_link_credit(sender);
+    if ( credits <= 10 ) {
+        return 0;
+    }
     /* The peer has given us some credit, now we can send messages */
     int burst = 0;
 
@@ -166,6 +170,8 @@ static bool send_burst(app_data_t *app, pn_event_t *event) {
     clock_gettime(CLOCK_REALTIME, &now);
     time_sprintf(now_buf, now);
 
+    app->total_bursts++;
+    app->burst_credit += credits;
     while (pn_link_credit(sender) > 0) {
         if (app->message_count > 0 && app->metrics_sent == app->message_count) {
             break;
@@ -180,11 +186,13 @@ static bool send_burst(app_data_t *app, pn_event_t *event) {
 
         gen_mesg(&data, app, now_buf);
         send_message(app, sender, &data);
-        if (app->burst_size > 0 && ++burst >= app->burst_size)
+        if (app->burst_size > 0 && ++burst >= app->burst_size) {
             break;
+        }
     }
-     if (app->sleep_usec)
-         usleep(app->sleep_usec);
+    
+    if (app->sleep_usec)
+       usleep(app->sleep_usec);
 
     return 0;
 }
@@ -197,8 +205,7 @@ static bool handle(app_data_t *app, pn_event_t *event) {
         case PN_LINK_FLOW: {
             pn_link_t *sender = pn_event_link(event);
             if (app->verbose > 1) {
-                printf("%p %p\n", sender, app->sender);
-                printf("PN_LINK_FLOW %d\n", pn_link_credit(app->sender));
+                printf("PN_LINK_FLOW %d\n", pn_link_credit(sender));
             }
             send_burst(app, event);
             break;
@@ -258,7 +265,9 @@ static bool handle(app_data_t *app, pn_event_t *event) {
             pn_session_t *s = pn_session(c);
             pn_session_open(s);
             {
-                pn_link_t *sender = pn_sender(s, "sa_gen");
+                char link_name[30];
+                rand_str(link_name,16,"sa-gen-");
+                pn_link_t *sender = pn_sender(s, link_name);
                 app->sender = sender;
                 pn_terminus_set_address(pn_link_target(sender), app->amqp_address);
                 pn_link_set_snd_settle_mode(sender, PN_SND_UNSETTLED);

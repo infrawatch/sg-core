@@ -1,3 +1,6 @@
+#include <stdlib.h>
+#include <string.h>
+
 #include "utils.h"
 
 void time_diff(struct timespec t1, struct timespec t2, struct timespec *diff) {
@@ -36,4 +39,21 @@ int64_t now() {
     struct timespec t;
     clock_gettime(CLOCK_REALTIME, &t);
     return t.tv_sec * 1000 + t.tv_nsec / (1000 * 1000);
+}
+
+void rand_str(char *dest, size_t length, const char *prefix) {
+    char charset[] = "0123456789"
+                     "abcdefghijklmnopqrstuvwxyz"
+                     "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+	srand((unsigned int)(time(NULL)));
+
+	if (prefix != NULL) {
+		dest = stpcpy(dest,prefix);
+	}
+    while (length-- > 0) {
+        size_t index = (double) rand() / RAND_MAX * (sizeof charset - 1);
+        *dest++ = charset[index];
+    }
+    *dest = '\0';
 }
