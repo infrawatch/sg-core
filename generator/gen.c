@@ -166,11 +166,12 @@ int main(int argc, char **argv) {
     while (1) {
         sleep(1);
 
-        printf("metrics_sent: %ld(%ld), amqp_sent: %ld(%ld), ack'd: %ld(%ld), miss: %ld\n",
+        printf("metrics_sent: %ld(%ld), amqp_sent: %ld(%ld), ack'd: %ld(%ld), miss: %ld, burst_size: %f\n",
                app.metrics_sent, app.metrics_sent - last_metrics_sent,
                app.amqp_sent, app.amqp_sent - last_amqp_sent,
                app.acknowledged, app.acknowledged - last_acknowledged,
-               app.metrics_sent - app.acknowledged);
+               app.metrics_sent - app.acknowledged,
+               app.amqp_sent / (float)app.total_bursts );
 
         last_metrics_sent = app.metrics_sent;
         last_amqp_sent = app.amqp_sent;
