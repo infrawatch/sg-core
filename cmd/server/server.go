@@ -13,8 +13,8 @@ import (
 	"runtime/pprof"
 	"strconv"
 
-	"github.com/atyronesmith/sa-benchmark/pkg/inetserver"
-	"github.com/atyronesmith/sa-benchmark/pkg/unixserver"
+	"github.com/infrawatch/sg2/pkg/inetserver"
+	"github.com/infrawatch/sg2/pkg/unixserver"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
