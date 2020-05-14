@@ -29,6 +29,7 @@ static time_t start_time;
 int batch_count = 0;
 
 static const pn_bytes_t SEND_TIME = {sizeof("SendTime") - 1, "SendTime"};
+static const pn_bytes_t METRICS_SENT = {sizeof("AMQPSent") - 1, "AMQPSent"};
 
 /* Close the connection and the listener so so we will get a
  * PN_PROACTOR_INACTIVE event and exit, once all outstanding events
@@ -65,34 +66,32 @@ char *CD_MSG3 = ", \"interval\": 1,\"host\": \"";
 char *CD_MSG4 = "\", \"plugin\": \"";
 char *CD_MSG5 = "\", \"plugin_instance\": \"pluginInst0\",\"type\": \"type0\",\"type_instance\": \"typInst0\"}";
 
-static char MSG_BUFFER[4096];
-static char now_buf[100];
-
 static char *build_mesg(app_data_t *app, char *time_buf) {
-    char *p = MSG_BUFFER;
+    int msg_buf_size = sizeof(app->MSG_BUFFER);
+    char *p = app->MSG_BUFFER;
     char val_buff[20];
 
     *p++ = '[';
 
     for (int i = 0; i < app->num_cd_per_mesg;) {
-        p = memccpy(p, CD_MSG1, '\0', sizeof(MSG_BUFFER));
+        p = memccpy(p, CD_MSG1, '\0', msg_buf_size);
         p--;
         sprintf(val_buff, "%ld", app->host_list[app->curr_host].count++);
-        p = memccpy(p, val_buff, '\0', sizeof(MSG_BUFFER));
+        p = memccpy(p, val_buff, '\0', msg_buf_size);
         p--;
-        p = memccpy(p, CD_MSG2, '\0', sizeof(MSG_BUFFER));
+        p = memccpy(p, CD_MSG2, '\0', msg_buf_size);
         p--;
-        p = memccpy(p, time_buf, '\0', sizeof(MSG_BUFFER));
+        p = memccpy(p, time_buf, '\0', msg_buf_size);
         p--;
-        p = memccpy(p, CD_MSG3, '\0', sizeof(MSG_BUFFER));
+        p = memccpy(p, CD_MSG3, '\0', msg_buf_size);
         p--;
-        p = memccpy(p, app->host_list[app->curr_host].hostname, '\0', sizeof(MSG_BUFFER));
+        p = memccpy(p, app->host_list[app->curr_host].hostname, '\0', msg_buf_size);
         p--;
-        p = memccpy(p, CD_MSG4, '\0', sizeof(MSG_BUFFER));
+        p = memccpy(p, CD_MSG4, '\0', msg_buf_size);
         p--;
-        p = memccpy(p, app->host_list[app->curr_host].metric, '\0', sizeof(MSG_BUFFER));
+        p = memccpy(p, app->host_list[app->curr_host].metric, '\0', msg_buf_size);
         p--;
-        p = memccpy(p, CD_MSG5, '\0', sizeof(MSG_BUFFER));
+        p = memccpy(p, CD_MSG5, '\0', msg_buf_size);
         p--;
 
         if (++i < app->num_cd_per_mesg) {
@@ -107,7 +106,7 @@ static char *build_mesg(app_data_t *app, char *time_buf) {
     *p++ = ']';
     *p = '\0';
 
-    return MSG_BUFFER;
+    return app->MSG_BUFFER;
 }
 
 static void gen_mesg(pn_rwbytes_t *buf, app_data_t *app, char *time_buf) {
@@ -138,6 +137,8 @@ static void send_message(app_data_t *app, pn_link_t *sender, pn_rwbytes_t *data)
     pn_data_enter(props);
     pn_data_put_string(props, pn_bytes(SEND_TIME.size, SEND_TIME.start));
     pn_data_put_long(props, stime);
+    pn_data_put_string(props, pn_bytes(METRICS_SENT.size, METRICS_SENT.start));
+    pn_data_put_long(props, app->amqp_sent);
     pn_data_exit(props);
 
     pn_data_t *body = pn_message_body(message);
@@ -168,24 +169,26 @@ static bool send_burst(app_data_t *app, pn_event_t *event) {
     struct timespec now;
 
     clock_gettime(CLOCK_REALTIME, &now);
-    time_sprintf(now_buf, now);
+    time_sprintf(app->now_buf, now);
 
     app->total_bursts++;
     app->burst_credit += credits;
     while (pn_link_credit(sender) > 0) {
         if (app->message_count > 0 && app->metrics_sent == app->message_count) {
-            break;
+            return 0;
         }
         app->amqp_sent++;
         app->metrics_sent += app->num_cd_per_mesg;
 
         /* Use sent counter as unique delivery tag. */
-        pn_delivery(sender, pn_dtag((const char *)&app->metrics_sent,
+        pn_delivery_t *dlv = pn_delivery(sender, pn_dtag((const char *)&app->metrics_sent,
                                     sizeof(app->metrics_sent)));
         pn_rwbytes_t data;
 
-        gen_mesg(&data, app, now_buf);
+        gen_mesg(&data, app, app->now_buf);
         send_message(app, sender, &data);
+        if (app->presettled)
+            pn_delivery_settle(dlv);
         if (app->burst_size > 0 && ++burst >= app->burst_size) {
             break;
         }
@@ -207,7 +210,8 @@ static bool handle(app_data_t *app, pn_event_t *event) {
             if (app->verbose > 1) {
                 printf("PN_LINK_FLOW %d\n", pn_link_credit(sender));
             }
-            send_burst(app, event);
+            //printf("link_credits: %d, sent: %ld\n",pn_link_credit(sender), app->amqp_sent );
+            exit_code = send_burst(app, event);
             break;
         }
 
@@ -230,7 +234,8 @@ static bool handle(app_data_t *app, pn_event_t *event) {
             pn_delivery_t *d = pn_event_delivery(event);
 
             if (pn_delivery_remote_state(d) == PN_ACCEPTED) {
-                pn_delivery_settle(d);
+                if (app->presettled==false)
+                    pn_delivery_settle(d);
                 app->acknowledged += app->num_cd_per_mesg;
                 if (app->acknowledged == app->message_count) {
                     printf("%ld messages metrics_sent and acknowledged\n",
@@ -270,7 +275,7 @@ static bool handle(app_data_t *app, pn_event_t *event) {
                 pn_link_t *sender = pn_sender(s, link_name);
                 app->sender = sender;
                 pn_terminus_set_address(pn_link_target(sender), app->amqp_address);
-                pn_link_set_snd_settle_mode(sender, PN_SND_UNSETTLED);
+                pn_link_set_snd_settle_mode(sender, PN_SND_MIXED);
                 pn_link_set_rcv_settle_mode(sender, PN_RCV_FIRST);
                 pn_link_open(sender);
             }
@@ -290,7 +295,7 @@ static bool handle(app_data_t *app, pn_event_t *event) {
             pn_transport_t *t = pn_event_transport(event);
             pn_transport_require_auth(t, false);
             pn_sasl_allowed_mechs(pn_sasl(t), "ANONYMOUS");
-            //pn_sasl_set_allow_insecure_mechs(pn_sasl(t), true);
+            pn_sasl_set_allow_insecure_mechs(pn_sasl(t), true);
 
             break;
         }
@@ -405,7 +410,7 @@ static bool handle(app_data_t *app, pn_event_t *event) {
 void run(app_data_t *app) {
     /* Loop and handle events */
     if (app->verbose) {
-        printf("%s: %s(..) start...\n", __FILE__, __func__);
+        printf("%s: %s(%s) start...\n", __FILE__, __func__,app->container_id);
     }
 
     start_time = clock();
@@ -431,13 +436,16 @@ double amqp_snd_clock() {
 }
 
 void amqp_snd_th_cleanup(void *app_ptr) {
+    char thread_name[16];
+
     app_data_t *app = (app_data_t *)app_ptr;
 
     if (app) {
         app->amqp_snd_th_running = 0;
     }
+    pthread_getname_np(app->amqp_snd_th,thread_name,16);
 
-    fprintf(stderr, "Exit AMQP SND thread...\n");
+    fprintf(stderr, "Exit %s thread...\n", thread_name );
 }
 
 void *amqp_snd_th(void *app_ptr) {
@@ -451,7 +459,13 @@ void *amqp_snd_th(void *app_ptr) {
     /* Create the proactor and connect */
     app->proactor = pn_proactor();
 
-    pn_proactor_connect2(app->proactor, NULL, NULL, addr);
+    pn_connection_t *c = pn_connection();
+    pn_transport_t *t = pn_transport();
+    pn_proactor_connect2(app->proactor, c, t, addr);
+
+    if ( app->verbose > 1 ) {
+        pn_transport_trace(t,PN_TRACE_FRM);
+    }
 
     run(app);
 

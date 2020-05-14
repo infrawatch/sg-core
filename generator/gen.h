@@ -1,5 +1,5 @@
-#ifndef _BRIDGE_H
-#define _BRIDGE_H 1
+#ifndef _GEN_H
+#define _GEN_H 1
 
 #include <proton/condition.h>
 #include <proton/listener.h>
@@ -15,6 +15,7 @@ typedef struct {
 } host_info_t;
 
 typedef struct  {
+    int presettled;
     int standalone;
     int verbose;
     int max_q_depth;
@@ -33,8 +34,9 @@ typedef struct  {
 
     const char *host, *port;
     
-    const char *amqp_address;
-    const char *container_id;
+    char *amqp_address;
+
+    char container_id[20];
 
     pn_message_t *message;
     int message_count;
@@ -46,14 +48,19 @@ typedef struct  {
     pn_rwbytes_t msgout; /* Buffers for incoming/outgoing messages */
 
     /* Sender values */
-    long metrics_sent;
-    long amqp_sent;
-    long acknowledged;
+    volatile long metrics_sent;
+    volatile long amqp_sent;
+    volatile long acknowledged;
+    volatile long metrics_sent_last;
+    volatile long amqp_sent_last;
+    volatile long acknowledged_last;
 
     host_info_t *host_list;
     int host_list_len;
     int curr_host;
 
+    char MSG_BUFFER[4096];
+    char now_buf[100];
 } app_data_t;
 
 #endif
