@@ -11,7 +11,7 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/infrawatch/sg2/pkg/collectd"
+	"github.com/infrawatch/sg-core/pkg/collectd"
 )
 
 func usage() {

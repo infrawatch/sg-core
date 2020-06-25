@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/infrawatch/sg2/pkg/assert"
-	"github.com/infrawatch/sg2/pkg/cacheutil"
-	"github.com/infrawatch/sg2/pkg/collectd"
+	"github.com/infrawatch/sg-core/pkg/assert"
+	"github.com/infrawatch/sg-core/pkg/cacheutil"
+	"github.com/infrawatch/sg-core/pkg/collectd"
 )
 
 func TestCDMetrics(t *testing.T) {

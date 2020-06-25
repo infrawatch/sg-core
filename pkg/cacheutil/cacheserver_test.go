@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/infrawatch/sg2/pkg/assert"
+	"github.com/infrawatch/sg-core/pkg/assert"
 )
 
 type deleteFn func()
