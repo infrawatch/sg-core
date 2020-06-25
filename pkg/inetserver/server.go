@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/infrawatch/sg2/pkg/collectd"
+	"github.com/infrawatch/sg-core/pkg/collectd"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

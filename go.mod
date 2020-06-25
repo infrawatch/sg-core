@@ -1,4 +1,4 @@
-module github.com/infrawatch/sg2
+module github.com/infrawatch/sg-core
 
 go 1.14
 
