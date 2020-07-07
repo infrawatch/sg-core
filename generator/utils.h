@@ -12,5 +12,6 @@ void time_diff(struct timespec t1, struct timespec t2, struct timespec *diff);
 char *time_sprintf(char *buf, struct timespec t1);
 int64_t now();
 void rand_str(char *dest, size_t length, const char *prefix);
+void sample_app_metrics(app_data_t *app);
 
 #endif

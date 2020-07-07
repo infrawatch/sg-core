@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "gen.h"
 #include "utils.h"
 
 void time_diff(struct timespec t1, struct timespec t2, struct timespec *diff) {
@@ -56,4 +57,10 @@ void rand_str(char *dest, size_t length, const char *prefix) {
         *dest++ = charset[index];
     }
     *dest = '\0';
+}
+
+void sample_app_metrics(app_data_t *app) {
+	app->amqp_sent_last = app->amqp_sent;
+	app->metrics_sent_last = app->metrics_sent;
+	app->acknowledged_last = app->acknowledged;
 }
