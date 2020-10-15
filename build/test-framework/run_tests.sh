@@ -30,4 +30,5 @@ echo " --- [TODO] Re-enable the test suite once supporting changes result in tes
 #go test -v ./...
 
 echo " *** Running Coveralls test coverage report"
-goveralls -service=travis-ci -repotoken ${COVERALLS_TOKEN}
+echo " --- [TODO] Re-enable test coverage when testing is functional."
+#goveralls -service=travis-ci -repotoken ${COVERALLS_TOKEN}
