@@ -23,5 +23,5 @@ install:
 
 # functional testing (validate it works)
 script:
-  - docker build --tag infrawatch/sg-core:latest .
+  - docker build --tag infrawatch/sg-core:latest --file build/Dockerfile .
   - docker images
