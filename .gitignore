@@ -4,4 +4,3 @@ server
 *.sum
 launch.json
 .vscode
-vendor/*
