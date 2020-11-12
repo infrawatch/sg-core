@@ -7,7 +7,7 @@ WORKDIR $D
 COPY . $D/
 
 RUN dnf install golang git -y --setopt=tsflags=nodocs && \
-        go build -o smart_gateway cmd/server/server.go && \
+        go build -mod vendor -o smart_gateway cmd/server/server.go && \
         mv smart_gateway /tmp/
 
 # --- end build, create smart gateway layer ---
