@@ -1,0 +1,99 @@
+BASE=$(dirname $1)
+ABSBASE=$(cd $BASE && pwd)
+SRCDIR=${2:-$ABSBASE}
+XMLFILE=$ABSBASE/licenses.xml
+LISTFILE=$ABSBASE/licenses.txt
+ARCHIVE=$ABSBASE/licenses.tgz
+
+function print {
+    cat <<EOF>>$XMLFILE
+    <dependency>
+        <packageName>$1</packageName>
+        <version>$2</version>
+        <licenses>
+            <license>
+                <name>$3</name>
+                <url>./$4</url>
+            </license>
+        </licenses>
+    </dependency>
+EOF
+}
+
+rm -f $XMLFILE
+rm -f $LISTFILE
+cat <<EOF>>$XMLFILE
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<licenseSummary>
+  <dependencies>
+EOF
+
+cd $SRCDIR
+
+for m in $(awk '{print $2}' $1); do
+    module=$(echo $m | awk -F ':' '{print $1}')
+    f=vendor/$module
+    v=$(echo $m | awk -F ':' '{print $2}')
+    l=$(find "$f" -iname 'license*')
+    if [[ -z "$l" ]]; then
+        for n in readme copying licence; do
+            echo "Can't find license file for $f, trying $n"
+            l=$(find "$f" -iname "$n*" | head -1)
+            if [[ "$l" ]]; then
+               echo "Using $l as license file for $f"
+               break;
+            fi
+        done;
+    fi
+    if [[ "$l" ]]; then
+        i=$(identify_license $l 2> /dev/null)
+        if [[ -z $i ]]; then
+            if [[ -f $ABSBASE/licenses.hints ]]; then
+                override=$(grep $module  $ABSBASE/licenses.hints | awk '{print $2}')
+                if [[ -z $override ]]; then
+                    echo "$f Unrecognised $l (cannot override, there is no relevant hint for $module in $ABSBASE/licenses.hints)"
+                    print $f $v Unrecognised $l
+                else
+                    echo "$f Unrecognised $l; overriding from hints with $override"
+                    print $f $v $override $l
+                fi
+            else
+                echo "$f Unrecognised $l (no overrides provided)"
+                print $f $v Unrecognised $l
+            fi
+        else
+            n=$(echo $i | awk '{print $2}')
+            print $f $v $n $l
+        fi
+        echo $l >> $LISTFILE
+    else
+        echo "No license found for $f"
+        if [[ -f $ABSBASE/licenses.hints ]]; then
+            override=$(grep $module  $ABSBASE/licenses.hints | awk '{print $2}')
+            if [[ -z $override ]]; then
+                echo "$f Unrecognised $f (cannot override, there is no relevant hint for $module in $ABSBASE/licenses.hints)"
+                print $f $v Unrecognised $f
+            else
+                echo "$f Unrecognised $f; overriding from hints with $override"
+                print $f $v $override $f
+            fi
+        else
+            echo "$f Unknown (and no overrides provided)"
+            print $f $v Unknown
+        fi
+    fi
+done
+
+cat <<EOF>>$XMLFILE
+  </dependencies>
+</licenseSummary>
+EOF
+
+if [ -x "$(command -v xsltproc)" ] && [ -f $ABSBASE/licenses.xsl ]; then
+    xsltproc -o $ABSBASE/licenses.html $ABSBASE/licenses.xsl $XMLFILE
+    HTMLFILES="licenses.html licenses.css"
+fi
+
+rm -f $ARCHIVE
+tar -zcf $ARCHIVE LICENSE $(cat $LISTFILE) -C $ABSBASE $(basename $XMLFILE) $HTMLFILES
+rm $LISTFILE
