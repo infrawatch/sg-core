@@ -1,7 +1,7 @@
 # --- build smart gateway ---
 FROM registry.access.redhat.com/ubi8 AS builder
 ENV GOPATH=/go
-ENV D=/go/src/github.com/infrawatch/sg
+ENV D=/go/src/github.com/infrawatch/sg-core
 
 WORKDIR $D
 COPY . $D/
