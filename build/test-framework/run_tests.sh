@@ -16,7 +16,12 @@ go get -u github.com/mattn/goveralls
 go get -u golang.org/x/lint/golint
 go get -u honnef.co/go/tools/cmd/staticcheck
 
-# get vendor code
+# Update to golang which matches version in ubi:8
+go get golang.org/dl/go1.14.7
+go1.14.7 download
+alias go=go1.14.7
+
+# Add test deps to vendor dir
 go mod vendor
 
 # run code validation tools
