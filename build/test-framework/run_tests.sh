@@ -16,6 +16,14 @@ go get -u github.com/mattn/goveralls
 go get -u golang.org/x/lint/golint
 go get -u honnef.co/go/tools/cmd/staticcheck
 
+# Update to golang which matches version in ubi:8
+go get golang.org/dl/go1.14.7
+go1.14.7 download
+alias go=go1.14.7
+
+# Add test deps to vendor dir
+go mod vendor
+
 # run code validation tools
 echo " *** Running pre-commit code validation"
 echo " --- [TODO] Tests expected to fail currently. Changes required to pass all testing. Disable for now."
