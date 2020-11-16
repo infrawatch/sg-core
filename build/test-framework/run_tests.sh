@@ -16,9 +16,6 @@ go get -u github.com/mattn/goveralls
 go get -u golang.org/x/lint/golint
 go get -u honnef.co/go/tools/cmd/staticcheck
 
-# get vendor code
-go mod vendor
-
 # run code validation tools
 echo " *** Running pre-commit code validation"
 echo " --- [TODO] Tests expected to fail currently. Changes required to pass all testing. Disable for now."
