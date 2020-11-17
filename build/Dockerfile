@@ -7,8 +7,7 @@ WORKDIR $D
 COPY . $D/
 
 RUN dnf install golang git -y --setopt=tsflags=nodocs && \
-        go build -mod vendor -o smart_gateway cmd/server/server.go && \
-        mv smart_gateway /tmp/
+        go build -o /tmp/smart_gateway cmd/server/server.go
 
 # --- end build, create smart gateway layer ---
 FROM registry.access.redhat.com/ubi8

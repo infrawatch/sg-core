@@ -1,7 +1,6 @@
 #!/bin/bash
 set -ex
 
-
 # bootstrap
 mkdir -p /go/bin /go/src /go/pkg
 export GOPATH=/go
@@ -20,9 +19,6 @@ go get -u honnef.co/go/tools/cmd/staticcheck
 go get golang.org/dl/go1.14.7
 go1.14.7 download
 alias go=go1.14.7
-
-# Add test deps to vendor dir
-go mod vendor
 
 # run code validation tools
 echo " *** Running pre-commit code validation"
