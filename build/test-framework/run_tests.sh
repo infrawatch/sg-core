@@ -29,9 +29,9 @@ echo " *** Running test suite"
 echo " --- [TODO] Re-enable the test suite once supporting changes result in tests to pass."
 #go test -v ./...
 
+set +e
 echo " *** Running code coverage tooling"
-#go test ./... -race -covermode=atomic -coverprofile=coverage.txt
+go test ./... -race -covermode=atomic -coverprofile=coverage.txt
 
 echo " *** Running Coveralls test coverage report"
-echo " --- [TODO] Re-enable test coverage when testing is functional."
-#goveralls -coverprofile=coverage.txt
+goveralls -coverprofile=coverage.txt
