@@ -54,10 +54,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	destIp := args[0]
-	netIP := net.ParseIP(destIp)
+	destIP := args[0]
+	netIP := net.ParseIP(destIP)
 	if netIP == nil {
-		fmt.Fprintf(os.Stderr, "Invalid target IP addres %s...", destIp)
+		fmt.Fprintf(os.Stderr, "Invalid target IP addres %s...", destIP)
 		usage()
 		os.Exit(1)
 	}

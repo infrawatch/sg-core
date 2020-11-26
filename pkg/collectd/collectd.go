@@ -7,7 +7,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-type CollectdMeta struct {
+type collectdMeta struct {
 	X map[string]interface{} `json:"-"` // Rest of the fields should go here.
 }
 
@@ -23,16 +23,17 @@ type Collectd struct {
 	PluginInstance string       `json:"plugin_instance,omitempty"`
 	Type           string       `json:"type"`
 	TypeInstance   string       `json:"type_instance,omitempty"`
-	Meta           CollectdMeta `json:"meta,omitempty"`
+	Meta           collectdMeta `json:"meta,omitempty"`
 }
 
+// ParseInputString ...
 func (c *Collectd) ParseInputString(jsonString string) (*[]Collectd, error) {
 	jsonBlob := []byte(jsonString)
 
 	return c.ParseInputByte(jsonBlob)
 }
 
-//ParseInputJSON   ...
+//ParseInputByte   ...
 func (c *Collectd) ParseInputByte(jsonBlob []byte) (*[]Collectd, error) {
 	collect := []Collectd{}
 	//var json = jsoniter.ConfigCompatibleWithStandardLibrary.BorrowIterator(jsonBlob)
