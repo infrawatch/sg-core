@@ -43,7 +43,6 @@ func (cs *CacheServer) Run(ctx context.Context) error {
 			goto done
 		default:
 			e := cs.entries.Front()
-			n := cs.entries.Front()
 			for {
 				if e == nil {
 					break
@@ -51,7 +50,7 @@ func (cs *CacheServer) Run(ctx context.Context) error {
 
 				if e.Value.(Expiry).Expired() {
 					e.Value.(Expiry).Delete()
-					n = e.Next()
+					n := e.Next()
 					cs.entries.Remove(e)
 					e = n
 					continue

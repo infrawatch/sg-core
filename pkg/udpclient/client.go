@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// SendMetrics ...
 func SendMetrics(ctx context.Context, address string, count int, hostsCount int, mesg []byte) (err error) {
 	// Resolve the UDP address so that we can make use of DialUDP
 	// with an actual IP and port instead of a name (in case a
