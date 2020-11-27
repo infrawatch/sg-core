@@ -8,7 +8,7 @@ export PATH=$PATH:$GOPATH/bin
 
 # get dependencies
 sed -i '/^tsflags=.*/a ip_resolve=4' /etc/yum.conf
-yum install -y git golang iproute
+dnf install -y git golang iproute
 go get -u golang.org/x/tools/cmd/cover
 GO111MODULES=off go get -u github.com/mattn/goveralls
 go get -u golang.org/x/lint/golint
