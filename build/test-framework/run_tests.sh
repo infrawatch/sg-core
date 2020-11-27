@@ -8,17 +8,11 @@ export PATH=$PATH:$GOPATH/bin
 
 # get dependencies
 sed -i '/^tsflags=.*/a ip_resolve=4' /etc/yum.conf
-yum install -y epel-release
-yum install -y git golang iproute
+dnf install -y git golang iproute
 go get -u golang.org/x/tools/cmd/cover
-go get -u github.com/mattn/goveralls
+GO111MODULES=off go get -u github.com/mattn/goveralls
 go get -u golang.org/x/lint/golint
 go get -u honnef.co/go/tools/cmd/staticcheck
-
-# Update to golang which matches version in ubi:8
-go get golang.org/dl/go1.14.7
-go1.14.7 download
-alias go=go1.14.7
 
 # run code validation tools
 echo " *** Running pre-commit code validation"
@@ -30,6 +24,9 @@ echo " *** Running test suite"
 echo " --- [TODO] Re-enable the test suite once supporting changes result in tests to pass."
 #go test -v ./...
 
+set +e
+echo " *** Running code coverage tooling"
+go test ./... -race -covermode=atomic -coverprofile=coverage.txt
+
 echo " *** Running Coveralls test coverage report"
-echo " --- [TODO] Re-enable test coverage when testing is functional."
-#goveralls -service=travis-ci -repotoken ${COVERALLS_TOKEN}
+goveralls -coverprofile=coverage.txt
