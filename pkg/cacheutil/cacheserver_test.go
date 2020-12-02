@@ -70,9 +70,9 @@ func TestCacheExpiry(t *testing.T) {
 	cs := NewCacheServer()
 	ctx := context.Background()
 
-	// TODO: we should be capturing the error not ignoring it
 	go func() {
-		_ = cs.Run(ctx)
+		err := cs.Run(ctx)
+		assert.Ok(t, err)
 	}()
 
 	t.Run("single entry", func(t *testing.T) {

@@ -29,9 +29,9 @@ func TestCDMetrics(t *testing.T) {
 		cs.Interval = 1
 		ctx := context.Background()
 
-		// TODO: check for error returns properly
 		go func() {
-			_ = cs.Run(ctx)
+			err := cs.Run(ctx)
+			assert.Ok(t, err)
 		}()
 
 		cdmetrics.updateOrAddMetrics(cd, cs, 1.0)
