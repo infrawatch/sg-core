@@ -14,7 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-//AMQPHandler ...
+// PromIntf ...
 type PromIntf struct {
 	totalMetricsReceived     uint64
 	totalAmqpReceived        uint64
@@ -24,7 +24,7 @@ type PromIntf struct {
 	totalDecodeErrorsDesc    *prometheus.Desc
 }
 
-//NewAMQPHandler  ...
+// NewPromIntf  ...
 func NewPromIntf(source string) *PromIntf {
 	plabels := prometheus.Labels{}
 	plabels["source"] = source
@@ -59,7 +59,7 @@ func (a *PromIntf) IncTotalMetricsReceived() {
 	a.totalMetricsReceived++
 }
 
-//IncTtoalAmqpReceived ...
+//IncTotalAmqpReceived ...
 func (a *PromIntf) IncTotalAmqpReceived() {
 	a.totalAmqpReceived++
 }
@@ -69,12 +69,12 @@ func (a *PromIntf) AddTotalReceived(num int) {
 	a.totalMetricsReceived += uint64(num)
 }
 
-//GetTotalReceived ...
+//GetTotalMetricsReceived ...
 func (a *PromIntf) GetTotalMetricsReceived() uint64 {
 	return a.totalMetricsReceived
 }
 
-//GetTotalReceived ...
+//GetTotalAmqpReceived ...
 func (a *PromIntf) GetTotalAmqpReceived() uint64 {
 	return a.totalAmqpReceived
 }
@@ -130,15 +130,18 @@ func genMetricName(cd *collectd.Collectd, index int) (name string) {
 	return
 }
 
+// CDMetricDescription ...
 type CDMetricDescription struct {
 	metricName string
 	metricDesc *prometheus.Desc
 }
 
+// CDMetricDescriptions ...
 type CDMetricDescriptions struct {
 	descriptions map[string]*CDMetricDescription
 }
 
+// NewCDMetricDescriptions ...
 func NewCDMetricDescriptions() (metricDescriptions *CDMetricDescriptions) {
 	metricDescriptions = &CDMetricDescriptions{make(map[string]*CDMetricDescription)}
 
@@ -184,7 +187,7 @@ func (cdls *CDLabelSeries) keepAlive() {
 }
 
 func (cdls *CDLabelSeries) staleTime() float64 {
-	return time.Now().Sub(cdls.lastArrival).Seconds()
+	return time.Since(cdls.lastArrival).Seconds()
 }
 
 // Expired implements cacheutil.Expiry
@@ -205,6 +208,7 @@ type CDMetric struct {
 	deleteFn deleteFn
 }
 
+// NewCDMetric ...
 func NewCDMetric() *CDMetric {
 	return &CDMetric{
 		labels: make(map[string]*CDLabelSeries),
@@ -212,6 +216,7 @@ func NewCDMetric() *CDMetric {
 	}
 }
 
+// Set ...
 func (cdm *CDMetric) Set(labelName string, cdlm *CDLabelSeries) {
 	cdm.mu.Lock()
 	defer cdm.mu.Unlock()
@@ -219,6 +224,7 @@ func (cdm *CDMetric) Set(labelName string, cdlm *CDLabelSeries) {
 	cdm.labels[labelName] = cdlm
 }
 
+// Get ...
 func (cdm *CDMetric) Get(labelName string) *CDLabelSeries {
 	cdm.mu.RLock()
 	defer cdm.mu.RUnlock()
@@ -230,10 +236,7 @@ func (cdm *CDMetric) Expired() bool {
 	cdm.mu.RLock()
 	defer cdm.mu.RUnlock()
 
-	if len(cdm.labels) == 0 {
-		return true
-	}
-	return false
+	return len(cdm.labels) == 0
 }
 
 // Delete implements cacheutil.Expiry
@@ -385,6 +388,7 @@ func (a *CDMetrics) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
+// Listen ...
 func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prometheus.Registry, usetimestamp bool) (err error) {
 	var laddr net.UnixAddr
 

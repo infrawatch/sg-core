@@ -19,9 +19,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const UNIX_SOCKET_PATH string = "/tmp/smartgateway"
+const unixSocketPath string = "/tmp/smartgateway"
 
-func startPromHttp(host string, port int) (registry *prometheus.Registry) {
+func startPromHTTP(host string, port int) (registry *prometheus.Registry) {
 	registry = prometheus.NewRegistry()
 
 	//Set up Metric Exporter
@@ -79,7 +79,7 @@ func main() {
 	port := inetCommand.Int("port", 0, "Port to use, otherwise OS will choose")
 
 	// Add Flags for shared command
-	socketPath := unixCommand.String("path", UNIX_SOCKET_PATH, "Path/file for the shared memeory socket")
+	socketPath := unixCommand.String("path", unixSocketPath, "Path/file for the shared memeory socket")
 
 	flag.Parse()
 
@@ -148,7 +148,7 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	registry := startPromHttp(*promhost, *promport)
+	registry := startPromHTTP(*promhost, *promport)
 
 	if inetCommand.Parsed() {
 		ip := net.ParseIP(*ipAddress)

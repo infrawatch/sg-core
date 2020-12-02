@@ -27,6 +27,7 @@ func init() {
 	msgBuffer = make([]byte, maxBufferSize)
 }
 
+// Listen ...
 func Listen(ctx context.Context, address string, w *bufio.Writer) (err error) {
 	prometheus.MustRegister(msgRecvd)
 

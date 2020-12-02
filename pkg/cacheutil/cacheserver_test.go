@@ -19,7 +19,7 @@ type LabelSeries struct {
 }
 
 func (ls *LabelSeries) Expired() bool {
-	return time.Now().Sub(ls.lastArrival).Seconds() >= ls.interval
+	return time.Since(ls.lastArrival).Seconds() >= ls.interval
 }
 
 func (ls *LabelSeries) Delete() {

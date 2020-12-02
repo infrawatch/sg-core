@@ -25,6 +25,7 @@ const cpuMetricTemplate = `{"values": [%d], "dstypes": ["derive"], "dsnames": ["
                       "time": %f, "interval": %f, "host": "%s", "plugin": "cpu",
                       "plugin_instance": "%d","type": "cpu","type_instance": "user"}`
 
+// GenCPUMetric ...
 func GenCPUMetric(interval int, host string, count int) (mesg []byte) {
 	msgBuffer := make([]byte, 0, 1024)
 

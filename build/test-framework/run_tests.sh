@@ -17,7 +17,7 @@ go get -u honnef.co/go/tools/cmd/staticcheck
 # run code validation tools
 echo " *** Running pre-commit code validation"
 echo " --- [TODO] Tests expected to fail currently. Changes required to pass all testing. Disable for now."
-#./build/test-framework/pre-commit
+./build/test-framework/pre-commit
 
 # run unit tests
 echo " *** Running test suite"
