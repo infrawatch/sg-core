@@ -70,7 +70,10 @@ func TestCacheExpiry(t *testing.T) {
 	cs := NewCacheServer()
 	ctx := context.Background()
 
-	go cs.Run(ctx)
+	// TODO: we should be capturing the error not ignoring it
+	go func() {
+		_ = cs.Run(ctx)
+	}()
 
 	t.Run("single entry", func(t *testing.T) {
 		ms.addMetric("test-metric", 1, 1, cs)

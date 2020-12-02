@@ -29,7 +29,10 @@ func TestCDMetrics(t *testing.T) {
 		cs.Interval = 1
 		ctx := context.Background()
 
-		go cs.Run(ctx)
+		// TODO: check for error returns properly
+		go func() {
+			_ = cs.Run(ctx)
+		}()
 
 		cdmetrics.updateOrAddMetrics(cd, cs, 1.0)
 		assert.Equals(t, 1, len(cdmetrics.metrics))
