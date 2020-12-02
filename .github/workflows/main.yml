@@ -4,6 +4,17 @@ env:
 on: push
 
 jobs:
+  golangci:
+    name: Linting
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
+          version: v1.29
+
   test-framework:
     name: Base testing
     runs-on: ubuntu-20.04
