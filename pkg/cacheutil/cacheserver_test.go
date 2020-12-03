@@ -2,7 +2,6 @@ package cacheutil
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -46,12 +45,12 @@ func (ms *MetricStash) addMetric(metricName string, interval float64, numLabels 
 		labelName := "test-label-" + strconv.Itoa(i)
 
 		ls.deleteFn = func() {
-			fmt.Printf("Label %s in metric %s deleted\n", labelName, metricName)
+			//fmt.Printf("Label %s in metric %s deleted\n", labelName, metricName)
 			delete(ms.metrics[metricName], labelName)
 
 			if len(ms.metrics[metricName]) == 0 {
 				delete(ms.metrics, metricName)
-				fmt.Printf("Metrics %s deleted\n", metricName)
+				//fmt.Printf("Metrics %s deleted\n", metricName)
 			}
 		}
 
@@ -68,6 +67,7 @@ func TestCacheExpiry(t *testing.T) {
 	ms := NewMetricStash()
 
 	cs := NewCacheServer()
+	cs.Interval = 1
 	ctx := context.Background()
 
 	go func() {
@@ -78,10 +78,7 @@ func TestCacheExpiry(t *testing.T) {
 	t.Run("single entry", func(t *testing.T) {
 		ms.addMetric("test-metric", 1, 1, cs)
 		assert.Equals(t, 1, len(ms.metrics))
-		for i := 0; i < 2; i++ {
-			time.Sleep(time.Second * 1)
-		}
-
+		time.Sleep(time.Millisecond * 1200)
 		assert.Equals(t, 0, len(ms.metrics))
 	})
 
@@ -90,9 +87,7 @@ func TestCacheExpiry(t *testing.T) {
 		ms.addMetric("test-metric-2", 2, 1, cs)
 
 		assert.Equals(t, 2, len(ms.metrics))
-		for i := 0; i < 4; i++ {
-			time.Sleep(time.Second * 1)
-		}
+		time.Sleep(time.Millisecond * 3000)
 		assert.Equals(t, 0, len(ms.metrics))
 	})
 
@@ -100,9 +95,7 @@ func TestCacheExpiry(t *testing.T) {
 		ms.addMetric("test-metric-1", 1, 10, cs)
 
 		assert.Equals(t, 10, len(ms.metrics["test-metric-1"]))
-		for i := 0; i < 2; i++ {
-			time.Sleep(time.Second * 1)
-		}
+		time.Sleep(time.Millisecond * 2000)
 		assert.Equals(t, 0, len(ms.metrics))
 	})
 }
