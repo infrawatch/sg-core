@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # run_retrodep.sh
 #
 # This script is used to keep status of the various licenses used by the vendored imports.

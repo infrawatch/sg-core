@@ -24,7 +24,7 @@ const unixSocketPath string = "/tmp/smartgateway"
 func startPromHTTP(host string, port int) (registry *prometheus.Registry) {
 	registry = prometheus.NewRegistry()
 
-	//Set up Metric Exporter
+	// Set up Metric Exporter
 	handler := http.NewServeMux()
 	handler.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 	handler.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +40,7 @@ func startPromHTTP(host string, port int) (registry *prometheus.Registry) {
 		}
 	})
 
-	//run exporter fro prometheus to scrape
+	// run exporter fro prometheus to scrape
 	go func() {
 		metricsURL := fmt.Sprintf("%s:%d", host, port)
 		log.Printf("Metric server at : %s\n", metricsURL)
