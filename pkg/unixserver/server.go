@@ -420,7 +420,11 @@ func Listen(ctx context.Context, address string, w *bufio.Writer, registry *prom
 
 	// cache server
 	cache := cacheutil.NewCacheServer()
-	go cache.Run(ctx)
+
+	// TODO: check for error returns properly
+	go func() {
+		_ = cache.Run(ctx)
+	}()
 
 	go func() {
 		cd := new(collectd.Collectd)
