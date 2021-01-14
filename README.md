@@ -100,3 +100,10 @@ applications:
 
 ## Run
 `./sg-core -config <path to config>`
+
+## Docker/Podman
+Build:
+`podman build -t sg-core -f build/Dockerfile .`
+
+Run:
+`podman run -d -v /path/to/sg-core.conf.yaml:/etc/sg-core.conf.yaml:z --name sg-core sg-core`

@@ -197,7 +197,8 @@ func (p *Prometheus) Run(ctx context.Context, wg *sync.WaitGroup, eChan chan dat
 
 	//run exporter for prometheus to scrape
 	metricsURL := fmt.Sprintf("%s:%d", p.configuration.Host, p.configuration.Port)
-	p.logger.Info(fmt.Sprintf("Metric server at : %s", metricsURL))
+	p.logger.Metadata(logging.Metadata{"plugin": "prometheus"})
+	p.logger.Info(fmt.Sprintf("metric server at : %s", metricsURL))
 
 	srv := &http.Server{Addr: metricsURL}
 	srv.Handler = handler
