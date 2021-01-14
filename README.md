@@ -76,7 +76,7 @@ one application can be configured to run. Each application block contains a
 config block specific to that plugin.
 
 ## Example Configuration
-This configuration assumes both a Quipid Dispatch Router and Prometheus instance
+This configuration assumes both a QPID Dispatch Router and Prometheus instance
 are running on the localhost and listens for incoming messages on a unix socket
 at `/tmp/smartgateway`. The setup expects incoming messages to be collectd
 metrics, as can be seen by the type of handler bound to the socket transport.
