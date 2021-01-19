@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/infrawatch/apputils/logging"
@@ -38,9 +37,7 @@ func New(logger *logging.Logger) application.Application {
 }
 
 //Run run scrape endpoint
-func (print *Print) Run(ctx context.Context, wg *sync.WaitGroup, eChan chan data.Event, mChan chan []data.Metric, done chan bool) {
-	defer wg.Done()
-	wg.Add(1)
+func (print *Print) Run(ctx context.Context, eChan chan data.Event, mChan chan []data.Metric, done chan bool) {
 
 	metrF, err := os.OpenFile(print.configuration.MetricOutput, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {

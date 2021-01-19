@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"sync"
 
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/config"
@@ -17,7 +16,7 @@ import (
 const maxBufferSize = 4096
 
 type configT struct {
-	Address string `validate:"required"`
+	Path string `validate:"required"`
 }
 
 //Socket basic struct
@@ -27,16 +26,15 @@ type Socket struct {
 }
 
 //Run implements type Transport
-func (s *Socket) Run(ctx context.Context, wg *sync.WaitGroup, w transport.WriteFn, done chan bool) {
-	defer wg.Done()
+func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 
 	msgBuffer := make([]byte, maxBufferSize)
 	var laddr net.UnixAddr
 
-	laddr.Name = s.conf.Address
+	laddr.Name = s.conf.Path
 	laddr.Net = "unixgram"
 
-	os.Remove(s.conf.Address)
+	os.Remove(s.conf.Path)
 
 	pc, err := net.ListenUnixgram("unixgram", &laddr)
 	if err != nil {
@@ -62,7 +60,7 @@ func (s *Socket) Run(ctx context.Context, wg *sync.WaitGroup, w transport.WriteF
 
 	<-ctx.Done()
 	pc.Close()
-	os.Remove(s.conf.Address)
+	os.Remove(s.conf.Path)
 	s.logger.Metadata(logging.Metadata{"plugin": "socket"})
 	s.logger.Info("exited")
 }

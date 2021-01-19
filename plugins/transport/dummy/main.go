@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"math/rand"
-	"sync"
 	"time"
 
 	"github.com/infrawatch/apputils/logging"
@@ -90,8 +89,7 @@ type Dummy struct {
 }
 
 //Run implements type Transport
-func (s *Dummy) Run(ctx context.Context, wg *sync.WaitGroup, w transport.WriteFn, done chan bool) {
-	defer wg.Done()
+func (s *Dummy) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 
 	for {
 		select {
