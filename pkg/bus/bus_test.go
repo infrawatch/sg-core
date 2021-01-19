@@ -3,7 +3,7 @@ package bus
 import (
 	"testing"
 
-	"github.com/infrawatch/sg-core-refactor/pkg/data"
+	"github.com/infrawatch/sg-core/pkg/data"
 )
 
 var sampleMetrics []data.Metric = []data.Metric{
