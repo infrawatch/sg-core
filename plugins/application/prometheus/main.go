@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/infrawatch/apputils/logging"
-	"github.com/infrawatch/sg-core-refactor/pkg/application"
-	"github.com/infrawatch/sg-core-refactor/pkg/concurrent"
-	"github.com/infrawatch/sg-core-refactor/pkg/config"
-	"github.com/infrawatch/sg-core-refactor/pkg/data"
+	"github.com/infrawatch/sg-core/pkg/application"
+	"github.com/infrawatch/sg-core/pkg/concurrent"
+	"github.com/infrawatch/sg-core/pkg/config"
+	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )

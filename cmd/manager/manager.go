@@ -9,11 +9,11 @@ import (
 	"sync"
 
 	"github.com/infrawatch/apputils/logging"
-	"github.com/infrawatch/sg-core-refactor/pkg/application"
-	"github.com/infrawatch/sg-core-refactor/pkg/bus"
-	"github.com/infrawatch/sg-core-refactor/pkg/data"
-	"github.com/infrawatch/sg-core-refactor/pkg/handler"
-	"github.com/infrawatch/sg-core-refactor/pkg/transport"
+	"github.com/infrawatch/sg-core/pkg/application"
+	"github.com/infrawatch/sg-core/pkg/bus"
+	"github.com/infrawatch/sg-core/pkg/data"
+	"github.com/infrawatch/sg-core/pkg/handler"
+	"github.com/infrawatch/sg-core/pkg/transport"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )

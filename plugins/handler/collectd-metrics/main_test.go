@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/infrawatch/sg-core-refactor/pkg/data"
+	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/stretchr/testify/assert"
 )
 

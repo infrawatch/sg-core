@@ -11,8 +11,8 @@ import (
 	"github.com/infrawatch/apputils/logging"
 	log "github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/apputils/system"
-	"github.com/infrawatch/sg-core-refactor/cmd/manager"
-	"github.com/infrawatch/sg-core-refactor/pkg/config"
+	"github.com/infrawatch/sg-core/cmd/manager"
+	"github.com/infrawatch/sg-core/pkg/config"
 )
 
 func main() {

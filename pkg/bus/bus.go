@@ -3,7 +3,7 @@ package bus
 import (
 	"sync"
 
-	"github.com/infrawatch/sg-core-refactor/pkg/data"
+	"github.com/infrawatch/sg-core/pkg/data"
 )
 
 /* TODO: optimize this

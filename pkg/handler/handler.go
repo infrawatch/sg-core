@@ -1,6 +1,6 @@
 package handler
 
-import "github.com/infrawatch/sg-core-refactor/pkg/data"
+import "github.com/infrawatch/sg-core/pkg/data"
 
 // package handler contains the interface description for handler plugins
 

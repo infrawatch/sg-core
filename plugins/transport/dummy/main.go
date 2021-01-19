@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/infrawatch/apputils/logging"
-	"github.com/infrawatch/sg-core-refactor/pkg/data"
-	"github.com/infrawatch/sg-core-refactor/pkg/transport"
+	"github.com/infrawatch/sg-core/pkg/data"
+	"github.com/infrawatch/sg-core/pkg/transport"
 )
 
 const maxBufferSize = 4096

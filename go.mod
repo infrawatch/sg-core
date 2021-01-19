@@ -1,4 +1,4 @@
-module github.com/infrawatch/sg-core-refactor
+module github.com/infrawatch/sg-core
 
 go 1.14
 
