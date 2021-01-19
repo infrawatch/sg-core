@@ -89,17 +89,13 @@ done:
 
 //Config implements application.Application
 func (print *Print) Config(c []byte) error {
-	print.configuration = configT{}
+	print.configuration = configT{
+		EventsOutput: "/dev/stdout",
+		MetricOutput: "/dev/stdout",
+	}
 	err := config.ParseConfig(bytes.NewReader(c), &print.configuration)
 	if err != nil {
 		return err
-	}
-	//default values
-	if print.configuration.EventsOutput == "" {
-		print.configuration.EventsOutput = "/dev/stdout"
-	}
-	if print.configuration.MetricOutput == "" {
-		print.configuration.MetricOutput = "/dev/stdout"
 	}
 	return nil
 }
