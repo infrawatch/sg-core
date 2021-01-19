@@ -4,9 +4,9 @@ import (
 	"time"
 
 	"github.com/go-openapi/errors"
-	"github.com/infrawatch/sg-core-refactor/pkg/data"
-	"github.com/infrawatch/sg-core-refactor/pkg/handler"
-	"github.com/infrawatch/sg-core-refactor/plugins/handler/collectd-metrics/pkg/collectd"
+	"github.com/infrawatch/sg-core/pkg/data"
+	"github.com/infrawatch/sg-core/pkg/handler"
+	"github.com/infrawatch/sg-core/plugins/handler/collectd-metrics/pkg/collectd"
 )
 
 type collectdMetricsHandler struct {

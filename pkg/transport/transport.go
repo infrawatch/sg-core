@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/infrawatch/sg-core-refactor/pkg/data"
+	"github.com/infrawatch/sg-core/pkg/data"
 )
 
 // package transport defines the interfaces for interacting with transport

@@ -118,7 +118,7 @@ type Transport interface {
 
 Handlers parse incoming blobs from the transport into objects and delivers those objects to the internal buses. There are two types of handlers: metric handlers and event handlers. Metric handlers deliver metric objects to the internal metrics bus while event handlers deliver event objects to the internal events bus. These metrics and events are then consumed by the application plugins.
 
-Handlers must remain simple: they take in no configuration and should only handle one message type. See the [collectd-metrics](https://github.com/pleimer/sg-core-refactor/tree/master/plugins/handler/collectd-metrics) plugin for an example. Additionally, handlers should not print logs (this is why no logger is passed into the New() function). If errors occur while parsing messages, handlers should create their own metrics or events recording the error(s) and write them to the bus. The `collectd-metrics` handler iterates a counter every time a parsing error occurs and submits the number as a metric to the metric bus.
+Handlers must remain simple: they take in no configuration and should only handle one message type. See the [collectd-metrics](https://github.com/infrawatch/sg-core/tree/master/plugins/handler/collectd-metrics) plugin for an example. Additionally, handlers should not print logs (this is why no logger is passed into the New() function). If errors occur while parsing messages, handlers should create their own metrics or events recording the error(s) and write them to the bus. The `collectd-metrics` handler iterates a counter every time a parsing error occurs and submits the number as a metric to the metric bus.
 
 
 Handler plugin objects must imeplement either the MetricHandler interface or the EventHandler interface:
@@ -134,7 +134,7 @@ type EventHandler interface {
 
 ## Applications
 
-The purpose of application plugins are to provide the business logic for interfacing with external programs like a database. They receive both metrics and events and must decide what to do with them. For example, the [prometheus](https://github.com/pleimer/sg-core-refactor/tree/master/plugins/application/prometheus) plugin receives metrics from the internal metrics bus and stores them into Prometheus.
+The purpose of application plugins are to provide the business logic for interfacing with external programs like a database. They receive both metrics and events and must decide what to do with them. For example, the [prometheus](https://github.com/infrawatch/sg-core/tree/master/plugins/application/prometheus) plugin receives metrics from the internal metrics bus and stores them into Prometheus.
 
 Application plugins must implement the Application interface:
 ```go
@@ -145,4 +145,4 @@ type Application interface {
 ```
 
 ## Examples
-Examples of the implementation of each type of plugin can be found in the [plugins](https://github.com/pleimer/sg-core-refactor/tree/master/plugins) directory.
+Examples of the implementation of each type of plugin can be found in the [plugins](https://github.com/infrawatch/sg-core/tree/master/plugins) directory.

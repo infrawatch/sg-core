@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/infrawatch/sg-core-refactor/pkg/data"
+	"github.com/infrawatch/sg-core/pkg/data"
 )
 
 //package application defines the interface for interacting with application plugins
