@@ -3,7 +3,6 @@ package transport
 import (
 	"context"
 	"strings"
-	"sync"
 
 	"github.com/infrawatch/sg-core-refactor/pkg/data"
 )
@@ -41,6 +40,6 @@ type WriteFn func([]byte)
 //TODO: give transports a writer to send logs to
 type Transport interface {
 	Config([]byte) error
-	Run(context.Context, *sync.WaitGroup, WriteFn, chan bool)
+	Run(context.Context, WriteFn, chan bool)
 	Listen(data.Event)
 }

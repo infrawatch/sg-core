@@ -148,23 +148,26 @@ func SetTransportHandlers(name string, handlerNames []string) error {
 func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool) {
 	for name, t := range transports {
 		wg.Add(1)
-		go t.Run(ctx, wg, func(blob []byte) {
-			for _, handler := range metricHandlers[name] {
-				res := handler.Handle(blob)
-				if res != nil {
-					metricBus.Publish(res)
+		go func(wg *sync.WaitGroup, t transport.Transport, name string) {
+			defer wg.Done()
+			t.Run(ctx, func(blob []byte) {
+				for _, handler := range metricHandlers[name] {
+					res := handler.Handle(blob)
+					if res != nil {
+						metricBus.Publish(res)
+					}
 				}
-			}
-			for _, handler := range eventHandlers[name] {
-				res, err := handler.Handle(blob)
-				if err != nil {
-					logger.Metadata(logging.Metadata{"error": err})
-					logger.Error("failed handling message")
-					continue
+				for _, handler := range eventHandlers[name] {
+					res, err := handler.Handle(blob)
+					if err != nil {
+						logger.Metadata(logging.Metadata{"error": err})
+						logger.Error("failed handling message")
+						continue
+					}
+					eventBus.Publish(res)
 				}
-				eventBus.Publish(res)
-			}
-		}, done)
+			}, done)
+		}(wg, t, name)
 	}
 }
 
@@ -177,7 +180,10 @@ func RunApplications(ctx context.Context, wg *sync.WaitGroup, done chan bool) {
 		eventBus.Subscribe(eChan)
 		metricBus.Subscribe(mChan)
 		wg.Add(1)
-		go a.Run(ctx, wg, eChan, mChan, done)
+		go func(wg *sync.WaitGroup, a application.Application) {
+			defer wg.Done()
+			a.Run(ctx, eChan, mChan, done)
+		}(wg, a)
 	}
 }
 

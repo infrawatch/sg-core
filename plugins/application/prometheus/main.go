@@ -174,8 +174,7 @@ func New(l *logging.Logger) application.Application {
 }
 
 //Run run scrape endpoint
-func (p *Prometheus) Run(ctx context.Context, wg *sync.WaitGroup, eChan chan data.Event, mChan chan []data.Metric, done chan bool) {
-	defer wg.Done()
+func (p *Prometheus) Run(ctx context.Context, eChan chan data.Event, mChan chan []data.Metric, done chan bool) {
 	registry := prometheus.NewRegistry()
 
 	//Set up Metric Exporter
@@ -203,6 +202,7 @@ func (p *Prometheus) Run(ctx context.Context, wg *sync.WaitGroup, eChan chan dat
 	srv := &http.Server{Addr: metricsURL}
 	srv.Handler = handler
 
+	wg := new(sync.WaitGroup)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -248,6 +248,7 @@ done:
 		p.logger.Metadata(logging.Metadata{"error": err})
 		p.logger.Error("Error while shutting down metrics endpoint")
 	}
+	wg.Wait()
 	p.logger.Metadata(logging.Metadata{"plugin": "prometheus"})
 	p.logger.Info("exited")
 }

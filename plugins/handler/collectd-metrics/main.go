@@ -76,9 +76,14 @@ func (c *collectdMetricsHandler) createMetrics(cdmetric *collectd.Metric) ([]dat
 		typeInstance = "base"
 	}
 
-	equal := int64((len(cdmetric.Dsnames) ^ len(cdmetric.Dstypes)) ^ (len(cdmetric.Dsnames) ^ len(cdmetric.Values)))
-	if equal != 0 {
-		return nil, errors.New(0, "")
+	//equal := int64((len(cdmetric.Dsnames) ^ len(cdmetric.Dstypes)) ^ (len(cdmetric.Dsnames) ^ len(cdmetric.Values)))
+	// if equal != 0 {
+	// 	return nil, errors.New(0, "")
+	// }
+
+	typeLen := len(cdmetric.Dstypes)
+	if !((len(cdmetric.Dsnames) == typeLen) && (typeLen == len(cdmetric.Values))) {
+		return nil, errors.New(9, "")
 	}
 
 	var metrics []data.Metric

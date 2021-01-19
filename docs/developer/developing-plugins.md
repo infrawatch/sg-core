@@ -17,24 +17,9 @@ Transport | `func New(* logging.Logger) transport.Transport`
 Handler | `func New() handler.MetricHandler` or `func New() handler.EventHandler`
 Application | `func New(* logging.Logger) application.Application`
 
-Both transport and application plugins contain a Run() function which encompass their primary process. Because these processes are run in a separate goroutine, a context and waitgroup are provided to synchronize with the rest of sg-core.
+Both transport and application plugins contain a Run() function which encompass their primary process. Because these processes are run in a separate goroutine, a golang context is provided to synchronize with the rest of sg-core.
 
----
-**NOTE**
-Implementations of the Run() function ___must___ begin by deferring the waitgroup Done() method, otherwise the sg-core will indefinitely hang when attempting exit.
-
-```go
-func (t *TCP) Run(ctx context.Context, wg *sync.WaitGroup, w transport.WriteFn, done chan bool) transport.Transport {
-    defer wg.Done()
-
-    [...]
-
-}
-
-```
----
-
-A plugin's Run() function should also listen for close signals on the context and exit when it is received. Additionally, if a critical error occurs, the plugin should pass `true` to the boolean channel. This will signal the sg-core to perform a clean exit.
+A plugin's Run() function should listen for close signals on the context and exit when it is received. Additionally, if a critical error occurs, the plugin should pass `true` to the boolean channel. This will signal the sg-core to perform a clean exit.
 
 ```go
 func (t *TCP) Run(ctx context.Context, wg *sync.WaitGroup, w transport.WriteFn, done chan bool) transport.Transport {
