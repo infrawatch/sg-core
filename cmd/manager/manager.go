@@ -149,7 +149,7 @@ func SetTransportHandlers(name string, handlerNames []string) error {
 }
 
 //RunTransports spins off tranpsort + handler processes
-func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool) {
+func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool, report bool) {
 	for name, t := range transports {
 		for _, h := range metricHandlers[name] {
 			wg.Add(1)
@@ -168,10 +168,10 @@ func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool) {
 				}
 
 				for _, handler := range eventHandlers[name] {
-					res, err := handler.Handle(blob)
+					res, err := handler.Handle(blob, report)
 					if err != nil {
-						logger.Metadata(logging.Metadata{"error": err})
-						logger.Error("failed handling message")
+						logger.Metadata(logging.Metadata{"error": err, "handler": fmt.Sprintf("%s[%s]", handler.Identify(), name)})
+						logger.Error("failed handling event message")
 						continue
 					}
 					eventBus.Publish(res)

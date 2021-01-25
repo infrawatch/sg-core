@@ -81,7 +81,10 @@ func (c *collectdMetricsHandler) Handle(blob []byte, pf bus.MetricPublishFunc) {
 			c.totalDecodeErrors++
 		}
 	}
+}
 
+func (c *collectdMetricsHandler) Identify() string {
+	return "collectd-metrics"
 }
 
 func (c *collectdMetricsHandler) writeMetrics(cdmetric *collectd.Metric, pf bus.MetricPublishFunc) error {

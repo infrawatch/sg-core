@@ -18,9 +18,25 @@ const (
 	UNTYPED
 )
 
+// EventType marks type of data held in event message
+type EventType int
+
+const (
+	// ERROR event contains handler failure data and should be handled on application level
+	ERROR EventType = iota
+	// EVENT contains regular event data
+	EVENT
+	// RESULT event contains data about result of check execution
+	// perfomed by any supported client side agent (collectd-sensubility, sg-agent)
+	RESULT
+	// LOG event contains log record
+	LOG
+)
+
 // Event internal event type
 type Event struct {
 	Handler string
+	Type    EventType
 	Message string
 }
 

@@ -14,11 +14,15 @@ type MetricHandler interface {
 	//Run should only be used to send metrics apart from those being parsed from the transport. For example, this process could send metrics tracking the number of arrived messages and send them to the bus on a time delayed interval
 	Run(context.Context, bus.MetricPublishFunc)
 
+	//Returns identification string for a handler
+	Identify() string
+
 	//Handle parse incoming messages from the transport and write resulting metrics to the metric bus
 	Handle([]byte, bus.MetricPublishFunc)
 }
 
 //EventHandler mangle messages to place on event bus
 type EventHandler interface {
-	Handle([]byte) (data.Event, error)
+	Identify() string
+	Handle([]byte, bool) (data.Event, error)
 }

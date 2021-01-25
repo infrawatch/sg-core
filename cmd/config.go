@@ -5,9 +5,10 @@ import (
 )
 
 type configT struct {
-	PluginDir  string
-	LogLevel   string `validate:"oneof=error warn info debug"`
-	Transports []struct {
+	PluginDir     string
+	LogLevel      string `validate:"oneof=error warn info debug"`
+	HandlerErrors bool
+	Transports    []struct {
 		Name     string `validate:"required"`
 		Handlers []string
 		Config   interface{}
@@ -23,7 +24,8 @@ func (ct *configT) Bytes() []byte {
 	return res
 }
 
-var configuration configT = configT{
-	PluginDir: "/usr/lib64/sg-core/",
-	LogLevel:  "info",
+var configuration = configT{
+	PluginDir:     "/usr/lib64/sg-core/",
+	LogLevel:      "info",
+	HandlerErrors: false,
 }
