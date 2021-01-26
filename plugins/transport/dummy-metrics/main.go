@@ -84,12 +84,12 @@ func generateMetric() []metric {
 	return []metric{}
 }
 
-//Dummy basic struct
-type Dummy struct {
+//DummyMetrics basic struct
+type DummyMetrics struct {
 }
 
 //Run implements type Transport
-func (s *Dummy) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
+func (dm *DummyMetrics) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 
 	for {
 		select {
@@ -109,16 +109,16 @@ done:
 }
 
 //Listen ...
-func (s *Dummy) Listen(e data.Event) {
+func (dm *DummyMetrics) Listen(e data.Event) {
 
 }
 
 //Config load configurations
-func (s *Dummy) Config(c []byte) error {
+func (dm *DummyMetrics) Config(c []byte) error {
 	return nil
 }
 
 //New create new socket transport
 func New(l *logging.Logger) transport.Transport {
-	return &Dummy{}
+	return &DummyMetrics{}
 }
