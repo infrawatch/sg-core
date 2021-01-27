@@ -68,10 +68,30 @@ func (ce *collectorExpiry) Delete() {
 	ce.delete()
 }
 
+type logWrapper struct {
+	l      *logging.Logger
+	plugin string
+}
+
+func (lw *logWrapper) Error(msg string, err error) {
+	lw.l.Metadata(logging.Metadata{"plugin": lw.plugin, "error": err})
+	lw.l.Error(msg)
+}
+
+func (lw *logWrapper) Warn(msg string) {
+	lw.l.Metadata(logging.Metadata{"plugin": lw.plugin})
+	lw.l.Warn(msg)
+}
+
+func (lw *logWrapper) Infof(format string, a ...interface{}) {
+	lw.l.Metadata(logging.Metadata{"plugin": lw.plugin})
+	lw.l.Info(fmt.Sprintf(format, a...))
+}
+
 //PromCollector implements prometheus.Collector for incoming metrics. Metrics
 // with differing label dimensions must create separate PromCollectors.
 type PromCollector struct {
-	logger          *logging.Logger
+	logger          *logWrapper
 	descriptions    *concurrent.Map
 	metrics         *concurrent.Map
 	metricLabelKeys *concurrent.Map //used to insure labels are always reported to prometheus in the same order
@@ -80,7 +100,7 @@ type PromCollector struct {
 }
 
 //NewPromCollector PromCollector constructor
-func NewPromCollector(l *logging.Logger) *PromCollector {
+func NewPromCollector(l *logWrapper) *PromCollector {
 	return &PromCollector{
 		logger:          l,
 		descriptions:    concurrent.NewMap(),
@@ -121,8 +141,7 @@ func (pc *PromCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	for _, e := range errs {
-		pc.logger.Metadata(logging.Metadata{"error": e})
-		pc.logger.Error("prometheus failed scrapping metric")
+		pc.logger.Error("prometheus failed scrapping metric", e)
 	}
 }
 
@@ -158,8 +177,7 @@ func (pc *PromCollector) UpdateMetrics(metric data.Metric, ep *expiryProc, expir
 				pc.metrics.Delete(metric.Name)
 				pc.descriptions.Delete(metric.Name)
 				pc.expirys.Delete(metric.Name)
-				pc.logger.Metadata(logging.Metadata{"plugin": "prometheus"})
-				pc.logger.Info(fmt.Sprintf("metric '%s' deleted after %.1fs of stale time", metric.Name, expiryInterval))
+				pc.logger.Infof("metric '%s' deleted after %.1fs of stale time", metric.Name, expiryInterval)
 			},
 		}
 		pc.expirys.Set(metric.Name, &exp)
@@ -173,7 +191,7 @@ func (pc *PromCollector) UpdateMetrics(metric data.Metric, ep *expiryProc, expir
 // are included in the same collectors even if the labels are different
 type Prometheus struct {
 	configuration configT
-	logger        *logging.Logger
+	logger        *logWrapper
 	collectors    *concurrent.Map //collectors mapped according to label dimensions
 	expiry        *expiryProc
 }
@@ -186,7 +204,10 @@ func New(l *logging.Logger) application.Application {
 			Port:          3000,
 			MetricTimeout: 20,
 		},
-		logger:     l,
+		logger: &logWrapper{
+			l:      l,
+			plugin: "Prometheus",
+		},
 		collectors: concurrent.NewMap(),
 		expiry:     newExpiryProc(),
 	}
@@ -208,15 +229,13 @@ func (p *Prometheus) Run(ctx context.Context, eChan chan data.Event, mChan chan 
                                 </body>
 								</html>`))
 		if err != nil {
-			p.logger.Metadata(logging.Metadata{"error": err})
-			p.logger.Error("HTTP error")
+			p.logger.Error("HTTP error", err)
 		}
 	})
 
 	//run exporter for prometheus to scrape
 	metricsURL := fmt.Sprintf("%s:%d", p.configuration.Host, p.configuration.Port)
-	p.logger.Metadata(logging.Metadata{"plugin": "prometheus"})
-	p.logger.Info(fmt.Sprintf("metric server at : %s", metricsURL))
+	p.logger.Infof("metric server at : %s", metricsURL)
 
 	srv := &http.Server{Addr: metricsURL}
 	srv.Handler = handler
@@ -226,8 +245,7 @@ func (p *Prometheus) Run(ctx context.Context, eChan chan data.Event, mChan chan 
 	go func() {
 		defer wg.Done()
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			p.logger.Metadata(logging.Metadata{"error": err})
-			p.logger.Error("Metric scrape endpoint failed")
+			p.logger.Error("metric scrape endpoint failed", err)
 			done <- true
 		}
 	}()
@@ -240,7 +258,7 @@ func (p *Prometheus) Run(ctx context.Context, eChan chan data.Event, mChan chan 
 		case <-ctx.Done():
 			goto done
 		case <-eChan:
-			p.logger.Warn("Prometheus plugin received an event - disregarding")
+			p.logger.Warn("event received - disregarding")
 		case metrics := <-mChan:
 			// update descriptions
 			for _, m := range metrics {
@@ -250,7 +268,6 @@ func (p *Prometheus) Run(ctx context.Context, eChan chan data.Event, mChan chan 
 					ce := &collectorExpiry{
 						collector: c,
 						delete: func() {
-							p.logger.Metadata(logging.Metadata{"plugin": "prometheus"})
 							p.logger.Warn("prometheus collector expired")
 							registry.Unregister(c)
 							p.collectors.Delete(string(labelLenStr))
@@ -262,8 +279,7 @@ func (p *Prometheus) Run(ctx context.Context, eChan chan data.Event, mChan chan 
 				}
 				err := p.collectors.Get(labelLenStr).(*PromCollector).SetDescs(m.Name, "", m.Labels)
 				if err != nil {
-					p.logger.Metadata(logging.Metadata{"error": err})
-					p.logger.Error("Error setting prometheus collector descriptions")
+					p.logger.Error("error setting prometheus collector descriptions", err)
 					continue
 				}
 				p.collectors.Get(labelLenStr).(*PromCollector).UpdateMetrics(m, p.expiry, float64(p.configuration.MetricTimeout))
@@ -274,12 +290,10 @@ done:
 	timeout, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	if err := srv.Shutdown(timeout); err != nil {
-		p.logger.Metadata(logging.Metadata{"error": err})
-		p.logger.Error("Error while shutting down metrics endpoint")
+		p.logger.Error("error while shutting down metrics endpoint", err)
 	}
 	wg.Wait()
-	p.logger.Metadata(logging.Metadata{"plugin": "prometheus"})
-	p.logger.Info("exited")
+	p.logger.Infof("exited")
 }
 
 //Config implements application.Application
