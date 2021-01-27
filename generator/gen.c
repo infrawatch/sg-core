@@ -177,8 +177,10 @@ int main(int argc, char **argv) {
         pthread_setname_np(apps[i].amqp_snd_th, apps[i].container_id);
     }
 
+    bool running;
     while (1) {
         sleep(1);
+        running = false;
         for (int i = 0; i < num_threads; i++) {
             printf("%*s: %ld(%ld), amqp_sent: %ld(%ld), ack'd: %ld(%ld), miss: %ld, burst_size: %f\n",
                    (int)strlen(apps[i].container_id), apps[i].container_id,
@@ -189,11 +191,18 @@ int main(int argc, char **argv) {
                    apps[i].amqp_sent / (float)apps[i].total_bursts);
 
             sample_app_metrics(&apps[i]);
+            if(apps[i].amqp_snd_th_running){
+                running = true;
+            }
         }
         printf("----------------------------------------\n");
-        if (app.amqp_snd_th_running == 0) {
+
+        if (!running) {
             printf("Joining amqp_rcv_th...\n");
-            pthread_join(app.amqp_snd_th, NULL);
+            for (int i = 0; i < num_threads; i++) {
+                pthread_join(apps[i].amqp_snd_th, NULL);
+            }
+
             printf("Cancel socket_snd_th...\n");
 
             exit(0);

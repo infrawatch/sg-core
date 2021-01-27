@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/pprof"
 	"sync"
 	"syscall"
 
@@ -17,7 +18,7 @@ import (
 
 func main() {
 	configPath := flag.String("config", "/etc/sg-core.conf.yaml", "configuration file path")
-	//logLevel := flag.String("logLevel", "ERROR", "log level")
+	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
 	flag.Usage = func() {
 		fmt.Printf("Usage: %s [OPTIONS]\n\nAvailable options:\n", os.Args[0])
 		flag.PrintDefaults()
@@ -29,8 +30,19 @@ func main() {
 	logger, err := log.NewLogger(log.DEBUG, "console")
 	if err != nil {
 		fmt.Printf("failed initializing logger: %s", err)
+		return
 	}
 	logger.Timestamp = true
+
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			logger.Metadata(logging.Metadata{"error": err})
+			logger.Error("failed to start cpu profile")
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	file, err := os.Open(*configPath)
 	if err != nil {
