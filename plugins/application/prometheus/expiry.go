@@ -6,10 +6,11 @@ import (
 	"time"
 )
 
-//expire metrics after time of staleness
+// expire metrics after time of staleness
+// for infinite time, set interval to 0
 
 type expiry interface {
-	Expired() bool
+	Expired(time.Duration) bool
 	Delete()
 }
 
@@ -18,10 +19,10 @@ type expiryProc struct {
 	interval time.Duration
 }
 
-func newExpiryProc() *expiryProc {
+func newExpiryProc(interval time.Duration) *expiryProc {
 	return &expiryProc{
 		entries:  list.New(),
-		interval: 10000,
+		interval: interval,
 	}
 }
 
@@ -36,7 +37,7 @@ func (ep *expiryProc) check() {
 			break
 		}
 
-		if e.Value.(expiry).Expired() {
+		if e.Value.(expiry).Expired(ep.interval) {
 			e.Value.(expiry).Delete()
 			n := e.Next()
 			ep.entries.Remove(e)
@@ -48,11 +49,15 @@ func (ep *expiryProc) check() {
 }
 
 func (ep *expiryProc) run(ctx context.Context) {
+	if ep.interval == 0 {
+		return
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			goto done
-		case <-time.After(time.Millisecond * ep.interval):
+		case <-time.After(ep.interval):
 			ep.check()
 		}
 	}

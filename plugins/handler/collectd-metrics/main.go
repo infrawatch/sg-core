@@ -42,18 +42,20 @@ func (c *collectdMetricsHandler) Handle(blob []byte) []data.Metric {
 	}
 
 	metrics = append(metrics, []data.Metric{{
-		Name:  "sg_total_metric_rcv_count",
-		Type:  data.COUNTER,
-		Value: float64(c.totalMetricsReceived),
-		Time:  time.Now(),
+		Name:     "sg_total_metric_rcv_count",
+		Type:     data.COUNTER,
+		Value:    float64(c.totalMetricsReceived),
+		Time:     time.Now(),
+		Interval: 0,
 		Labels: map[string]string{
 			"source": "SG",
 		},
 	}, {
-		Name:  "sg_total_metric_decode_error_count",
-		Type:  data.COUNTER,
-		Value: float64(c.totalDecodeErrors),
-		Time:  time.Now(),
+		Name:     "sg_total_metric_decode_error_count",
+		Type:     data.COUNTER,
+		Value:    float64(c.totalDecodeErrors),
+		Time:     time.Now(),
+		Interval: 0,
 		Labels: map[string]string{
 			"source": "SG",
 		},
@@ -76,24 +78,15 @@ func (c *collectdMetricsHandler) createMetrics(cdmetric *collectd.Metric) ([]dat
 		typeInstance = "base"
 	}
 
-	//equal := int64((len(cdmetric.Dsnames) ^ len(cdmetric.Dstypes)) ^ (len(cdmetric.Dsnames) ^ len(cdmetric.Values)))
-	// if equal != 0 {
-	// 	return nil, errors.New(0, "")
-	// }
-
-	typeLen := len(cdmetric.Dstypes)
-	if !((len(cdmetric.Dsnames) == typeLen) && (typeLen == len(cdmetric.Values))) {
-		return nil, errors.New(9, "")
-	}
-
 	var metrics []data.Metric
 	for index := range cdmetric.Dsnames {
 		metrics = append(metrics,
 			data.Metric{
-				Name:  genMetricName(cdmetric, index),
-				Type:  strToMetricType(cdmetric.Dstypes[index]),
-				Value: cdmetric.Values[index],
-				Time:  cdmetric.Time.Time(),
+				Name:     genMetricName(cdmetric, index),
+				Type:     strToMetricType(cdmetric.Dstypes[index]),
+				Value:    cdmetric.Values[index],
+				Time:     cdmetric.Time.Time(),
+				Interval: time.Duration(cdmetric.Interval) * time.Second,
 				Labels: map[string]string{
 					"host":            cdmetric.Host,
 					"plugin_instance": pluginInstance,

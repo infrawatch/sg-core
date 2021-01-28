@@ -15,7 +15,7 @@ type Metric struct {
 	Dstypes        []string     `json:"dstypes"`
 	Dsnames        []string     `json:"dsnames,omitempty"`
 	Time           cdtime.Time  `json:"time"`
-	Interval       float64      `json:"interval"`
+	Interval       int64        `json:"interval"`
 	Host           string       `json:"host"`
 	Plugin         string       `json:"plugin"`
 	PluginInstance string       `json:"plugin_instance,omitempty"`

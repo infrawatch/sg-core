@@ -2,6 +2,7 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -10,7 +11,7 @@ type metric struct {
 	delete func()
 }
 
-func (m *metric) Expired() bool {
+func (m *metric) Expired(i time.Duration) bool {
 	return true
 }
 
@@ -19,7 +20,7 @@ func (m *metric) Delete() {
 }
 
 func TestExpiry(t *testing.T) {
-	ep := newExpiryProc()
+	ep := newExpiryProc(1)
 
 	t.Run("single entry", func(t *testing.T) {
 		deleted := false
