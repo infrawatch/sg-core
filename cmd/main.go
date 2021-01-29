@@ -19,6 +19,7 @@ import (
 func main() {
 	configPath := flag.String("config", "/etc/sg-core.conf.yaml", "configuration file path")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
+	//memprofile := flag.String("memprofile", "", "write cpu profile to file")
 	flag.Usage = func() {
 		fmt.Printf("Usage: %s [OPTIONS]\n\nAvailable options:\n", os.Args[0])
 		flag.PrintDefaults()

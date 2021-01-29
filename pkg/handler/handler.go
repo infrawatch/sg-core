@@ -1,12 +1,15 @@
 package handler
 
-import "github.com/infrawatch/sg-core/pkg/data"
+import (
+	"github.com/infrawatch/sg-core/pkg/bus"
+	"github.com/infrawatch/sg-core/pkg/data"
+)
 
 // package handler contains the interface description for handler plugins
 
 //MetricHandler mangle messages to place on metric bus
 type MetricHandler interface {
-	Handle([]byte) []data.Metric
+	Handle([]byte, bus.PublishFunc)
 }
 
 //EventHandler mangle messages to place on event bus

@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"time"
 
 	"github.com/infrawatch/sg-core/pkg/data"
 )
@@ -11,5 +12,6 @@ import (
 //Application describes application plugin interfaces
 type Application interface {
 	Config([]byte) error
-	Run(context.Context, chan data.Event, chan []data.Metric, chan bool)
+	RecieveMetric(string, time.Time, data.MetricType, time.Duration, float64, []string, []string)
+	Run(context.Context, chan bool)
 }

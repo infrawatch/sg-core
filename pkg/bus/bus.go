@@ -2,6 +2,7 @@ package bus
 
 import (
 	"sync"
+	"time"
 
 	"github.com/infrawatch/sg-core/pkg/data"
 )
@@ -35,26 +36,33 @@ func (eb *EventBus) Publish(e data.Event) {
 	eb.rw.RUnlock() //defer is actually very slow
 }
 
+//RecieveFunc callback type for receiving metrics
+// Arguments are name, timestamp, metric type, interval, value, labels
+type RecieveFunc func(string, time.Time, data.MetricType, time.Duration, float64, []string, []string)
+
+//PublishFunc ...
+type PublishFunc func(string, time.Time, data.MetricType, time.Duration, float64, []string, []string)
+
 //MetricBus bus for data.Metric type
 type MetricBus struct {
-	subscribers []chan []data.Metric
-	rw          sync.RWMutex
+	sync.RWMutex
+	subscribers []RecieveFunc
 }
 
 //Subscribe subscribe to bus
-func (mb *MetricBus) Subscribe(c chan []data.Metric) {
-	mb.rw.Lock()
-	defer mb.rw.Unlock()
-	mb.subscribers = append(mb.subscribers, c)
+func (mb *MetricBus) Subscribe(rf RecieveFunc) {
+	mb.Lock()
+	defer mb.Unlock()
+	mb.subscribers = append(mb.subscribers, rf)
 }
 
 //Publish publish to bus
-func (mb *MetricBus) Publish(m []data.Metric) {
-	mb.rw.RLock()
-	for _, c := range mb.subscribers {
-		go func(c chan []data.Metric, m []data.Metric) {
-			c <- m
-		}(c, m)
+func (mb *MetricBus) Publish(name string, time time.Time, typ data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
+	mb.RLock()
+	for _, rf := range mb.subscribers {
+		go func(rf RecieveFunc) {
+			rf(name, time, typ, interval, value, labelKeys, labelVals)
+		}(rf)
 	}
-	mb.rw.RUnlock() //defer is actually very slow
+	mb.RUnlock()
 }
