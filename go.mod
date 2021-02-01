@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	collectd.org v0.5.0
+	github.com/elastic/go-elasticsearch/v7 v7.5.1-0.20201228183019-1cbb255902f5
 	github.com/go-openapi/errors v0.19.9
 	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/infrawatch/apputils v0.0.0-20201208221556-d59b03ddde31
