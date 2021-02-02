@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	"github.com/go-openapi/errors"
@@ -20,11 +21,51 @@ var (
 )
 
 type collectdMetricsHandler struct {
-	totalMetricsReceived uint64 //total number of internal metrics created from collectd blobs
-	totalDecodeErrors    uint64
+	totalMetricsDecoded   uint64 //total number of collectd metrics decoded from messages
+	totalMessagesRecieved uint64
+	totalDecodeErrors     uint64
+}
+
+func (c *collectdMetricsHandler) Run(ctx context.Context, pf bus.PublishFunc) {
+	for {
+		select {
+		case <-ctx.Done():
+			goto done
+		case <-time.After(time.Second):
+			pf(
+				"sg_total_metric_decode_count",
+				0,
+				data.COUNTER,
+				0,
+				float64(c.totalMetricsDecoded),
+				[]string{"source"},
+				[]string{"SG"},
+			)
+			pf(
+				"sg_total_metric_decode_error_count",
+				0,
+				data.COUNTER,
+				0,
+				float64(c.totalDecodeErrors),
+				[]string{"source"},
+				[]string{"SG"},
+			)
+			pf(
+				"sg_total_msg_recieved_count",
+				0,
+				data.COUNTER,
+				0,
+				float64(c.totalMessagesRecieved),
+				[]string{"source"},
+				[]string{"SG"},
+			)
+		}
+	}
+done:
 }
 
 func (c *collectdMetricsHandler) Handle(blob []byte, pf bus.PublishFunc) {
+	c.totalMessagesRecieved++
 	var err error
 	var cdmetrics *[]collectd.Metric
 
@@ -32,10 +73,7 @@ func (c *collectdMetricsHandler) Handle(blob []byte, pf bus.PublishFunc) {
 
 	if err != nil {
 		c.totalDecodeErrors++
-	}
-
-	if cdmetrics == nil {
-		c.totalDecodeErrors++
+		return
 	}
 
 	for _, cdmetric := range *cdmetrics {
@@ -44,27 +82,6 @@ func (c *collectdMetricsHandler) Handle(blob []byte, pf bus.PublishFunc) {
 			c.totalDecodeErrors++
 		}
 	}
-
-	// metrics = append(metrics, []data.Metric{{
-	// 	Name:     "sg_total_metric_rcv_count",
-	// 	Type:     data.COUNTER,
-	// 	Value:    float64(c.totalMetricsReceived),
-	// 	Time:     time.Now(),
-	// 	Interval: 0,
-	// 	Labels: map[string]string{
-	// 		"source": "SG",
-	// 	},
-	// }, {
-	// 	Name:     "sg_total_metric_decode_error_count",
-	// 	Type:     data.COUNTER,
-	// 	Value:    float64(c.totalDecodeErrors),
-	// 	Time:     time.Now(),
-	// 	Interval: 0,
-	// 	Labels: map[string]string{
-	// 		"source": "SG",
-	// 	},
-	// },
-	// }...)
 
 }
 
@@ -88,14 +105,14 @@ func (c *collectdMetricsHandler) writeMetrics(cdmetric *collectd.Metric, pf bus.
 		}
 		pf(
 			genMetricName(cdmetric, index),
-			cdmetric.Time.Time(),
+			cdmetric.Time.Float(),
 			mType,
 			time.Duration(cdmetric.Interval)*time.Second,
 			cdmetric.Values[index],
 			[]string{"host", "plugin_instance", "type_instance"},
 			[]string{cdmetric.Host, pluginInstance, typeInstance},
 		)
-		c.totalMetricsReceived++
+		c.totalMetricsDecoded++
 	}
 	return nil
 }

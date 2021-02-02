@@ -12,6 +12,6 @@ import (
 //Application describes application plugin interfaces
 type Application interface {
 	Config([]byte) error
-	RecieveMetric(string, time.Time, data.MetricType, time.Duration, float64, []string, []string)
+	RecieveMetric(string, float64, data.MetricType, time.Duration, float64, []string, []string)
 	Run(context.Context, chan bool)
 }

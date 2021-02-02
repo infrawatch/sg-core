@@ -14,7 +14,7 @@ import (
 	"github.com/infrawatch/sg-core/pkg/transport"
 )
 
-const maxBufferSize = 4096
+const maxBufferSize = 16384
 
 var (
 	msgCount int64
@@ -66,7 +66,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 				done <- true
 				return
 			}
-			w(msgBuffer[:n])
+			w(msgBuffer)
 			msgCount++
 		}
 	}()

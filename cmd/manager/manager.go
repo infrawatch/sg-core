@@ -126,14 +126,23 @@ func SetTransportHandlers(name string, handlerNames []string) error {
 //RunTransports spins off tranpsort + handler processes
 func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool) {
 	for name, t := range transports {
+		for _, h := range metricHandlers[name] {
+			wg.Add(1)
+			go func(wg *sync.WaitGroup, h handler.MetricHandler) {
+				defer wg.Done()
+				h.Run(ctx, metricBus.Publish)
+			}(wg, h)
+		}
+
 		wg.Add(1)
 		go func(wg *sync.WaitGroup, t transport.Transport, name string) {
 			defer wg.Done()
-
 			t.Run(ctx, func(blob []byte) {
 				for _, handler := range metricHandlers[name] {
 					handler.Handle(blob, metricBus.Publish)
+
 				}
+
 				for _, handler := range eventHandlers[name] {
 					res, err := handler.Handle(blob)
 					if err != nil {

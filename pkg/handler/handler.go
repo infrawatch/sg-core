@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"context"
+
 	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/data"
 )
@@ -9,6 +11,7 @@ import (
 
 //MetricHandler mangle messages to place on metric bus
 type MetricHandler interface {
+	Run(context.Context, bus.PublishFunc)
 	Handle([]byte, bus.PublishFunc)
 }
 

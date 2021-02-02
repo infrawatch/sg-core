@@ -38,10 +38,10 @@ func (eb *EventBus) Publish(e data.Event) {
 
 //RecieveFunc callback type for receiving metrics
 // Arguments are name, timestamp, metric type, interval, value, labels
-type RecieveFunc func(string, time.Time, data.MetricType, time.Duration, float64, []string, []string)
+type RecieveFunc func(string, float64, data.MetricType, time.Duration, float64, []string, []string)
 
 //PublishFunc ...
-type PublishFunc func(string, time.Time, data.MetricType, time.Duration, float64, []string, []string)
+type PublishFunc func(string, float64, data.MetricType, time.Duration, float64, []string, []string)
 
 //MetricBus bus for data.Metric type
 type MetricBus struct {
@@ -57,7 +57,7 @@ func (mb *MetricBus) Subscribe(rf RecieveFunc) {
 }
 
 //Publish publish to bus
-func (mb *MetricBus) Publish(name string, time time.Time, typ data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
+func (mb *MetricBus) Publish(name string, time float64, typ data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
 	mb.RLock()
 	for _, rf := range mb.subscribers {
 		go func(rf RecieveFunc) {

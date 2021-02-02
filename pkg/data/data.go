@@ -30,7 +30,7 @@ type Metric struct {
 	Labels    map[string]string
 	LabelKeys []string
 	LabelVals []string
-	Time      time.Time
+	Time      float64
 	Type      MetricType
 	Interval  time.Duration
 	Value     float64

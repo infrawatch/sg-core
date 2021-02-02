@@ -10,12 +10,17 @@ import (
 
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/application"
-	"github.com/infrawatch/sg-core/pkg/concurrent"
 	"github.com/infrawatch/sg-core/pkg/config"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+var typeToPromType map[data.MetricType]prometheus.ValueType = map[data.MetricType]prometheus.ValueType{
+	data.COUNTER: prometheus.CounterValue,
+	data.GAUGE:   prometheus.GaugeValue,
+	data.UNTYPED: prometheus.UntypedValue,
+}
 
 type configT struct {
 	Host          string
@@ -55,7 +60,8 @@ type collectorExpiry struct {
 }
 
 func (ce *collectorExpiry) Expired(interval time.Duration) bool {
-	if ce.collector.descriptions.Len() == 0 {
+
+	if syncMapLen(&ce.collector.mProc) == 0 {
 		return true
 	}
 	return false
@@ -87,55 +93,61 @@ func (lw *logWrapper) Infof(format string, a ...interface{}) {
 	lw.l.Info(fmt.Sprintf(format, a...))
 }
 
+// container object for all metric related processes
+type metricProcess struct {
+	description *prometheus.Desc
+	expiry      *metricExpiry
+	metric      *data.Metric
+}
+
 //PromCollector implements prometheus.Collector for incoming metrics. Metrics
 // with differing label dimensions must create separate PromCollectors.
 type PromCollector struct {
-	logger       *logWrapper
-	descriptions *concurrent.Map
-	metrics      *concurrent.Map
-	expirys      *concurrent.Map
-	dimensions   int
+	logger     *logWrapper
+	mProc      sync.Map
+	dimensions int
+	sync.RWMutex
 }
 
 //NewPromCollector PromCollector constructor
-func NewPromCollector(l *logWrapper) *PromCollector {
+func NewPromCollector(l *logWrapper, dimensions int) *PromCollector {
 	return &PromCollector{
-		logger:       l,
-		descriptions: concurrent.NewMap(),
-		metrics:      concurrent.NewMap(),
-		expirys:      concurrent.NewMap(),
+		logger:     l,
+		dimensions: dimensions,
 	}
 }
 
 //Describe implements prometheus.Collector
 func (pc *PromCollector) Describe(ch chan<- *prometheus.Desc) {
-	for desc := range pc.descriptions.Iter() {
-		ch <- desc.Value.(*prometheus.Desc)
-	}
+	pc.RLock()
+	pc.mProc.Range(func(mName interface{}, itf interface{}) bool {
+		ch <- itf.(*metricProcess).description
+		return true
+	})
+	pc.RUnlock()
 }
 
 //Collect implements prometheus.Collector
 func (pc *PromCollector) Collect(ch chan<- prometheus.Metric) {
-	errs := []error{}
-	for item := range pc.metrics.Iter() {
-
-		metric := item.Value.(*data.Metric)
-		desc := pc.descriptions.Get(metric.Name)
-		pMetric, err := prometheus.NewConstMetric(desc.(*prometheus.Desc), metricTypeToPromValueType(metric.Type), metric.Value, metric.LabelVals...)
+	pc.RLock()
+	//fmt.Printf("\nScrapping collector of size %d with %d metrics:\n", pc.dimensions, syncMapLen(&pc.mProc))
+	pc.mProc.Range(func(mName interface{}, itf interface{}) bool {
+		//fmt.Println(mName)
+		mProc := itf.(*metricProcess)
+		pMetric, err := prometheus.NewConstMetric(mProc.description, typeToPromType[mProc.metric.Type], mProc.metric.Value, mProc.metric.LabelVals...)
 		if err != nil {
-			errs = append(errs, err)
-			continue
+			pc.logger.Error("prometheus failed scrapping metric", err)
+			return true
 		}
-		if !metric.Time.IsZero() {
-			ch <- prometheus.NewMetricWithTimestamp(metric.Time, pMetric)
-			continue
+		if mProc.metric.Time != 0 {
+			ch <- prometheus.NewMetricWithTimestamp(time.Unix(int64(mProc.metric.Time), 0), pMetric)
+			return true
 		}
 		ch <- pMetric
-	}
 
-	for _, e := range errs {
-		pc.logger.Error("prometheus failed scrapping metric", e)
-	}
+		return true
+	})
+	pc.RUnlock()
 }
 
 //Dimensions return dimension size of labels in collector
@@ -143,32 +155,12 @@ func (pc *PromCollector) Dimensions() int {
 	return pc.dimensions
 }
 
-// SetDescs update prometheus descriptions
-func (pc *PromCollector) SetDescs(name string, description string, labelKeys []string) error {
-	if !pc.descriptions.Contains(name) {
-		//fmt.Println("set desc")
-		pc.descriptions.Set(name, prometheus.NewDesc(name, description, labelKeys, nil))
-	}
-	return nil
-}
-
 //UpdateMetrics update metrics in collector
-func (pc *PromCollector) UpdateMetrics(name string, time time.Time, typ data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string, ep *expiryProc) {
+func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string, ep *expiryProc) {
+	pc.Lock()
 
-	if !pc.expirys.Contains(name) { //register new metrics in expiry
-		exp := &metricExpiry{
-			delete: func() {
-				pc.metrics.Delete(name)
-				pc.descriptions.Delete(name)
-				pc.expirys.Delete(name)
-				pc.logger.Infof("metric '%s' deleted after %.1fs of stale time", name, interval.Seconds())
-			},
-		}
-		pc.expirys.Set(name, exp)
-		ep.register(exp)
-		exp.keepAlive()
-
-		pc.metrics.Set(name, &data.Metric{
+	mProcItf, found := pc.mProc.LoadOrStore(name, &metricProcess{
+		metric: &data.Metric{
 			Name:      name,
 			LabelKeys: labelKeys,
 			LabelVals: labelVals,
@@ -176,22 +168,32 @@ func (pc *PromCollector) UpdateMetrics(name string, time time.Time, typ data.Met
 			Type:      typ,
 			Interval:  interval,
 			Value:     value,
-		})
-		err := pc.SetDescs(name, "", labelKeys)
-		if err != nil {
-			pc.logger.Error("error setting prometheus collector descriptions", err)
-			return
-		}
+		},
+		description: prometheus.NewDesc(name, "", labelKeys, nil),
+		expiry: &metricExpiry{
+			delete: func() {
+				pc.mProc.Delete(name)
+				pc.logger.Infof("metric '%s' deleted after %.1fs of stale time", name, interval.Seconds())
+			},
+		},
+	})
+
+	mProc := mProcItf.(*metricProcess)
+	if !found {
+		ep.register(mProc.expiry)
+		mProc.expiry.keepAlive()
+		pc.Unlock()
+		return
 	}
 
-	m := pc.metrics.Get(name).(*data.Metric)
-	m.Name = name
-	m.LabelKeys = labelKeys
-	m.LabelVals = labelVals
-	m.Time = time
-	m.Type = typ
-	m.Value = value
-	pc.expirys.Get(name).(*metricExpiry).keepAlive()
+	mProc.metric.Name = name
+	mProc.metric.LabelKeys = labelKeys
+	mProc.metric.LabelVals = labelVals
+	mProc.metric.Time = time
+	mProc.metric.Type = typ
+	mProc.metric.Value = value
+	mProc.expiry.keepAlive()
+	pc.Unlock()
 }
 
 //Prometheus plugin for interfacing with Prometheus. Metrics with the same dimensions
@@ -225,14 +227,14 @@ func New(l *logging.Logger) application.Application {
 }
 
 //RecieveMetric callback function for recieving metric from the bus
-func (p *Prometheus) RecieveMetric(name string, time time.Time, typ data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
+func (p *Prometheus) RecieveMetric(name string, time float64, typ data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
 
-	var expProc *expiryProc
 	labelLen := len(labelKeys)
 	var promCol *PromCollector
-	pc, found := p.collectors.Load(labelLen)
+
+	pc, found := p.collectors.LoadOrStore(labelLen, NewPromCollector(p.logger, labelLen))
+	promCol = pc.(*PromCollector)
 	if !found {
-		promCol = NewPromCollector(p.logger)
 		ce := &collectorExpiry{
 			collector: promCol,
 			delete: func() {
@@ -244,21 +246,15 @@ func (p *Prometheus) RecieveMetric(name string, time time.Time, typ data.MetricT
 		}
 
 		p.collectorExpiryProc.register(ce)
-
-		p.collectors.Store(len(labelKeys), promCol)
 		p.registry.MustRegister(promCol)
-	} else {
-		promCol = pc.(*PromCollector)
 	}
 
-	ep, exists := p.metricExpiryProcs.Load(interval)
-	if !exists {
-		expProc = newExpiryProc(interval)
-		p.metricExpiryProcs.Store(interval, expProc)
+	var expProc *expiryProc
+	ep, found := p.metricExpiryProcs.LoadOrStore(interval, newExpiryProc(interval))
+	expProc = ep.(*expiryProc)
+	if !found {
 		p.logger.Infof("registered expiry process with interval %d", interval)
 		go expProc.run(p.ctx)
-	} else {
-		expProc = ep.(*expiryProc)
 	}
 
 	promCol.UpdateMetrics(name, time, typ, interval, value, labelKeys, labelVals, expProc)
@@ -306,6 +302,10 @@ func (p *Prometheus) Run(ctx context.Context, done chan bool) {
 	go p.collectorExpiryProc.run(ctx)
 
 	<-ctx.Done()
+	p.collectors.Range(func(key interface{}, value interface{}) bool {
+		p.registry.Unregister(value.(*PromCollector))
+		return true
+	})
 	timeout, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	if err := srv.Shutdown(timeout); err != nil {
@@ -326,10 +326,16 @@ func (p *Prometheus) Config(c []byte) error {
 
 // helper functions
 
-func metricTypeToPromValueType(mType data.MetricType) prometheus.ValueType {
-	return map[data.MetricType]prometheus.ValueType{
-		data.COUNTER: prometheus.CounterValue,
-		data.GAUGE:   prometheus.GaugeValue,
-		data.UNTYPED: prometheus.UntypedValue,
-	}[mType]
+func syncMapLen(m *sync.Map) int {
+	len := 0
+	m.Range(func(k interface{}, v interface{}) bool {
+		len++
+		return true
+	})
+	return len
+}
+
+func syncMapContains(m *sync.Map, key interface{}) bool {
+	_, ok := m.Load(key)
+	return ok
 }

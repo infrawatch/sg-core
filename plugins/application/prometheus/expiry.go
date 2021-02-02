@@ -57,7 +57,7 @@ func (ep *expiryProc) run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			goto done
-		case <-time.After(ep.interval):
+		case <-time.After(ep.interval + time.Second):
 			ep.check()
 		}
 	}
