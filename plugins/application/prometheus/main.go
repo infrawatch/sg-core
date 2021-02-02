@@ -159,33 +159,36 @@ func (pc *PromCollector) Dimensions() int {
 func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string, ep *expiryProc) {
 	//pc.Lock()
 
-	mProcItf, found := pc.mProc.LoadOrStore(name, &metricProcess{
-		metric: &data.Metric{
-			Name:      name,
-			LabelKeys: labelKeys,
-			LabelVals: labelVals,
-			Time:      time,
-			Type:      typ,
-			Interval:  interval,
-			Value:     value,
-		},
-		description: prometheus.NewDesc(name, "", labelKeys, nil),
-		expiry: &metricExpiry{
-			delete: func() {
-				pc.mProc.Delete(name)
-				pc.logger.Infof("metric '%s' deleted after %.1fs of stale time", name, interval.Seconds())
-			},
-		},
-	})
-
-	mProc := mProcItf.(*metricProcess)
+	var mProc *metricProcess
+	mProcItf, found := pc.mProc.Load(name)
 	if !found {
+		mProcItf, _ = pc.mProc.LoadOrStore(name, &metricProcess{
+			metric: &data.Metric{
+				Name:      name,
+				LabelKeys: labelKeys,
+				LabelVals: labelVals,
+				Time:      time,
+				Type:      typ,
+				Interval:  interval,
+				Value:     value,
+			},
+			description: prometheus.NewDesc(name, "", labelKeys, nil),
+			expiry: &metricExpiry{
+				delete: func() {
+					pc.mProc.Delete(name)
+					pc.logger.Infof("metric '%s' deleted after %.1fs of stale time", name, interval.Seconds())
+				},
+			},
+		})
+		mProc = mProcItf.(*metricProcess)
 		ep.register(mProc.expiry)
 		mProc.expiry.keepAlive()
 		//pc.Unlock()
 		return
+
 	}
 
+	mProc = mProcItf.(*metricProcess)
 	mProc.metric.Name = name
 	mProc.metric.LabelKeys = labelKeys
 	mProc.metric.LabelVals = labelVals
@@ -232,9 +235,10 @@ func (p *Prometheus) RecieveMetric(name string, time float64, typ data.MetricTyp
 	labelLen := len(labelKeys)
 	var promCol *PromCollector
 
-	pc, found := p.collectors.LoadOrStore(labelLen, NewPromCollector(p.logger, labelLen))
-	promCol = pc.(*PromCollector)
+	pc, found := p.collectors.Load(labelLen)
 	if !found {
+		pc, _ = p.collectors.LoadOrStore(labelLen, NewPromCollector(p.logger, labelLen))
+		promCol = pc.(*PromCollector)
 		ce := &collectorExpiry{
 			collector: promCol,
 			delete: func() {
@@ -247,14 +251,19 @@ func (p *Prometheus) RecieveMetric(name string, time float64, typ data.MetricTyp
 
 		p.collectorExpiryProc.register(ce)
 		p.registry.MustRegister(promCol)
+	} else {
+		promCol = pc.(*PromCollector)
 	}
 
 	var expProc *expiryProc
-	ep, found := p.metricExpiryProcs.LoadOrStore(interval, newExpiryProc(interval))
-	expProc = ep.(*expiryProc)
+	ep, found := p.metricExpiryProcs.Load(interval)
 	if !found {
+		ep, _ = p.metricExpiryProcs.LoadOrStore(interval, newExpiryProc(interval))
+		expProc = ep.(*expiryProc)
 		p.logger.Infof("registered expiry process with interval %d", interval)
 		go expProc.run(p.ctx)
+	} else {
+		expProc = ep.(*expiryProc)
 	}
 
 	promCol.UpdateMetrics(name, time, typ, interval, value, labelKeys, labelVals, expProc)
