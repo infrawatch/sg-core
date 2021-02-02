@@ -119,17 +119,17 @@ func NewPromCollector(l *logWrapper, dimensions int) *PromCollector {
 
 //Describe implements prometheus.Collector
 func (pc *PromCollector) Describe(ch chan<- *prometheus.Desc) {
-	pc.RLock()
+	//pc.RLock()
 	pc.mProc.Range(func(mName interface{}, itf interface{}) bool {
 		ch <- itf.(*metricProcess).description
 		return true
 	})
-	pc.RUnlock()
+	//pc.RUnlock()
 }
 
 //Collect implements prometheus.Collector
 func (pc *PromCollector) Collect(ch chan<- prometheus.Metric) {
-	pc.RLock()
+	//pc.RLock()
 	//fmt.Printf("\nScrapping collector of size %d with %d metrics:\n", pc.dimensions, syncMapLen(&pc.mProc))
 	pc.mProc.Range(func(mName interface{}, itf interface{}) bool {
 		//fmt.Println(mName)
@@ -147,7 +147,7 @@ func (pc *PromCollector) Collect(ch chan<- prometheus.Metric) {
 
 		return true
 	})
-	pc.RUnlock()
+	//pc.RUnlock()
 }
 
 //Dimensions return dimension size of labels in collector
@@ -157,7 +157,7 @@ func (pc *PromCollector) Dimensions() int {
 
 //UpdateMetrics update metrics in collector
 func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string, ep *expiryProc) {
-	pc.Lock()
+	//pc.Lock()
 
 	mProcItf, found := pc.mProc.LoadOrStore(name, &metricProcess{
 		metric: &data.Metric{
@@ -182,7 +182,7 @@ func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.Metri
 	if !found {
 		ep.register(mProc.expiry)
 		mProc.expiry.keepAlive()
-		pc.Unlock()
+		//pc.Unlock()
 		return
 	}
 
@@ -193,7 +193,7 @@ func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.Metri
 	mProc.metric.Type = typ
 	mProc.metric.Value = value
 	mProc.expiry.keepAlive()
-	pc.Unlock()
+	//pc.Unlock()
 }
 
 //Prometheus plugin for interfacing with Prometheus. Metrics with the same dimensions
