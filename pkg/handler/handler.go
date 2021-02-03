@@ -24,5 +24,5 @@ type MetricHandler interface {
 //EventHandler mangle messages to place on event bus
 type EventHandler interface {
 	Identify() string
-	Handle([]byte, bool) (data.Event, error)
+	Handle([]byte, bool) (*data.Event, error)
 }

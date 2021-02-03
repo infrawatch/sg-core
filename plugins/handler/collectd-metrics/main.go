@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-openapi/errors"
@@ -67,6 +68,7 @@ func (c *collectdMetricsHandler) Handle(blob []byte, pf bus.MetricPublishFunc) {
 	c.totalMessagesReceived++
 	var err error
 	var cdmetrics *[]collectd.Metric
+	event := &data.Event{Handler: c.Identify(), Type: data.ERROR}
 
 	cdmetrics, err = collectd.ParseInputByte(blob)
 
@@ -79,6 +81,11 @@ func (c *collectdMetricsHandler) Handle(blob []byte, pf bus.MetricPublishFunc) {
 		err = c.writeMetrics(&cdmetric, pf)
 		if err != nil {
 			c.totalDecodeErrors++
+			if reportErrors {
+				event.Message = fmt.Sprintf(`"error": "%s"`, err)
+			} else {
+				event = nil
+			}
 		}
 	}
 }

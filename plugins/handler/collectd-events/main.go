@@ -49,10 +49,10 @@ func sanitize(jsondata []byte) string {
 	return output
 }
 
-//Handle implements the data.collectdEventsHandler interface
-func (c *collectdEventsHandler) Handle(msg []byte, reportErrors bool) (data.Event, error) {
+//Handle implements the data.EventsHandler interface
+func (c *collectdEventsHandler) Handle(msg []byte, reportErrors bool) (*data.Event, error) {
 	var err error
-	event := data.Event{Handler: c.Identify()}
+	event := &data.Event{Handler: c.Identify()}
 
 	if verify(msg) {
 		event.Type = data.EVENT
@@ -63,6 +63,8 @@ func (c *collectdEventsHandler) Handle(msg []byte, reportErrors bool) (data.Even
 		if reportErrors {
 			event.Type = data.ERROR
 			event.Message = fmt.Sprintf(`"error": "%s", "msg": "%s"`, message, msg)
+		} else {
+			event = nil
 		}
 	}
 

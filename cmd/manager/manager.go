@@ -171,10 +171,11 @@ func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool, repo
 					res, err := handler.Handle(blob, report)
 					if err != nil {
 						logger.Metadata(logging.Metadata{"error": err, "handler": fmt.Sprintf("%s[%s]", handler.Identify(), name)})
-						logger.Error("failed handling event message")
-						continue
+						logger.Warn("failed handling event message")
 					}
-					eventBus.Publish(res)
+					if res != nil {
+						eventBus.Publish(*res)
+					}
 				}
 			}, done)
 		}(wg, t, name)

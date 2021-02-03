@@ -48,10 +48,10 @@ func sanitize(jsondata []byte) string {
 	return sanitized
 }
 
-//Handle implements the data.collectdEventsHandler interface
-func (c *ceilometerEventsHandler) Handle(msg []byte, reportErrors bool) (data.Event, error) {
+//Handle implements the data.EventsHandler interface
+func (c *ceilometerEventsHandler) Handle(msg []byte, reportErrors bool) (*data.Event, error) {
 	var err error
-	event := data.Event{Handler: c.Identify()}
+	event := &data.Event{Handler: c.Identify()}
 
 	if verify(msg) {
 		event.Type = data.EVENT
@@ -62,6 +62,8 @@ func (c *ceilometerEventsHandler) Handle(msg []byte, reportErrors bool) (data.Ev
 		if reportErrors {
 			event.Type = data.ERROR
 			event.Message = fmt.Sprintf(`"error": "%s", "msg": "%s"`, message, string(msg))
+		} else {
+			event = nil
 		}
 	}
 
