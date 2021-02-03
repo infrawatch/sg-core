@@ -90,10 +90,9 @@ func (es *Elasticsearch) Run(ctx context.Context, eChan chan data.Event, mChan c
 						es.logger.Warn("received event from unknown data source - disregarding")
 					} else {
 						record := make(map[string]interface{})
-
 						err := json.Unmarshal([]byte(event.Message), &record)
 						if err != nil {
-							es.logger.Metadata(logging.Metadata{"plugin": "elasticsearch", "event": record, "error": err})
+							es.logger.Metadata(logging.Metadata{"plugin": "elasticsearch", "event": event, "error": err})
 							es.logger.Error("failed to unmarshal event - disregarding")
 						} else {
 							// format message if needed

@@ -44,7 +44,7 @@ var eventMessages = []string{
 		"\\\"specificProblem\\\":\\\"process bla.py (8537) down\\\",\\\"vfStatus\\\":\\\"Ready to terminate\\\"}}\"}," +
 		"\"startsAt\":\"2018-02-16T14:25:19.579573212Z\"}]",
 	`[{"labels":{"alertname":"collectd_interface_if_octets","instance":"localhost.localdomain","interface":"lo","severity":"FAILURE",` +
-		`service":"collectd"},"annotations":{"summary":"Host localhost.localdomain, plugin interface (instance lo) type if_octets: ` +
+		`"service":"collectd"},"annotations":{"summary":"Host localhost.localdomain, plugin interface (instance lo) type if_octets: ` +
 		`Data source \"rx\" is currently 43596.224329. That is above the failure threshold of 0.000000.","DataSource":"rx",` +
 		`"CurrentValue":"43596.2243286703","WarningMin":"nan","WarningMax":"nan","FailureMin":"nan","FailureMax":"0"},` +
 		`"startsAt":"2019-09-18T21:11:19.281603240Z"}]`,
