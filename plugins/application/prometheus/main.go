@@ -223,8 +223,8 @@ func New(l *logging.Logger) application.Application {
 	}
 }
 
-//RecieveMetric callback function for recieving metric from the bus
-func (p *Prometheus) RecieveMetric(name string, time float64, typ data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
+//ReceiveMetric callback function for recieving metric from the bus
+func (p *Prometheus) ReceiveMetric(name string, t float64, typ data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
 	p.Lock()
 	labelLen := len(labelKeys)
 	var promCol *PromCollector
@@ -242,10 +242,13 @@ func (p *Prometheus) RecieveMetric(name string, time float64, typ data.MetricTyp
 				p.collectors.Delete(len(labelKeys))
 			},
 		}
-
+		numLabels := fmt.Sprintf("%d labels", labelLen)
+		if labelLen == 1 {
+			numLabels = "1 label"
+		}
 		p.collectorExpiryProc.register(ce)
 		p.registry.MustRegister(promCol)
-		p.logger.Infof("registered collector tracking metrics with %d dimensions", labelLen)
+		p.logger.Infof("registered collector tracking metrics with %s", numLabels)
 	} else {
 		promCol = pc.(*PromCollector)
 	}
@@ -255,13 +258,13 @@ func (p *Prometheus) RecieveMetric(name string, time float64, typ data.MetricTyp
 	if !found {
 		ep, _ = p.metricExpiryProcs.LoadOrStore(interval, newExpiryProc(interval))
 		expProc = ep.(*expiryProc)
-		p.logger.Infof("registered expiry process with interval %d", interval)
+		p.logger.Infof("registered expiry process for metrics with interval %ds", interval/time.Second)
 		go expProc.run(p.ctx)
 	} else {
 		expProc = ep.(*expiryProc)
 	}
 
-	promCol.UpdateMetrics(name, time, typ, interval, value, labelKeys, labelVals, expProc)
+	promCol.UpdateMetrics(name, t, typ, interval, value, labelKeys, labelVals, expProc)
 	p.Unlock()
 }
 
@@ -327,7 +330,6 @@ func (p *Prometheus) Config(c []byte) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("configuration withtimestamp: %t\n", p.configuration.WithTimestamp)
 	return nil
 }
 

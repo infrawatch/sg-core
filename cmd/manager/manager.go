@@ -17,6 +17,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+//errors
+var (
+	//ErrAppNotReceiver return if application plugin does not implement any receiver. In this case, it will receive no messages from the internal buses
+	ErrAppNotReceiver = errors.New("application plugin does not implement either application.MetricReceiver or application.EventReceiver")
+)
 var (
 	transports     map[string]transport.Transport
 	metricHandlers map[string][]handler.MetricHandler
@@ -95,6 +100,26 @@ func InitApplication(name string, config interface{}) error {
 	if err != nil {
 		return err
 	}
+
+	// does it implement MetricReceiver?
+	// does it implement EventReceiver?
+	var mReceiver bool
+	var eReceiver bool
+	var itf interface{} = applications[name]
+	if r, ok := itf.(application.MetricReceiver); ok {
+		mReceiver = true
+		metricBus.Subscribe(r.ReceiveMetric)
+	}
+
+	if _, ok := itf.(application.EventReceiver); ok {
+		eReceiver = true
+		//TODO: subscribe to event bus here
+	}
+
+	if !(mReceiver || eReceiver) {
+		return ErrAppNotReceiver
+	}
+
 	return nil
 }
 
@@ -140,7 +165,6 @@ func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool) {
 			t.Run(ctx, func(blob []byte) {
 				for _, handler := range metricHandlers[name] {
 					handler.Handle(blob, metricBus.Publish)
-
 				}
 
 				for _, handler := range eventHandlers[name] {
@@ -160,11 +184,6 @@ func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool) {
 //RunApplications spins off application processes
 func RunApplications(ctx context.Context, wg *sync.WaitGroup, done chan bool) {
 	for _, a := range applications {
-		// eChan := make(chan data.Event, 1000)
-		// mChan := make(chan []data.Metric, 1000)
-
-		// eventBus.Subscribe(eChan)
-		metricBus.Subscribe(a.RecieveMetric)
 		wg.Add(1)
 		go func(wg *sync.WaitGroup, a application.Application) {
 			defer wg.Done()

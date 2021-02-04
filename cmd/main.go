@@ -89,9 +89,14 @@ func main() {
 	for _, aConfig := range configuration.Applications {
 		err = manager.InitApplication(aConfig.Name, aConfig.Config)
 		if err != nil {
-			logger.Metadata(log.Metadata{"application": aConfig.Name, "error": err})
-			logger.Error("failed configuring application")
-			continue
+			if err == manager.ErrAppNotReceiver {
+				logger.Metadata(log.Metadata{"application": aConfig.Name})
+				logger.Warn(err.Error())
+			} else {
+				logger.Metadata(log.Metadata{"application": aConfig.Name, "error": err})
+				logger.Error("failed configuring application")
+				continue
+			}
 		}
 		logger.Metadata(log.Metadata{"application": aConfig.Name})
 		logger.Info("loaded application plugin")
