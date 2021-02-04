@@ -95,7 +95,7 @@ applications:
     config:
       host: localhost
       port: 8081
-      metrictimeout: 30
+      withtimestamp: false
 ```
 
 ## Run

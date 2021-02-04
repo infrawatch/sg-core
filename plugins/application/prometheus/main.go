@@ -25,7 +25,7 @@ var typeToPromType map[data.MetricType]prometheus.ValueType = map[data.MetricTyp
 type configT struct {
 	Host          string
 	Port          int `validate:"required"`
-	MetricTimeout int
+	WithTimestamp bool
 }
 
 // used to expire stale metrics
@@ -103,13 +103,14 @@ type metricProcess struct {
 //PromCollector implements prometheus.Collector for incoming metrics. Metrics
 // with differing label dimensions must create separate PromCollectors.
 type PromCollector struct {
-	logger     *logWrapper
-	mProc      sync.Map
-	dimensions int
+	logger        *logWrapper
+	mProc         sync.Map
+	dimensions    int
+	withtimestamp bool
 }
 
 //NewPromCollector PromCollector constructor
-func NewPromCollector(l *logWrapper, dimensions int) *PromCollector {
+func NewPromCollector(l *logWrapper, dimensions int, withtimestamp bool) *PromCollector {
 	return &PromCollector{
 		logger:     l,
 		dimensions: dimensions,
@@ -135,12 +136,15 @@ func (pc *PromCollector) Collect(ch chan<- prometheus.Metric) {
 			pc.logger.Error("prometheus failed scrapping metric", err)
 			return true
 		}
-		if mProc.metric.Time != 0 {
+		if pc.withtimestamp {
+			if mProc.metric.Time == 0 {
+				ch <- pMetric
+				return true
+			}
 			ch <- prometheus.NewMetricWithTimestamp(time.Unix(int64(mProc.metric.Time), 0), pMetric)
 			return true
 		}
 		ch <- pMetric
-
 		return true
 	})
 }
@@ -206,9 +210,8 @@ type Prometheus struct {
 func New(l *logging.Logger) application.Application {
 	return &Prometheus{
 		configuration: configT{
-			Host:          "127.0.0.1",
-			Port:          3000,
-			MetricTimeout: 20,
+			Host: "127.0.0.1",
+			Port: 3000,
 		},
 		logger: &logWrapper{
 			l:      l,
@@ -228,7 +231,7 @@ func (p *Prometheus) RecieveMetric(name string, time float64, typ data.MetricTyp
 
 	pc, found := p.collectors.Load(labelLen)
 	if !found {
-		pc, _ = p.collectors.LoadOrStore(labelLen, NewPromCollector(p.logger, labelLen))
+		pc, _ = p.collectors.LoadOrStore(labelLen, NewPromCollector(p.logger, labelLen, p.configuration.WithTimestamp))
 		promCol = pc.(*PromCollector)
 		ce := &collectorExpiry{
 			collector: promCol,
@@ -324,6 +327,7 @@ func (p *Prometheus) Config(c []byte) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("configuration withtimestamp: %t\n", p.configuration.WithTimestamp)
 	return nil
 }
 
