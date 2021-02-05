@@ -11,13 +11,17 @@ import (
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/application"
 	"github.com/infrawatch/sg-core/pkg/bus"
-	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/infrawatch/sg-core/pkg/handler"
 	"github.com/infrawatch/sg-core/pkg/transport"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
+//errors
+var (
+	//ErrAppNotReceiver return if application plugin does not implement any receiver. In this case, it will receive no messages from the internal buses
+	ErrAppNotReceiver = errors.New("application plugin does not implement either application.MetricReceiver or application.EventReceiver")
+)
 var (
 	transports     map[string]transport.Transport
 	metricHandlers map[string][]handler.MetricHandler
@@ -35,26 +39,6 @@ func init() {
 	eventHandlers = map[string][]handler.EventHandler{}
 	applications = map[string]application.Application{}
 	pluginPath = "/usr/lib64/sg-core"
-}
-
-func eventHandleDecorator(data []byte, call func([]byte) (data.Event, error)) {
-	e, err := call(data)
-	if err != nil {
-		logger.Metadata(logging.Metadata{"error": err})
-		logger.Error("cannot publish event to event bus")
-		return
-	}
-	eventBus.Publish(e)
-}
-
-func eventMetricDecorator(data []byte, call func([]byte) ([]data.Metric, error)) {
-	m, err := call(data)
-	if err != nil {
-		logger.Metadata(logging.Metadata{"error": err})
-		logger.Error("cannot publish event to event bus")
-		return
-	}
-	metricBus.Publish(m)
 }
 
 //SetPluginDir set directory path containing plugin binaries
@@ -116,6 +100,26 @@ func InitApplication(name string, config interface{}) error {
 	if err != nil {
 		return err
 	}
+
+	// does it implement MetricReceiver?
+	// does it implement EventReceiver?
+	var mReceiver bool
+	var eReceiver bool
+	var itf interface{} = applications[name]
+	if r, ok := itf.(application.MetricReceiver); ok {
+		mReceiver = true
+		metricBus.Subscribe(r.ReceiveMetric)
+	}
+
+	if _, ok := itf.(application.EventReceiver); ok {
+		eReceiver = true
+		//TODO: subscribe to event bus here
+	}
+
+	if !(mReceiver || eReceiver) {
+		return ErrAppNotReceiver
+	}
+
 	return nil
 }
 
@@ -147,16 +151,22 @@ func SetTransportHandlers(name string, handlerNames []string) error {
 //RunTransports spins off tranpsort + handler processes
 func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool) {
 	for name, t := range transports {
+		for _, h := range metricHandlers[name] {
+			wg.Add(1)
+			go func(wg *sync.WaitGroup, h handler.MetricHandler) {
+				defer wg.Done()
+				h.Run(ctx, metricBus.Publish)
+			}(wg, h)
+		}
+
 		wg.Add(1)
 		go func(wg *sync.WaitGroup, t transport.Transport, name string) {
 			defer wg.Done()
 			t.Run(ctx, func(blob []byte) {
 				for _, handler := range metricHandlers[name] {
-					res := handler.Handle(blob)
-					if res != nil {
-						metricBus.Publish(res)
-					}
+					handler.Handle(blob, metricBus.Publish)
 				}
+
 				for _, handler := range eventHandlers[name] {
 					res, err := handler.Handle(blob)
 					if err != nil {
@@ -174,15 +184,10 @@ func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool) {
 //RunApplications spins off application processes
 func RunApplications(ctx context.Context, wg *sync.WaitGroup, done chan bool) {
 	for _, a := range applications {
-		eChan := make(chan data.Event)
-		mChan := make(chan []data.Metric)
-
-		eventBus.Subscribe(eChan)
-		metricBus.Subscribe(mChan)
 		wg.Add(1)
 		go func(wg *sync.WaitGroup, a application.Application) {
 			defer wg.Done()
-			a.Run(ctx, eChan, mChan, done)
+			a.Run(ctx, done)
 		}(wg, a)
 	}
 }

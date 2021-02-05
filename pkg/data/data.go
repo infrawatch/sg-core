@@ -26,10 +26,12 @@ type Event struct {
 
 // Metric internal metric type
 type Metric struct {
-	Name     string
-	Labels   map[string]string
-	Time     time.Time
-	Type     MetricType
-	Interval time.Duration
-	Value    float64
+	Name      string
+	Labels    map[string]string
+	LabelKeys []string
+	LabelVals []string
+	Time      float64
+	Type      MetricType
+	Interval  time.Duration
+	Value     float64
 }

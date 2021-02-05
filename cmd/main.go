@@ -19,6 +19,7 @@ import (
 func main() {
 	configPath := flag.String("config", "/etc/sg-core.conf.yaml", "configuration file path")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
+	//memprofile := flag.String("memprofile", "", "write cpu profile to file")
 	flag.Usage = func() {
 		fmt.Printf("Usage: %s [OPTIONS]\n\nAvailable options:\n", os.Args[0])
 		flag.PrintDefaults()
@@ -88,9 +89,14 @@ func main() {
 	for _, aConfig := range configuration.Applications {
 		err = manager.InitApplication(aConfig.Name, aConfig.Config)
 		if err != nil {
-			logger.Metadata(log.Metadata{"application": aConfig.Name, "error": err})
-			logger.Error("failed configuring application")
-			continue
+			if err == manager.ErrAppNotReceiver {
+				logger.Metadata(log.Metadata{"application": aConfig.Name})
+				logger.Warn(err.Error())
+			} else {
+				logger.Metadata(log.Metadata{"application": aConfig.Name, "error": err})
+				logger.Error("failed configuring application")
+				continue
+			}
 		}
 		logger.Metadata(log.Metadata{"application": aConfig.Name})
 		logger.Info("loaded application plugin")
@@ -104,7 +110,7 @@ func main() {
 	wg := new(sync.WaitGroup)
 	//run main processes
 
-	pluginDone := make(chan bool) //notified if a plugin stops execution before main or interrupt recieved
+	pluginDone := make(chan bool) //notified if a plugin stops execution before main or interrupt Received
 	interrupt := make(chan bool)
 	manager.RunTransports(ctx, wg, pluginDone)
 	manager.RunApplications(ctx, wg, pluginDone)

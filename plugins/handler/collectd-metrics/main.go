@@ -1,73 +1,93 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	"github.com/go-openapi/errors"
+	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/infrawatch/sg-core/pkg/handler"
 	"github.com/infrawatch/sg-core/plugins/handler/collectd-metrics/pkg/collectd"
 )
 
+var (
+	strToMetricType map[string]data.MetricType = map[string]data.MetricType{
+		"counter":  data.COUNTER,
+		"absolute": data.UNTYPED,
+		"derive":   data.COUNTER,
+		"gauge":    data.GAUGE,
+	}
+)
+
 type collectdMetricsHandler struct {
-	totalMetricsReceived uint64 //total number of internal metrics created from collectd blobs
-	totalDecodeErrors    uint64
+	totalMetricsDecoded   uint64 //total number of collectd metrics decoded from messages
+	totalMessagesReceived uint64
+	totalDecodeErrors     uint64
 }
 
-func (c *collectdMetricsHandler) Handle(blob []byte) []data.Metric {
+func (c *collectdMetricsHandler) Run(ctx context.Context, pf bus.MetricPublishFunc) {
+	for {
+		select {
+		case <-ctx.Done():
+			goto done
+		case <-time.After(time.Second):
+			pf(
+				"sg_total_metric_decode_count",
+				0,
+				data.COUNTER,
+				0,
+				float64(c.totalMetricsDecoded),
+				[]string{"source"},
+				[]string{"SG"},
+			)
+			pf(
+				"sg_total_metric_decode_error_count",
+				0,
+				data.COUNTER,
+				0,
+				float64(c.totalDecodeErrors),
+				[]string{"source"},
+				[]string{"SG"},
+			)
+			pf(
+				"sg_total_msg_Received_count",
+				0,
+				data.COUNTER,
+				0,
+				float64(c.totalMessagesReceived),
+				[]string{"source"},
+				[]string{"SG"},
+			)
+		}
+	}
+done:
+}
 
+func (c *collectdMetricsHandler) Handle(blob []byte, pf bus.MetricPublishFunc) {
+	c.totalMessagesReceived++
 	var err error
 	var cdmetrics *[]collectd.Metric
 
 	cdmetrics, err = collectd.ParseInputByte(blob)
-	metrics := []data.Metric{}
 
 	if err != nil {
 		c.totalDecodeErrors++
-		return metrics
-	}
-
-	var ms []data.Metric
-	if cdmetrics == nil {
-		c.totalDecodeErrors++
-		return metrics
+		return
 	}
 
 	for _, cdmetric := range *cdmetrics {
-		ms, err = c.createMetrics(&cdmetric)
+		err = c.writeMetrics(&cdmetric, pf)
 		if err != nil {
 			c.totalDecodeErrors++
 		}
-		metrics = append(metrics, ms...)
 	}
 
-	metrics = append(metrics, []data.Metric{{
-		Name:     "sg_total_metric_rcv_count",
-		Type:     data.COUNTER,
-		Value:    float64(c.totalMetricsReceived),
-		Time:     time.Now(),
-		Interval: 0,
-		Labels: map[string]string{
-			"source": "SG",
-		},
-	}, {
-		Name:     "sg_total_metric_decode_error_count",
-		Type:     data.COUNTER,
-		Value:    float64(c.totalDecodeErrors),
-		Time:     time.Now(),
-		Interval: 0,
-		Labels: map[string]string{
-			"source": "SG",
-		},
-	},
-	}...)
-
-	return metrics
 }
 
-func (c *collectdMetricsHandler) createMetrics(cdmetric *collectd.Metric) ([]data.Metric, error) {
+func (c *collectdMetricsHandler) writeMetrics(cdmetric *collectd.Metric, pf bus.MetricPublishFunc) error {
 	if !validateMetric(cdmetric) {
-		return nil, errors.New(0, "")
+		return errors.New(0, "")
 	}
 	pluginInstance := cdmetric.PluginInstance
 	if pluginInstance == "" {
@@ -78,23 +98,23 @@ func (c *collectdMetricsHandler) createMetrics(cdmetric *collectd.Metric) ([]dat
 		typeInstance = "base"
 	}
 
-	var metrics []data.Metric
 	for index := range cdmetric.Dsnames {
-		metrics = append(metrics,
-			data.Metric{
-				Name:     genMetricName(cdmetric, index),
-				Type:     strToMetricType(cdmetric.Dstypes[index]),
-				Value:    cdmetric.Values[index],
-				Time:     cdmetric.Time.Time(),
-				Interval: time.Duration(cdmetric.Interval) * time.Second,
-				Labels: map[string]string{
-					"host":            cdmetric.Host,
-					"plugin_instance": pluginInstance,
-					"type_instance":   typeInstance,
-				}})
-		c.totalMetricsReceived++
+		mType, found := strToMetricType[cdmetric.Dstypes[index]]
+		if !found {
+			mType = data.UNTYPED
+		}
+		pf(
+			genMetricName(cdmetric, index),
+			cdmetric.Time.Float(),
+			mType,
+			time.Duration(cdmetric.Interval)*time.Second,
+			cdmetric.Values[index],
+			[]string{"host", "plugin_instance", "type_instance"},
+			[]string{cdmetric.Host, pluginInstance, typeInstance},
+		)
+		c.totalMetricsDecoded++
 	}
-	return metrics, nil
+	return nil
 }
 
 func validateMetric(cdmetric *collectd.Metric) bool {
@@ -131,18 +151,6 @@ func genMetricName(cdmetric *collectd.Metric, index int) (name string) {
 	}
 
 	return
-}
-
-func strToMetricType(msg string) data.MetricType {
-	if mt, ok := map[string]data.MetricType{
-		"counter":  data.COUNTER,
-		"absolute": data.UNTYPED,
-		"derive":   data.COUNTER,
-		"gauge":    data.GAUGE,
-	}[msg]; ok {
-		return mt
-	}
-	return data.UNTYPED
 }
 
 //New create new collectdMetricsHandler object

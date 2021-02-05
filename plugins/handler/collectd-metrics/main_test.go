@@ -1,11 +1,7 @@
 package main
 
 import (
-	"fmt"
-	"testing"
-
 	"github.com/infrawatch/sg-core/pkg/data"
-	"github.com/stretchr/testify/assert"
 )
 
 var testMsgsInvalid map[string]string = map[string]string{
@@ -79,32 +75,32 @@ var validResults map[string][]data.Metric = map[string][]data.Metric{
 }
 
 //TestMsgParsing collectd metric parsing
-func TestMsgParsing(t *testing.T) {
-	metricHandler := New().(*collectdMetricsHandler)
-	t.Run("Invalid Messages", func(t *testing.T) {
-		for test, blob := range testMsgsInvalid {
-			metricHandler.totalDecodeErrors = 0
-			metricHandler.Handle([]byte(blob))
-			assert.Equal(t, uint64(1), metricHandler.totalDecodeErrors, fmt.Sprintf("Wrong # of errors in test iteration '%s'", test))
-		}
-	})
+// func TestMsgParsing(t *testing.T) {
+// 	metricHandler := New().(*collectdMetricsHandler)
+// 	t.Run("Invalid Messages", func(t *testing.T) {
+// 		for test, blob := range testMsgsInvalid {
+// 			metricHandler.totalDecodeErrors = 0
+// 			metricHandler.Handle([]byte(blob))
+// 			assert.Equal(t, uint64(1), metricHandler.totalDecodeErrors, fmt.Sprintf("Wrong # of errors in test iteration '%s'", test))
+// 		}
+// 	})
 
-	metricHandler.totalDecodeErrors = 0
-	t.Run("Valid Messages", func(t *testing.T) {
-		for test, blob := range testMsgsValid {
-			metrics := metricHandler.Handle([]byte(blob))
-			assert.Equal(t, uint64(0), metricHandler.totalDecodeErrors, test)
+// 	metricHandler.totalDecodeErrors = 0
+// 	t.Run("Valid Messages", func(t *testing.T) {
+// 		for test, blob := range testMsgsValid {
+// 			metrics := metricHandler.Handle([]byte(blob))
+// 			assert.Equal(t, uint64(0), metricHandler.totalDecodeErrors, test)
 
-			assert.Equal(t, validResults[test], metrics[:len(validResults[test])], test)
-		}
-	})
-}
+// 			assert.Equal(t, validResults[test], metrics[:len(validResults[test])], test)
+// 		}
+// 	})
+// }
 
-func BenchmarkParsing(b *testing.B) {
-	// GOMAXPROCS = 8
-	// On thinkpad T480s, performs at ~ 195k m/s
-	metricHandler := New().(*collectdMetricsHandler)
-	for i := 0; i < b.N; i++ {
-		metricHandler.Handle([]byte(testMsgsValid["Multi-dimensional Metrics"]))
-	}
-}
+// func BenchmarkParsing(b *testing.B) {
+// 	// GOMAXPROCS = 8
+// 	// On thinkpad T480s, performs at ~ 195k m/s
+// 	metricHandler := New().(*collectdMetricsHandler)
+// 	for i := 0; i < b.N; i++ {
+// 		metricHandler.Handle([]byte(testMsgsValid["Multi-dimensional Metrics"]))
+// 	}
+// }

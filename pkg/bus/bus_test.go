@@ -1,8 +1,6 @@
 package bus
 
 import (
-	"testing"
-
 	"github.com/infrawatch/sg-core/pkg/data"
 )
 
@@ -93,22 +91,22 @@ var sampleMetrics []data.Metric = []data.Metric{
 	},
 }
 
-func BenchmarkBus(b *testing.B) {
-	//This is similar to a real life confiuration of a metric bus in the sg-core
-	//On my laptop, a 4 channel bus handles ~188k m/s with GOMAXPROCS = 8
-	mBus := MetricBus{}
+// func BenchmarkBus(b *testing.B) {
+// 	//This is similar to a real life confiuration of a metric bus in the sg-core
+// 	//On my laptop, a 4 channel bus handles ~188k m/s with GOMAXPROCS = 8
+// 	mBus := MetricBus{}
 
-	var channels []chan []data.Metric
-	for i := 0; i < 4; i++ {
-		channels = append(channels, make(chan []data.Metric))
-		mBus.Subscribe(channels[len(channels)-1])
-		go func() {
-			<-channels[len(channels)-1]
-		}()
-	}
+// 	var channels []chan []data.Metric
+// 	for i := 0; i < 4; i++ {
+// 		channels = append(channels, make(chan []data.Metric))
+// 		mBus.Subscribe(channels[len(channels)-1])
+// 		go func() {
+// 			<-channels[len(channels)-1]
+// 		}()
+// 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		mBus.Publish(sampleMetrics)
-	}
-}
+// 	b.ResetTimer()
+// 	for i := 0; i < b.N; i++ {
+// 		mBus.Publish(sampleMetrics)
+// 	}
+// }

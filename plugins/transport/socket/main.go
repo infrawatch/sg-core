@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"time"
 
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/config"
@@ -13,7 +14,18 @@ import (
 	"github.com/infrawatch/sg-core/pkg/transport"
 )
 
-const maxBufferSize = 4096
+const maxBufferSize = 16384
+
+var (
+	msgCount int64
+	lastVal  int64
+)
+
+func rate() int64 {
+	rate := msgCount - lastVal
+	lastVal = msgCount
+	return rate
+}
 
 type configT struct {
 	Path string `validate:"required"`
@@ -54,11 +66,22 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 				done <- true
 				return
 			}
-			w(msgBuffer[:n])
+			w(msgBuffer)
+			msgCount++
 		}
 	}()
 
-	<-ctx.Done()
+	for {
+		select {
+		case <-ctx.Done():
+			goto Done
+		default:
+			time.Sleep(time.Second)
+			s.logger.Metadata(logging.Metadata{"plugin": "socket"})
+			s.logger.Debug(fmt.Sprintf("receiving %d msg/s", rate()))
+		}
+	}
+Done:
 	pc.Close()
 	os.Remove(s.conf.Path)
 	s.logger.Metadata(logging.Metadata{"plugin": "socket"})
@@ -67,7 +90,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 
 //Listen ...
 func (s *Socket) Listen(e data.Event) {
-	fmt.Printf("Recieved event: %v\n", e)
+	fmt.Printf("Received event: %v\n", e)
 }
 
 //Config load configurations
