@@ -256,7 +256,7 @@ func (p *Prometheus) ReceiveMetric(name string, t float64, typ data.MetricType, 
 	var expProc *expiryProc
 	ep, found := p.metricExpiryProcs.Load(interval)
 	if !found {
-		ep, _ = p.metricExpiryProcs.LoadOrStore(interval, newExpiryProc(interval))
+		ep, _ = p.metricExpiryProcs.LoadOrStore(interval, newExpiryProc(interval*2))
 		expProc = ep.(*expiryProc)
 		p.logger.Infof("registered expiry process for metrics with interval %ds", interval/time.Second)
 		go expProc.run(p.ctx)
