@@ -36,9 +36,9 @@ func (eb *EventBus) Publish(e data.Event) {
 	eb.rw.RUnlock() //defer is actually very slow
 }
 
-//RecieveFunc callback type for receiving metrics
+//ReceiveFunc callback type for receiving metrics
 // Arguments are name, timestamp, metric type, interval, value, labels
-type MetricRecieveFunc func(string, float64, data.MetricType, time.Duration, float64, []string, []string)
+type MetricReceiveFunc func(string, float64, data.MetricType, time.Duration, float64, []string, []string)
 
 //PublishFunc ...
 type MetricPublishFunc func(string, float64, data.MetricType, time.Duration, float64, []string, []string)
@@ -46,11 +46,11 @@ type MetricPublishFunc func(string, float64, data.MetricType, time.Duration, flo
 //MetricBus bus for data.Metric type
 type MetricBus struct {
 	sync.RWMutex
-	subscribers []MetricRecieveFunc
+	subscribers []MetricReceiveFunc
 }
 
 //Subscribe subscribe to bus
-func (mb *MetricBus) Subscribe(rf MetricRecieveFunc) {
+func (mb *MetricBus) Subscribe(rf MetricReceiveFunc) {
 	mb.Lock()
 	defer mb.Unlock()
 	mb.subscribers = append(mb.subscribers, rf)
@@ -60,7 +60,7 @@ func (mb *MetricBus) Subscribe(rf MetricRecieveFunc) {
 func (mb *MetricBus) Publish(name string, time float64, typ data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
 	mb.RLock()
 	for _, rf := range mb.subscribers {
-		go func(rf MetricRecieveFunc) {
+		go func(rf MetricReceiveFunc) {
 			rf(name, time, typ, interval, value, labelKeys, labelVals)
 		}(rf)
 	}

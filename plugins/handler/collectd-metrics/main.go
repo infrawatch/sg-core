@@ -22,7 +22,7 @@ var (
 
 type collectdMetricsHandler struct {
 	totalMetricsDecoded   uint64 //total number of collectd metrics decoded from messages
-	totalMessagesRecieved uint64
+	totalMessagesReceived uint64
 	totalDecodeErrors     uint64
 }
 
@@ -51,11 +51,11 @@ func (c *collectdMetricsHandler) Run(ctx context.Context, pf bus.MetricPublishFu
 				[]string{"SG"},
 			)
 			pf(
-				"sg_total_msg_recieved_count",
+				"sg_total_msg_Received_count",
 				0,
 				data.COUNTER,
 				0,
-				float64(c.totalMessagesRecieved),
+				float64(c.totalMessagesReceived),
 				[]string{"source"},
 				[]string{"SG"},
 			)
@@ -65,7 +65,7 @@ done:
 }
 
 func (c *collectdMetricsHandler) Handle(blob []byte, pf bus.MetricPublishFunc) {
-	c.totalMessagesRecieved++
+	c.totalMessagesReceived++
 	var err error
 	var cdmetrics *[]collectd.Metric
 

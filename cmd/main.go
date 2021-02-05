@@ -110,7 +110,7 @@ func main() {
 	wg := new(sync.WaitGroup)
 	//run main processes
 
-	pluginDone := make(chan bool) //notified if a plugin stops execution before main or interrupt recieved
+	pluginDone := make(chan bool) //notified if a plugin stops execution before main or interrupt Received
 	interrupt := make(chan bool)
 	manager.RunTransports(ctx, wg, pluginDone)
 	manager.RunApplications(ctx, wg, pluginDone)

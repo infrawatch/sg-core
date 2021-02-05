@@ -90,7 +90,7 @@ Done:
 
 //Listen ...
 func (s *Socket) Listen(e data.Event) {
-	fmt.Printf("Recieved event: %v\n", e)
+	fmt.Printf("Received event: %v\n", e)
 }
 
 //Config load configurations
