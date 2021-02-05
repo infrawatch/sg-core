@@ -30,11 +30,34 @@ func rate() int64 {
 type configT struct {
 	Path string `validate:"required"`
 }
+type logWrapper struct {
+	l *logging.Logger
+}
+
+func (lw *logWrapper) Errorf(err error, format string, a ...interface{}) {
+	lw.l.Metadata(logging.Metadata{"plugin": "socket", "error": err})
+	lw.l.Error(fmt.Sprintf(format, a...))
+}
+
+func (lw *logWrapper) Infof(format string, a ...interface{}) {
+	lw.l.Metadata(logging.Metadata{"plugin": "socket"})
+	lw.l.Info(fmt.Sprintf(format, a...))
+}
+
+func (lw *logWrapper) Debugf(format string, a ...interface{}) {
+	lw.l.Metadata(logging.Metadata{"plugin": "socket"})
+	lw.l.Debug(fmt.Sprintf(format, a...))
+}
+
+func (lw *logWrapper) Warnf(format string, a ...interface{}) {
+	lw.l.Metadata(logging.Metadata{"plugin": "socket"})
+	lw.l.Warn(fmt.Sprintf(format, a...))
+}
 
 //Socket basic struct
 type Socket struct {
 	conf   configT
-	logger *logging.Logger
+	logger *logWrapper
 }
 
 //Run implements type Transport
@@ -50,19 +73,20 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 
 	pc, err := net.ListenUnixgram("unixgram", &laddr)
 	if err != nil {
-		s.logger.Metadata(logging.Metadata{"plugin": "socket", "error": err})
-		s.logger.Error("failed to listen on unix soc")
+		s.logger.Errorf(err, "failed to listen on unix socket %s", laddr.Name)
 		return
 	}
 
-	s.logger.Metadata(logging.Metadata{"plugin": "socket"})
-	s.logger.Info(fmt.Sprintf("socket listening on %s", laddr.Name))
+	s.logger.Infof("socket listening on %s", laddr.Name)
 	go func() {
 		for {
 			n, err := pc.Read(msgBuffer)
 			//fmt.Printf("received message: %s\n", string(msgBuffer))
 
 			if err != nil || n < 1 {
+				if err != nil {
+					s.logger.Errorf(err, "reading from socket failed")
+				}
 				done <- true
 				return
 			}
@@ -77,15 +101,13 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 			goto Done
 		default:
 			time.Sleep(time.Second)
-			s.logger.Metadata(logging.Metadata{"plugin": "socket"})
-			s.logger.Debug(fmt.Sprintf("receiving %d msg/s", rate()))
+			s.logger.Debugf("receiving %d msg/s", rate())
 		}
 	}
 Done:
 	pc.Close()
 	os.Remove(s.conf.Path)
-	s.logger.Metadata(logging.Metadata{"plugin": "socket"})
-	s.logger.Info("exited")
+	s.logger.Infof("exited")
 }
 
 //Listen ...
@@ -106,6 +128,8 @@ func (s *Socket) Config(c []byte) error {
 //New create new socket transport
 func New(l *logging.Logger) transport.Transport {
 	return &Socket{
-		logger: l,
+		logger: &logWrapper{
+			l: l,
+		},
 	}
 }

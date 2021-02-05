@@ -30,7 +30,7 @@ func (c *collectdMetricsHandler) Run(ctx context.Context, pf bus.MetricPublishFu
 	for {
 		select {
 		case <-ctx.Done():
-			goto done
+			return
 		case <-time.After(time.Second):
 			pf(
 				"sg_total_metric_decode_count",
@@ -61,7 +61,6 @@ func (c *collectdMetricsHandler) Run(ctx context.Context, pf bus.MetricPublishFu
 			)
 		}
 	}
-done:
 }
 
 func (c *collectdMetricsHandler) Handle(blob []byte, pf bus.MetricPublishFunc) {

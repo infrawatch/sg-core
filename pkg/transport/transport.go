@@ -3,8 +3,6 @@ package transport
 import (
 	"context"
 	"strings"
-
-	"github.com/infrawatch/sg-core/pkg/data"
 )
 
 // package transport defines the interfaces for interacting with transport
@@ -37,9 +35,8 @@ func (m Mode) FromString(s string) {
 type WriteFn func([]byte)
 
 //Transport type listens on one interface and delivers data to core
-//TODO: give transports a writer to send logs to
+//TODO: listen for events internally
 type Transport interface {
 	Config([]byte) error
 	Run(context.Context, WriteFn, chan bool)
-	Listen(data.Event)
 }
