@@ -51,7 +51,7 @@ func (c *collectdMetricsHandler) Run(ctx context.Context, pf bus.MetricPublishFu
 				[]string{"SG"},
 			)
 			pf(
-				"sg_total_msg_Received_count",
+				"sg_total_msg_received_count",
 				0,
 				data.COUNTER,
 				0,
