@@ -135,7 +135,7 @@ func SetTransportHandlers(name string, handlerNames []string) error {
 		}
 		handlers[name] = append(handlers[name], new())
 
-		logger.Metadata(logging.Metadata{"tranpsort pair": name, "handler": hName})
+		logger.Metadata(logging.Metadata{"transport pair": name, "handler": hName})
 		logger.Info("initialized handler")
 	}
 	return nil

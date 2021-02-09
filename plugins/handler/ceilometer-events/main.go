@@ -84,7 +84,7 @@ func (c *ceilometerEventsHandler) Run(ctx context.Context, mpf bus.MetricPublish
 		select {
 		case <-ctx.Done():
 			goto done
-		case <-time.After(time.Second * 10):
+		case <-time.After(time.Second):
 			mpf(
 				"sg_total_ceilometer_events_received",
 				0,

@@ -85,7 +85,7 @@ func (c *collectdEventsHandler) Run(ctx context.Context, mpf bus.MetricPublishFu
 		select {
 		case <-ctx.Done():
 			goto done
-		case <-time.After(time.Second * 10):
+		case <-time.After(time.Second):
 			mpf(
 				"sg_total_collectd_events_received",
 				0,
