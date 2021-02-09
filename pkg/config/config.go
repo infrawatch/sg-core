@@ -15,10 +15,12 @@ import (
 //ParseConfig parses and validates input into config object
 func ParseConfig(r io.Reader, config interface{}) error {
 	validate := validator.New()
-
 	configBytes, err := ioutil.ReadAll(r)
 	if err != nil {
 		return errors.Wrap(err, "while reading configuration")
+	}
+	if "null\n" == string(configBytes) {
+		return nil
 	}
 	err = yaml.Unmarshal(configBytes, config)
 	if err != nil {
@@ -32,7 +34,7 @@ func ParseConfig(r io.Reader, config interface{}) error {
 			for _, fe := range e {
 				missingFields = append(missingFields, setCamelCase(fe.Namespace()))
 			}
-			return fmt.Errorf("missing or incorrect configuration field -> %s", strings.Join(missingFields, " , "))
+			return fmt.Errorf("missing or incorrect configuration fields --  %s --", strings.Join(missingFields, " , "))
 		}
 		return errors.Wrap(err, "error while validating configuration")
 	}

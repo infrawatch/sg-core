@@ -7,40 +7,44 @@ import (
 	"github.com/infrawatch/sg-core/pkg/data"
 )
 
-/* TODO: optimize this
-channels are not particularily fast, best to avoid them in the fastpath and use Mutexes instead
-benchmark implementation with callback vs channels here
-*/
+//EventReceiveFunc callback type for receiving events from the event bus
+// arguments: handler name, event type, message
+type EventReceiveFunc func(string, data.EventType, string)
+
+//EventPublishFunc function to for publishing to the event bus
+// arguments: handler name, event type, message
+type EventPublishFunc func(string, data.EventType, string)
 
 //EventBus bus for data.Event type
 type EventBus struct {
-	subscribers []chan data.Event
+	subscribers []EventReceiveFunc
 	rw          sync.RWMutex
 }
 
 //Subscribe subscribe to bus
-func (eb *EventBus) Subscribe(c chan data.Event) {
+func (eb *EventBus) Subscribe(rf EventReceiveFunc) {
 	eb.rw.Lock()
 	defer eb.rw.Unlock()
-	eb.subscribers = append(eb.subscribers, c)
+	eb.subscribers = append(eb.subscribers, rf)
 }
 
 //Publish publish to bus
-func (eb *EventBus) Publish(e data.Event) {
+func (eb *EventBus) Publish(hName string, eType data.EventType, msg string) {
 	eb.rw.RLock()
-	for _, c := range eb.subscribers {
-		go func(c chan data.Event, e data.Event) {
-			c <- e
-		}(c, e)
+
+	for _, rf := range eb.subscribers {
+		go func(rf EventReceiveFunc) {
+			rf(hName, eType, msg)
+		}(rf)
 	}
 	eb.rw.RUnlock() //defer is actually very slow
 }
 
-//ReceiveFunc callback type for receiving metrics
-// Arguments are name, timestamp, metric type, interval, value, labels
+// MetricReceiveFunc callback type for receiving metrics
+// arguments are name, timestamp, metric type, interval, value, labels
 type MetricReceiveFunc func(string, float64, data.MetricType, time.Duration, float64, []string, []string)
 
-//PublishFunc ...
+//MetricPublishFunc function type for publishing to the metric bus
 type MetricPublishFunc func(string, float64, data.MetricType, time.Duration, float64, []string, []string)
 
 //MetricBus bus for data.Metric type
@@ -57,11 +61,11 @@ func (mb *MetricBus) Subscribe(rf MetricReceiveFunc) {
 }
 
 //Publish publish to bus
-func (mb *MetricBus) Publish(name string, time float64, typ data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
+func (mb *MetricBus) Publish(name string, time float64, mType data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
 	mb.RLock()
 	for _, rf := range mb.subscribers {
 		go func(rf MetricReceiveFunc) {
-			rf(name, time, typ, interval, value, labelKeys, labelVals)
+			rf(name, time, mType, interval, value, labelKeys, labelVals)
 		}(rf)
 	}
 	mb.RUnlock()

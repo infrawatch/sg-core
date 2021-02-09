@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"regexp"
 
+	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/infrawatch/sg-core/pkg/handler"
 )
@@ -50,25 +52,32 @@ func sanitize(jsondata []byte) string {
 }
 
 //Handle implements the data.EventsHandler interface
-func (c *collectdEventsHandler) Handle(msg []byte, reportErrors bool) (*data.Event, error) {
+func (c *collectdEventsHandler) Handle(msg []byte, reportErrors bool, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) error {
 	var err error
-	event := &data.Event{Handler: c.Identify()}
 
 	if verify(msg) {
-		event.Type = data.EVENT
-		event.Message = sanitize(bytes.Trim(msg, "\t []"))
+		epf(
+			c.Identify(),
+			data.EVENT,
+			sanitize(bytes.Trim(msg, "\t []")),
+		)
 	} else {
-		message := fmt.Sprintf("received message does not have expected format")
-		err = errors.New(message)
+		err = errors.New("received message does not have expected format")
 		if reportErrors {
-			event.Type = data.ERROR
-			event.Message = fmt.Sprintf(`"error": "%s", "msg": "%s"`, message, msg)
-		} else {
-			event = nil
+			epf(
+				c.Identify(),
+				data.ERROR,
+				fmt.Sprintf(`"error": "%s", "msg": "%s"`, err.Error(), msg),
+			)
 		}
 	}
 
-	return event, err
+	return err
+}
+
+//Run implements handler.Handler
+func (c *collectdEventsHandler) Run(ctx context.Context, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) {
+	return
 }
 
 func (c *collectdEventsHandler) Identify() string {
@@ -76,6 +85,6 @@ func (c *collectdEventsHandler) Identify() string {
 }
 
 //New create new collectdEventsHandler object
-func New() handler.EventHandler {
+func New() handler.Handler {
 	return &collectdEventsHandler{}
 }

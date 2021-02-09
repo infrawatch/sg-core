@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"regexp"
 
+	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/infrawatch/sg-core/pkg/handler"
 )
@@ -49,7 +51,7 @@ func sanitize(jsondata []byte) string {
 }
 
 //Handle implements the data.EventsHandler interface
-func (c *ceilometerEventsHandler) Handle(msg []byte, reportErrors bool) (*data.Event, error) {
+func (c *ceilometerEventsHandler) Handle(msg []byte, reportErrors bool, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) error {
 	var err error
 	event := &data.Event{Handler: c.Identify()}
 
@@ -67,7 +69,12 @@ func (c *ceilometerEventsHandler) Handle(msg []byte, reportErrors bool) (*data.E
 		}
 	}
 
-	return event, err
+	return err
+}
+
+//Run implement handler.Handler. We do not care about sending any internal metrics to the bus in this handler so just return
+func (c *ceilometerEventsHandler) Run(ctx context.Context, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) {
+	return
 }
 
 func (c *ceilometerEventsHandler) Identify() string {
@@ -75,6 +82,6 @@ func (c *ceilometerEventsHandler) Identify() string {
 }
 
 //New create new collectdEventsHandler object
-func New() handler.EventHandler {
+func New() handler.Handler {
 	return &ceilometerEventsHandler{}
 }

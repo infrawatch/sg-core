@@ -23,20 +23,18 @@ var (
 	ErrAppNotReceiver = errors.New("application plugin does not implement either application.MetricReceiver or application.EventReceiver")
 )
 var (
-	transports     map[string]transport.Transport
-	metricHandlers map[string][]handler.MetricHandler
-	eventHandlers  map[string][]handler.EventHandler
-	applications   map[string]application.Application
-	eventBus       bus.EventBus
-	metricBus      bus.MetricBus
-	pluginPath     string
-	logger         *logging.Logger
+	transports   map[string]transport.Transport
+	handlers     map[string][]handler.Handler
+	applications map[string]application.Application
+	eventBus     bus.EventBus
+	metricBus    bus.MetricBus
+	pluginPath   string
+	logger       *logging.Logger
 )
 
 func init() {
 	transports = map[string]transport.Transport{}
-	metricHandlers = map[string][]handler.MetricHandler{}
-	eventHandlers = map[string][]handler.EventHandler{}
+	handlers = map[string][]handler.Handler{}
 	applications = map[string]application.Application{}
 	pluginPath = "/usr/lib64/sg-core"
 }
@@ -111,9 +109,9 @@ func InitApplication(name string, config interface{}) error {
 		metricBus.Subscribe(r.ReceiveMetric)
 	}
 
-	if _, ok := itf.(application.EventReceiver); ok {
+	if r, ok := itf.(application.EventReceiver); ok {
 		eReceiver = true
-		//TODO: subscribe to event bus here
+		eventBus.Subscribe(r.ReceiveEvent)
 	}
 
 	if !(mReceiver || eReceiver) {
@@ -131,18 +129,13 @@ func SetTransportHandlers(name string, handlerNames []string) error {
 			return errors.Wrap(err, "failed initializing handler")
 		}
 
-		var hType string
-		switch new := n.(type) {
-		case (func() handler.MetricHandler):
-			metricHandlers[name] = append(metricHandlers[name], new())
-			hType = "MetricHandler"
-		case (func() handler.EventHandler):
-			eventHandlers[name] = append(eventHandlers[name], new())
-			hType = "EventHandler"
-		default:
-			return fmt.Errorf("handler %s constructor did not return type handler.EventHandler or handler.MetricsHandler", hName)
+		new, ok := n.(func() handler.Handler)
+		if !ok {
+			return fmt.Errorf("handler %s constructor did not return type handler.Handler", hName)
 		}
-		logger.Metadata(logging.Metadata{"handler": hName, "type": hType})
+		handlers[name] = append(handlers[name], new())
+
+		logger.Metadata(logging.Metadata{"tranpsort pair": name, "handler": hName})
 		logger.Info("initialized handler")
 	}
 	return nil
@@ -151,11 +144,11 @@ func SetTransportHandlers(name string, handlerNames []string) error {
 //RunTransports spins off tranpsort + handler processes
 func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool, report bool) {
 	for name, t := range transports {
-		for _, h := range metricHandlers[name] {
+		for _, h := range handlers[name] {
 			wg.Add(1)
-			go func(wg *sync.WaitGroup, h handler.MetricHandler) {
+			go func(wg *sync.WaitGroup, h handler.Handler) {
 				defer wg.Done()
-				h.Run(ctx, metricBus.Publish)
+				h.Run(ctx, metricBus.Publish, eventBus.Publish)
 			}(wg, h)
 		}
 
@@ -163,18 +156,11 @@ func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool, repo
 		go func(wg *sync.WaitGroup, t transport.Transport, name string) {
 			defer wg.Done()
 			t.Run(ctx, func(blob []byte) {
-				for _, handler := range metricHandlers[name] {
-					handler.Handle(blob, metricBus.Publish)
-				}
-
-				for _, handler := range eventHandlers[name] {
-					res, err := handler.Handle(blob, report)
+				for _, h := range handlers[name] {
+					err := h.Handle(blob, report, metricBus.Publish, eventBus.Publish)
 					if err != nil {
-						logger.Metadata(logging.Metadata{"error": err, "handler": fmt.Sprintf("%s[%s]", handler.Identify(), name)})
-						logger.Warn("failed handling event message")
-					}
-					if res != nil {
-						eventBus.Publish(*res)
+						logger.Metadata(logging.Metadata{"error": err, "handler": fmt.Sprintf("%s[%s]", h.Identify(), name)})
+						logger.Debug("failed handling message")
 					}
 				}
 			}, done)

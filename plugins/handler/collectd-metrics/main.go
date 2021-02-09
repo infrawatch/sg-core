@@ -27,13 +27,13 @@ type collectdMetricsHandler struct {
 	totalDecodeErrors     uint64
 }
 
-func (c *collectdMetricsHandler) Run(ctx context.Context, pf bus.MetricPublishFunc) {
+func (c *collectdMetricsHandler) Run(ctx context.Context, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(time.Second):
-			pf(
+			mpf(
 				"sg_total_metric_decode_count",
 				0,
 				data.COUNTER,
@@ -42,7 +42,7 @@ func (c *collectdMetricsHandler) Run(ctx context.Context, pf bus.MetricPublishFu
 				[]string{"source"},
 				[]string{"SG"},
 			)
-			pf(
+			mpf(
 				"sg_total_metric_decode_error_count",
 				0,
 				data.COUNTER,
@@ -51,7 +51,7 @@ func (c *collectdMetricsHandler) Run(ctx context.Context, pf bus.MetricPublishFu
 				[]string{"source"},
 				[]string{"SG"},
 			)
-			pf(
+			mpf(
 				"sg_total_msg_received_count",
 				0,
 				data.COUNTER,
@@ -64,17 +64,16 @@ func (c *collectdMetricsHandler) Run(ctx context.Context, pf bus.MetricPublishFu
 	}
 }
 
-func (c *collectdMetricsHandler) Handle(blob []byte, pf bus.MetricPublishFunc) {
+func (c *collectdMetricsHandler) Handle(blob []byte, reportErrors bool, pf bus.MetricPublishFunc, epf bus.EventPublishFunc) error {
 	c.totalMessagesReceived++
 	var err error
 	var cdmetrics *[]collectd.Metric
-	event := &data.Event{Handler: c.Identify(), Type: data.ERROR}
 
 	cdmetrics, err = collectd.ParseInputByte(blob)
 
 	if err != nil {
 		c.totalDecodeErrors++
-		return
+		return nil
 	}
 
 	for _, cdmetric := range *cdmetrics {
@@ -82,12 +81,15 @@ func (c *collectdMetricsHandler) Handle(blob []byte, pf bus.MetricPublishFunc) {
 		if err != nil {
 			c.totalDecodeErrors++
 			if reportErrors {
-				event.Message = fmt.Sprintf(`"error": "%s"`, err)
-			} else {
-				event = nil
+				epf(
+					c.Identify(),
+					data.ERROR,
+					fmt.Sprintf(`"error": "%s"`, err),
+				)
 			}
 		}
 	}
+	return nil
 }
 
 func (c *collectdMetricsHandler) Identify() string {
@@ -163,6 +165,6 @@ func genMetricName(cdmetric *collectd.Metric, index int) (name string) {
 }
 
 //New create new collectdMetricsHandler object
-func New() handler.MetricHandler {
+func New() handler.Handler {
 	return &collectdMetricsHandler{}
 }
