@@ -5,13 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/infrawatch/sg-core/pkg/handler"
 )
 
-type ceilometerEventsHandler struct{}
+type ceilometerEventsHandler struct {
+	totalEventsReceived uint64
+}
 
 var (
 	rexForNestedQuote  = regexp.MustCompile(`\\\"`)
@@ -53,28 +56,47 @@ func sanitize(jsondata []byte) string {
 //Handle implements the data.EventsHandler interface
 func (c *ceilometerEventsHandler) Handle(msg []byte, reportErrors bool, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) error {
 	var err error
-	event := &data.Event{Handler: c.Identify()}
+	c.totalEventsReceived++
 
 	if verify(msg) {
-		event.Type = data.EVENT
-		event.Message = sanitize(msg)
+		epf(
+			c.Identify(),
+			data.EVENT,
+			sanitize(msg),
+		)
 	} else {
-		message := fmt.Sprintf("received message does not have expected format")
-		err = errors.New(message)
+		err = errors.New("received message does not have expected format")
 		if reportErrors {
-			event.Type = data.ERROR
-			event.Message = fmt.Sprintf(`"error": "%s", "msg": "%s"`, message, string(msg))
-		} else {
-			event = nil
+			epf(
+				c.Identify(),
+				data.EVENT,
+				fmt.Sprintf(`"error": "%s", "msg": "%s"`, err.Error(), string(msg)),
+			)
 		}
 	}
 
 	return err
 }
 
-//Run implement handler.Handler. We do not care about sending any internal metrics to the bus in this handler so just return
+//Run send internal metrics to bus
 func (c *ceilometerEventsHandler) Run(ctx context.Context, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) {
-	return
+	for {
+		select {
+		case <-ctx.Done():
+			goto done
+		case <-time.After(time.Second * 10):
+			mpf(
+				"sg_total_ceilometer_events_received",
+				0,
+				data.COUNTER,
+				0,
+				float64(c.totalEventsReceived),
+				[]string{"source"},
+				[]string{"SG"},
+			)
+		}
+	}
+done:
 }
 
 func (c *ceilometerEventsHandler) Identify() string {

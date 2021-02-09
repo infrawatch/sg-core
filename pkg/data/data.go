@@ -33,6 +33,10 @@ const (
 	LOG
 )
 
+func (et EventType) String() string {
+	return []string{"error", "event", "result", "log"}[et]
+}
+
 // Event internal event type
 type Event struct {
 	Handler string

@@ -6,13 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/infrawatch/sg-core/pkg/handler"
 )
 
-type collectdEventsHandler struct{}
+type collectdEventsHandler struct {
+	totalEventsReceived uint64
+}
 
 var (
 	// Regular expressions for identifying collectd events
@@ -54,6 +57,7 @@ func sanitize(jsondata []byte) string {
 //Handle implements the data.EventsHandler interface
 func (c *collectdEventsHandler) Handle(msg []byte, reportErrors bool, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) error {
 	var err error
+	c.totalEventsReceived++
 
 	if verify(msg) {
 		epf(
@@ -77,6 +81,23 @@ func (c *collectdEventsHandler) Handle(msg []byte, reportErrors bool, mpf bus.Me
 
 //Run implements handler.Handler
 func (c *collectdEventsHandler) Run(ctx context.Context, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) {
+	for {
+		select {
+		case <-ctx.Done():
+			goto done
+		case <-time.After(time.Second * 10):
+			mpf(
+				"sg_total_collectd_events_received",
+				0,
+				data.COUNTER,
+				0,
+				float64(c.totalEventsReceived),
+				[]string{"source"},
+				[]string{"SG"},
+			)
+		}
+	}
+done:
 	return
 }
 

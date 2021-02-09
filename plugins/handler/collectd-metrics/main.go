@@ -32,7 +32,7 @@ func (c *collectdMetricsHandler) Run(ctx context.Context, mpf bus.MetricPublishF
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(time.Second):
+		case <-time.After(time.Second * 10):
 			mpf(
 				"sg_total_metric_decode_count",
 				0,
