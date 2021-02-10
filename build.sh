@@ -1,10 +1,19 @@
 #!/bin/bash
 
-# for i in plugins/transport/*; do go build -o bin/ -buildmode=plugin "./$i/..."; done
-# for i in plugins/handler/*; do go build -o "bin/$(basename $i).so" -buildmode=plugin "./$i/main.go"; done
-# for i in plugins/application/*; do go build -o bin/ -buildmode=plugin "./$i/..."; done
-
-for i in plugins/transport/*; do go build -o "/tmp/plugins/$(basename $i).so" -buildmode=plugin "./$i/..."; done && \
-for i in plugins/handler/*; do go build -o "/tmp/plugins/$(basename $i).so" -buildmode=plugin "./$i/main.go"; done && \
-for i in plugins/application/*; do go build -o "/tmp/plugins/$(basename $i).so" -buildmode=plugin "./$i/..."; done
+base=$(pwd)
+for i in plugins/transport/*; do 
+  cd "$base/$i"
+  go build -o "/tmp/plugins/$(basename $i).so" -buildmode=plugin
+done
+cd "$base"
+for i in plugins/handler/*; do 
+  cd "$base/$i"
+  go build -o "/tmp/plugins/$(basename $i).so" -buildmode=plugin
+done
+cd "$base"
+for i in plugins/application/*; do
+  cd "$base/$i"
+  go build -o "/tmp/plugins/$(basename $i).so" -buildmode=plugin
+done
+cd "$base"
 go build -o sg-core cmd/*.go

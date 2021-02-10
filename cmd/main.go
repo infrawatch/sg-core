@@ -112,7 +112,7 @@ func main() {
 
 	pluginDone := make(chan bool) //notified if a plugin stops execution before main or interrupt Received
 	interrupt := make(chan bool)
-	manager.RunTransports(ctx, wg, pluginDone)
+	manager.RunTransports(ctx, wg, pluginDone, configuration.HandlerErrors)
 	manager.RunApplications(ctx, wg, pluginDone)
 	system.SpawnSignalHandler(interrupt, logger, syscall.SIGINT, syscall.SIGKILL)
 

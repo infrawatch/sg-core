@@ -20,13 +20,26 @@ type Application interface {
 //MetricReceiver Receives metrics from the internal metrics bus
 type MetricReceiver interface {
 	Application
-	// The ReceiveMetric function will be called every time a Metric is Received on the internal events bus. Each part of the metric is passed in as an argument to the function in the following order: name, epoch time, metric type, interval, value, label keys, label values.
+	// The ReceiveMetric function will be called every time a Metric is Received on the internal metrics bus. Each part of the metric is passed in as an argument to the function in the following order: name, epoch time, metric type, interval, value, label keys, label values.
 	//The last two arguments are gauranteed to be the same size and map index to index. Implementors of this function should run as quickly as possible as metrics can be very high volume. It is recommended to cache metrics in a data.Metric{} object to be utilized by the application plugin later.
-	ReceiveMetric(string, float64, data.MetricType, time.Duration, float64, []string, []string)
+	ReceiveMetric(
+		string, //name
+		float64, //epoch time
+		data.MetricType, //type
+		time.Duration, //interval
+		float64, //value
+		[]string, //labelKeys
+		[]string, //labelValues
+	)
 }
 
 //EventReceiver Receive events from the internal event bus
 type EventReceiver interface {
 	Application
-	ReceiveEvent()
+	//ReceiveEvent is called whenever an event is broadcast on the event bus. The order of arguments: handler name, event type, message
+	ReceiveEvent(
+		string, //handler
+		data.EventType, //type
+		string, //message
+	)
 }

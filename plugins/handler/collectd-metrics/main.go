@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-openapi/errors"
@@ -26,13 +27,13 @@ type collectdMetricsHandler struct {
 	totalDecodeErrors     uint64
 }
 
-func (c *collectdMetricsHandler) Run(ctx context.Context, pf bus.MetricPublishFunc) {
+func (c *collectdMetricsHandler) Run(ctx context.Context, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(time.Second):
-			pf(
+			mpf(
 				"sg_total_metric_decode_count",
 				0,
 				data.COUNTER,
@@ -41,7 +42,7 @@ func (c *collectdMetricsHandler) Run(ctx context.Context, pf bus.MetricPublishFu
 				[]string{"source"},
 				[]string{"SG"},
 			)
-			pf(
+			mpf(
 				"sg_total_metric_decode_error_count",
 				0,
 				data.COUNTER,
@@ -50,7 +51,7 @@ func (c *collectdMetricsHandler) Run(ctx context.Context, pf bus.MetricPublishFu
 				[]string{"source"},
 				[]string{"SG"},
 			)
-			pf(
+			mpf(
 				"sg_total_msg_received_count",
 				0,
 				data.COUNTER,
@@ -63,7 +64,7 @@ func (c *collectdMetricsHandler) Run(ctx context.Context, pf bus.MetricPublishFu
 	}
 }
 
-func (c *collectdMetricsHandler) Handle(blob []byte, pf bus.MetricPublishFunc) {
+func (c *collectdMetricsHandler) Handle(blob []byte, reportErrors bool, pf bus.MetricPublishFunc, epf bus.EventPublishFunc) error {
 	c.totalMessagesReceived++
 	var err error
 	var cdmetrics *[]collectd.Metric
@@ -72,16 +73,27 @@ func (c *collectdMetricsHandler) Handle(blob []byte, pf bus.MetricPublishFunc) {
 
 	if err != nil {
 		c.totalDecodeErrors++
-		return
+		return nil
 	}
 
 	for _, cdmetric := range *cdmetrics {
 		err = c.writeMetrics(&cdmetric, pf)
 		if err != nil {
 			c.totalDecodeErrors++
+			if reportErrors {
+				epf(
+					c.Identify(),
+					data.ERROR,
+					fmt.Sprintf(`"error": "%s"`, err),
+				)
+			}
 		}
 	}
+	return nil
+}
 
+func (c *collectdMetricsHandler) Identify() string {
+	return "collectd-metrics"
 }
 
 func (c *collectdMetricsHandler) writeMetrics(cdmetric *collectd.Metric, pf bus.MetricPublishFunc) error {
@@ -153,6 +165,6 @@ func genMetricName(cdmetric *collectd.Metric, index int) (name string) {
 }
 
 //New create new collectdMetricsHandler object
-func New() handler.MetricHandler {
+func New() handler.Handler {
 	return &collectdMetricsHandler{}
 }
