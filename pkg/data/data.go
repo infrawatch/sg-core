@@ -18,6 +18,10 @@ const (
 	UNTYPED
 )
 
+func (mt MetricType) String() string {
+	return []string{"counter", "gauge", "untyped"}[mt]
+}
+
 // EventType marks type of data held in event message
 type EventType int
 

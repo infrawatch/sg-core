@@ -11,20 +11,26 @@ import (
 var (
 	rexForPayload     = regexp.MustCompile(`\"payload\"\s*:\s*\[(.*)\]`)
 	rexForNestedQuote = regexp.MustCompile(`\\\"`)
+	json              = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
-//Metric struct represents a single instance of metric data formated and sent by Ceilometer
+//Metric represents a single metric from ceilometer for unmarshalling
 type Metric struct {
-	Publisher string                 `json:"publisher_id"`
-	Payload   map[string]interface{} `json:"payload"`
-	// analogy to collectd metric
-	Plugin         string
-	PluginInstance string
-	Type           string
-	TypeInstance   string
-	Values         []float64
-	new            bool
-	wholeID        string
+	Source           string
+	CounterName      string  `json:"counter_name"`
+	CounterType      string  `json:"counter_type"`
+	CounterUnit      string  `json:"counter_unit"`
+	CounterVolume    float64 `json:"counter_volume"`
+	UserID           string  `json:"user_id"`
+	ProjectID        string  `json:"project_id"`
+	Timestamp        string
+	ResourceMetadata map[string]string `json:"resource_metadata"`
+}
+
+//Message struct represents an incoming ceilometer metrics message
+type Message struct {
+	Publisher string   `json:"publisher_id"`
+	Payload   []Metric `json:"payload"`
 }
 
 //OsloSchema initial OsloSchema
@@ -47,16 +53,15 @@ func New() *Ceilometer {
 }
 
 //ParseInputJSON parse blob into list of metrics
-func (c *Ceilometer) ParseInputJSON(blob []byte) ([]Metric, error) {
-	ceil := []Metric{}
-	json := jsoniter.ConfigCompatibleWithStandardLibrary
+func (c *Ceilometer) ParseInputJSON(blob []byte) (*Message, error) {
+	msg := &Message{}
 	err := json.Unmarshal(blob, &c.schema)
 	if err != nil {
 		return nil, err
 	}
-	sanitzed := c.sanitize()
-
-	return ceil, nil
+	sanitized := c.sanitize()
+	err = json.Unmarshal([]byte(sanitized), &msg)
+	return msg, nil
 }
 
 //sanitize remove extraneous characters

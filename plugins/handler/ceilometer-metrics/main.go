@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/infrawatch/sg-core/pkg/bus"
+	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/infrawatch/sg-core/pkg/handler"
+	"github.com/infrawatch/sg-core/plugins/handler/ceilometer-metrics/pkg/ceilometer"
 )
 
 // example message
@@ -18,22 +21,57 @@ import (
 }
 */
 
-type ceilometerMetrics struct {
-	Publisher string
-	Payload   map[string]interface{}
-}
-
 type ceilometerMetricHandler struct {
+	ceilo *ceilometer.Ceilometer
 }
 
-func (c *ceilometerMetricHandler) Run(ctx context.Context, pf bus.MetricPublishFunc) {
-
-}
-
-func (c *ceilometerMetricHandler) Handle(blob []byte, pf bus.MetricPublishFunc) {
+func (c *ceilometerMetricHandler) Run(ctx context.Context, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) {
 
 }
 
-func New() handler.MetricHandler {
-	return &ceilometerMetricHandler{}
+func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) error {
+	msg, err := c.ceilo.ParseInputJSON(blob)
+	if err != nil {
+		return err
+	}
+
+	var gTime time.Time
+	var t float64
+	labelKeys := []string{}
+	labelVals := []string{}
+	for _, m := range msg.Payload {
+		for k, v := range m.ResourceMetadata {
+			labelKeys = append(labelKeys, k)
+			labelVals = append(labelVals, v)
+		}
+
+		gTime, err = time.Parse(time.RFC3339, m.Timestamp)
+		if err != nil {
+			t = 0
+		} else {
+			t = float64(gTime.Unix())
+		}
+		mpf(
+			msg.Publisher,
+			t,
+			data.GAUGE,
+			time.Second*10,
+			m.CounterVolume,
+			labelKeys,
+			labelVals,
+		)
+	}
+
+	return nil
+}
+
+func (c *ceilometerMetricHandler) Identify() string {
+	return "ceilometer-metrics"
+}
+
+//New ceilometer metric handler constructor
+func New() handler.Handler {
+	return &ceilometerMetricHandler{
+		ceilo: ceilometer.New(),
+	}
 }
