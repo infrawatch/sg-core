@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"time"
 
 	"github.com/infrawatch/apputils/logging"
+	"github.com/infrawatch/sg-core/pkg/config"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/infrawatch/sg-core/pkg/transport"
 )
@@ -68,22 +70,35 @@ func init() {
 	msgBuffer = make([]byte, maxBufferSize)
 }
 
+type configT struct {
+	Ceilometer bool
+	Collectd   bool
+	Interval   int
+}
+
 //DummyEvents plugin struct
 type DummyEvents struct {
+	c configT
 }
 
 //Run implements type Transport
 func (de *DummyEvents) Run(ctx context.Context, wrFn transport.WriteFn, done chan bool) {
 
 	for {
-		for _, evt := range eventMessages {
-			select {
-			case <-ctx.Done():
-				goto done
-			case <-time.After(time.Second * 1):
-				time.Sleep(time.Second * 1)
-				wrFn([]byte(evt))
+
+		select {
+		case <-ctx.Done():
+			goto done
+		case <-time.After(time.Second * time.Duration(de.c.Interval)):
+			if de.c.Ceilometer {
+				wrFn([]byte(eventMessages[0]))
 			}
+			if de.c.Collectd {
+				for _, evt := range eventMessages[1:] {
+					wrFn([]byte(evt))
+				}
+			}
+
 		}
 	}
 
@@ -97,6 +112,15 @@ func (de *DummyEvents) Listen(e data.Event) {
 
 //Config load configurations
 func (de *DummyEvents) Config(c []byte) error {
+	de.c = configT{
+		Ceilometer: true,
+		Collectd:   true,
+		Interval:   1,
+	}
+	err := config.ParseConfig(bytes.NewReader(c), &de.c)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
