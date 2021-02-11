@@ -23,6 +23,10 @@ import (
 }
 */
 
+const (
+	metricTimeout = 100 //TODO - further research on best interval to use here
+)
+
 var (
 	ceilTypeToMetricType = map[string]data.MetricType{
 		"cumulative": data.COUNTER,
@@ -55,17 +59,21 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 	var t float64
 	for _, m := range msg.Payload {
 		gTime, _ = time.Parse(time.RFC3339, m.Timestamp)
-		t = float64(gTime.Unix()) //TODO: test that this equals zero when time.Parse returns an error
+		t = float64(gTime.Unix())
+		if t < 0.0 {
+			t = 0.0
+		}
 
 		mType := ceilTypeToMetricType[m.CounterType] //zero value is UNTYPED
 
 		cNameShards := strings.Split(m.CounterName, ".")
 		labelKeys, labelVals := genLabels(&m, msg.Publisher, cNameShards)
+		validateMetric(&m, cNameShards)
 		mpf(
 			genName(&m, cNameShards),
 			t,
 			mType,
-			time.Second*10, //TODO: further exploration into what this should be
+			time.Second*metricTimeout,
 			m.CounterVolume,
 			labelKeys,
 			labelVals,
@@ -107,6 +115,10 @@ func validateMetric(m *ceilometer.Metric, cNameShards []string) error {
 		return errors.New("metric missing 'counter_unit'")
 	}
 
+	if m.ResourceMetadata.Host == "" {
+		return errors.New("metric missing 'resource_metadata.host'")
+	}
+
 	return nil
 }
 
@@ -117,8 +129,8 @@ func genName(m *ceilometer.Metric, cNameShards []string) string {
 }
 
 func genLabels(m *ceilometer.Metric, publisher string, cNameShards []string) ([]string, []string) {
-	labelKeys := make([]string, 7) //TODO: set to persistant var
-	labelVals := make([]string, 7)
+	labelKeys := make([]string, 8) //TODO: set to persistant var
+	labelVals := make([]string, 8)
 	plugin := cNameShards[0]
 	pluginVal := m.ResourceID
 	if len(cNameShards) > 2 {
@@ -152,6 +164,9 @@ func genLabels(m *ceilometer.Metric, publisher string, cNameShards []string) ([]
 
 	labelKeys[6] = "resource"
 	labelVals[6] = m.ResourceID
+
+	labelKeys[7] = "host"
+	labelVals[7] = m.ResourceMetadata.Host
 
 	return labelKeys, labelVals
 }

@@ -14,6 +14,11 @@ var (
 	json              = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
+//Metedata represents metadataof a metric from ceilometer
+type metadata struct {
+	Host string
+}
+
 //Metric represents a single metric from ceilometer for unmarshalling
 type Metric struct {
 	Source           string
@@ -25,7 +30,7 @@ type Metric struct {
 	ProjectID        string  `json:"project_id"`
 	ResourceID       string  `json:"resource_id"`
 	Timestamp        string
-	ResourceMetadata map[string]string `json:"resource_metadata"` //TODO: do we need this?
+	ResourceMetadata metadata `json:"resource_metadata"`
 }
 
 //Message struct represents an incoming ceilometer metrics message

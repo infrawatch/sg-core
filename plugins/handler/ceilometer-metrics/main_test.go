@@ -8,31 +8,18 @@ import (
 
 	"github.com/infrawatch/sg-core/pkg/data"
 	jsoniter "github.com/json-iterator/go"
+	"gopkg.in/go-playground/assert.v1"
 )
 
 var (
-	json = jsoniter.ConfigCompatibleWithStandardLibrary
+	json      = jsoniter.ConfigCompatibleWithStandardLibrary
+	metricsUT []data.Metric
 )
 
 //CeilometerMetricTemplate holds correct parsings for comparing against parsed results
 type CeilometerMetricTestTemplate struct {
 	TestInput        jsoniter.RawMessage `json:"testInput"`
-	ValidatedResults []*struct {
-		Publisher      string            `json:"publisher"`
-		Plugin         string            `json:"plugin"`
-		PluginInstance string            `json:"plugin_instance"`
-		Type           string            `json:"type"`
-		TypeInstance   string            `json:"type_instance"`
-		Name           string            `json:"name"`
-		Key            string            `json:"key"`
-		ItemKey        string            `json:"item_Key"`
-		Description    string            `json:"description"`
-		MetricName     string            `json:"metric_name"`
-		Labels         map[string]string `json:"labels"`
-		Values         []float64         `json:"values"`
-		ISNew          bool
-		Interval       float64
-	} `json:"validatedResults"`
+	ValidatedResults []data.Metric       `json:"validatedResults"`
 }
 
 func ceilometerMetricTestTemplateFromJSON(jsonData jsoniter.RawMessage) (*CeilometerMetricTestTemplate, error) {
@@ -40,11 +27,6 @@ func ceilometerMetricTestTemplateFromJSON(jsonData jsoniter.RawMessage) (*Ceilom
 	err := json.Unmarshal(jsonData, &testData)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing json: %s", err)
-	}
-
-	for _, r := range testData.ValidatedResults {
-		r.Interval = 5.0
-		r.ISNew = true
 	}
 	return &testData, nil
 }
@@ -54,7 +36,7 @@ func EventReceive(handler string, eType data.EventType, msg string) {
 }
 
 func MetricReceive(name string, mTime float64, mType data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
-	m := data.Metric{
+	metricsUT = append(metricsUT, data.Metric{
 		Name:      name,
 		Time:      mTime,
 		Type:      mType,
@@ -62,13 +44,7 @@ func MetricReceive(name string, mTime float64, mType data.MetricType, interval t
 		Value:     value,
 		LabelKeys: labelKeys,
 		LabelVals: labelVals,
-	}
-
-	blob, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	fmt.Println(string(blob))
+	})
 }
 
 func TestCeilometerIncoming(t *testing.T) {
@@ -99,21 +75,8 @@ func TestCeilometerIncoming(t *testing.T) {
 		t.Error(err)
 	}
 
-	// for index, standard := range testCases.ValidatedResults {
-	// 	m := mUTs[index]
-	// 	assert.Equal(t, standard.Publisher, m.Publisher)
-	// 	assert.Equal(t, standard.Plugin, m.Plugin)
-	// 	assert.Equal(t, standard.PluginInstance, m.PluginInstance)
-	// 	assert.Equal(t, standard.Type, m.Type)
-	// 	assert.Equal(t, standard.TypeInstance, m.TypeInstance)
-	// 	assert.Equal(t, standard.Values, m.GetValues())
-	// 	assert.Equal(t, standard.Interval, m.GetInterval())
-	// 	assert.Equal(t, standard.ItemKey, m.GetItemKey())
-	// 	assert.Equal(t, standard.Key, m.GetKey())
-	// 	assert.Equal(t, standard.Labels, m.GetLabels())
-	// 	assert.Equal(t, standard.Name, m.GetName())
-	// 	assert.Equal(t, standard.ISNew, m.ISNew())
-	// 	assert.Equal(t, standard.Description, m.GetMetricDesc(0))
-	// 	assert.Equal(t, standard.MetricName, m.GetMetricName(0))
-	// }
+	for index, expMetric := range testCases.ValidatedResults {
+		expMetric.Interval = time.Second * metricTimeout
+		assert.Equal(t, expMetric, metricsUT[index])
+	}
 }

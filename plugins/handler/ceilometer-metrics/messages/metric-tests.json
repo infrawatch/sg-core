@@ -10,124 +10,139 @@
       },
       "validatedResults": [
         {
-          "publisher": "telemetry.publisher.controller-0.redhat.local",
-          "plugin": "disk",
-          "plugin_instance": "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
-          "type": "ephemeral",
-          "values": [
-            0
+          "Name": "ceilometer_disk_ephemeral_size",
+          "LabelKeys": [
+            "disk",
+            "publisher",
+            "counter",
+            "type",
+            "project",
+            "unit",
+            "resource",
+            "host"
           ],
-          "name": "disk",
-          "key": "telemetry.publisher.controller-0.redhat.local",
-          "item_key": "disk_ephemeral_d8bd99b6-6fd8-4c02-a2e3-efbf596df636_size",
-          "type_instance": "size",
-          "labels": {
-            "publisher": "telemetry.publisher.controller-0.redhat.local",
-            "disk": "size",
-            "type": "gauge",
-            "project": "e56191ef77744c599dbcecae6af176bb",
-            "resource": "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
-            "unit": "GB",
-            "counter": "disk.ephemeral.size"
-          },
-          "description": "Service Telemetry exporter: 'disk' Type: 'ephemeral' Dstype: 'gauge' Dsname: 'disk.ephemeral.size'",
-          "metric_name": "ceilometer_disk_ephemeral_size"
+          "LabelVals": [
+            "size",
+            "telemetry.publisher.controller-0.redhat.local",
+            "disk.ephemeral.size",
+            "ephemeral",
+            "e56191ef77744c599dbcecae6af176bb",
+            "GB",
+            "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
+            "compute-0.redhat.local"
+          ],
+          "Time": 1600099969,
+          "Type": 2,
+          "Interval": 10000000000,
+          "Value": 0
         },
         {
-          "publisher": "telemetry.publisher.controller-0.redhat.local",
-          "plugin": "disk",
-          "plugin_instance": "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
-          "type": "root",
-          "values": [
-            1
+          "Name": "ceilometer_disk_root_size",
+          "LabelKeys": [
+            "disk",
+            "publisher",
+            "counter",
+            "type",
+            "project",
+            "unit",
+            "resource",
+            "host"
           ],
-          "name": "disk",
-          "key": "telemetry.publisher.controller-0.redhat.local",
-          "item_key": "disk_root_d8bd99b6-6fd8-4c02-a2e3-efbf596df636_size",
-          "type_instance": "size",
-          "labels": {
-            "publisher": "telemetry.publisher.controller-0.redhat.local",
-            "disk": "size",
-            "type": "gauge",
-            "project": "e56191ef77744c599dbcecae6af176bb",
-            "resource": "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
-            "unit": "GB",
-            "counter": "disk.root.size"
-          },
-          "description": "Service Telemetry exporter: 'disk' Type: 'root' Dstype: 'gauge' Dsname: 'disk.root.size'",
-          "metric_name": "ceilometer_disk_root_size"
+          "LabelVals": [
+            "size",
+            "telemetry.publisher.controller-0.redhat.local",
+            "disk.root.size",
+            "root",
+            "e56191ef77744c599dbcecae6af176bb",
+            "GB",
+            "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
+            "compute-0.redhat.local"
+          ],
+          "Time": 1600099969,
+          "Type": 2,
+          "Interval": 10000000000,
+          "Value": 1
         },
         {
-          "publisher": "telemetry.publisher.controller-0.redhat.local",
-          "plugin": "compute",
-          "plugin_instance": "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
-          "type": "instance",
-          "values": [
-            10.839122
+          "Name": "ceilometer_compute_instance_booting_time",
+          "LabelKeys": [
+            "compute",
+            "publisher",
+            "counter",
+            "type",
+            "project",
+            "unit",
+            "resource",
+            "host"
           ],
-          "name": "compute",
-          "key": "telemetry.publisher.controller-0.redhat.local",
-          "item_key": "compute_instance_d8bd99b6-6fd8-4c02-a2e3-efbf596df636_booting",
-          "type_instance": "booting",
-          "labels": {
-            "publisher": "telemetry.publisher.controller-0.redhat.local",
-            "compute": "booting",
-            "type": "gauge",
-            "project": "e56191ef77744c599dbcecae6af176bb",
-            "resource": "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
-            "unit": "sec",
-            "counter": "compute.instance.booting.time"
-          },
-          "description": "Service Telemetry exporter: 'compute' Type: 'instance' Dstype: 'gauge' Dsname: 'compute.instance.booting.time'",
-          "metric_name": "ceilometer_compute_instance_booting"
+          "LabelVals": [
+            "booting",
+            "telemetry.publisher.controller-0.redhat.local",
+            "compute.instance.booting.time",
+            "instance",
+            "e56191ef77744c599dbcecae6af176bb",
+            "sec",
+            "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
+            "compute-0.redhat.local"
+          ],
+          "Time": 1600099969,
+          "Type": 2,
+          "Interval": 10000000000,
+          "Value": 10.839122
         },
         {
-          "publisher": "telemetry.publisher.controller-0.redhat.local",
-          "plugin": "vcpus",
-          "plugin_instance": "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
-          "type": "vcpus",
-          "values": [
-            2
+          "Name": "ceilometer_vcpus",
+          "LabelKeys": [
+            "vcpus",
+            "publisher",
+            "counter",
+            "type",
+            "project",
+            "unit",
+            "resource",
+            "host"
           ],
-          "name": "vcpus",
-          "key": "telemetry.publisher.controller-0.redhat.local",
-          "item_key": "vcpus_d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
-          "type_instance": "",
-          "labels": {
-            "publisher": "telemetry.publisher.controller-0.redhat.local",
-            "vcpus": "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
-            "type": "gauge",
-            "project": "e56191ef77744c599dbcecae6af176bb",
-            "resource": "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
-            "unit": "vcpu",
-            "counter": "vcpus"
-          },
-          "description": "Service Telemetry exporter: 'vcpus' Type: 'vcpus' Dstype: 'gauge' Dsname: 'vcpus'",
-          "metric_name": "ceilometer_vcpus"
+          "LabelVals": [
+            "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
+            "telemetry.publisher.controller-0.redhat.local",
+            "vcpus",
+            "vcpus",
+            "e56191ef77744c599dbcecae6af176bb",
+            "vcpu",
+            "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
+            "compute-0.redhat.local"
+          ],
+          "Time": 1600099969,
+          "Type": 2,
+          "Interval": 10000000000,
+          "Value": 2
         },
         {
-          "publisher": "telemetry.publisher.controller-0.redhat.local",
-          "plugin": "memory",
-          "plugin_instance": "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
-          "type": "memory",
-          "values": [
-            512
+          "Name": "ceilometer_memory",
+          "LabelKeys": [
+            "memory",
+            "publisher",
+            "counter",
+            "type",
+            "project",
+            "unit",
+            "resource",
+            "host"
           ],
-          "name": "memory",
-          "key": "telemetry.publisher.controller-0.redhat.local",
-          "item_key": "memory_d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
-          "type_instance": "",
-          "labels": {
-            "publisher": "telemetry.publisher.controller-0.redhat.local",
-            "memory": "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
-            "type": "gauge",
-            "project": "e56191ef77744c599dbcecae6af176bb",
-            "resource": "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
-            "unit": "MB",
-            "counter": "memory"
-          },
-          "description": "Service Telemetry exporter: 'memory' Type: 'memory' Dstype: 'gauge' Dsname: 'memory'",
-          "metric_name": "ceilometer_memory"
+          "LabelVals": [
+            "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
+            "telemetry.publisher.controller-0.redhat.local",
+            "memory",
+            "memory",
+            "e56191ef77744c599dbcecae6af176bb",
+            "MB",
+            "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
+            "compute-0.redhat.local"
+          ],
+          "Time": 1600099969,
+          "Type": 2,
+          "Interval": 10000000000,
+          "Value": 512
         }
       ]
     }
