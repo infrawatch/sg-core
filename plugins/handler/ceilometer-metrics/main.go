@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"time"
 
 	"github.com/infrawatch/sg-core/pkg/bus"
@@ -21,6 +23,14 @@ import (
 }
 */
 
+var (
+	ceilTypeToMetricType = map[string]data.MetricType{
+		"cumulative": data.COUNTER,
+		"delta":      data.UNTYPED,
+		"gauge":      data.GAUGE,
+	}
+)
+
 type ceilometerMetricHandler struct {
 	ceilo *ceilometer.Ceilometer
 }
@@ -35,27 +45,27 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 		return err
 	}
 
+	err = validateMessage(msg)
+	if err != nil {
+		//TODO: write event to event bus
+		return err
+	}
+
 	var gTime time.Time
 	var t float64
-	labelKeys := []string{}
-	labelVals := []string{}
 	for _, m := range msg.Payload {
-		for k, v := range m.ResourceMetadata {
-			labelKeys = append(labelKeys, k)
-			labelVals = append(labelVals, v)
-		}
+		gTime, _ = time.Parse(time.RFC3339, m.Timestamp)
+		t = float64(gTime.Unix()) //TODO: test that this equals zero when time.Parse returns an error
 
-		gTime, err = time.Parse(time.RFC3339, m.Timestamp)
-		if err != nil {
-			t = 0
-		} else {
-			t = float64(gTime.Unix())
-		}
+		mType := ceilTypeToMetricType[m.CounterType] //zero value is UNTYPED
+
+		cNameShards := strings.Split(m.CounterName, ".")
+		labelKeys, labelVals := genLabels(&m, msg.Publisher, cNameShards)
 		mpf(
-			msg.Publisher,
+			genName(&m, cNameShards),
 			t,
-			data.GAUGE,
-			time.Second*10,
+			mType,
+			time.Second*10, //TODO: further exploration into what this should be
 			m.CounterVolume,
 			labelKeys,
 			labelVals,
@@ -63,6 +73,87 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 	}
 
 	return nil
+}
+
+func validateMessage(msg *ceilometer.Message) error {
+	if msg.Publisher == "" {
+		return errors.New("message missing field 'publisher'")
+	}
+
+	if len(msg.Payload) == 0 {
+		return errors.New("message contains no payload")
+	}
+	return nil
+}
+
+func validateMetric(m *ceilometer.Metric, cNameShards []string) error {
+	if len(cNameShards) < 1 {
+		return errors.New("missing 'counter_name' in metric payload")
+	}
+
+	if m.ProjectID == "" {
+		return errors.New("metric missing 'project_id'")
+	}
+
+	if m.ResourceID == "" {
+		return errors.New("metric missing 'resource_id'")
+	}
+
+	if m.CounterName == "" {
+		return errors.New("metric missing 'counter_name'")
+	}
+
+	if m.CounterUnit == "" {
+		return errors.New("metric missing 'counter_unit'")
+	}
+
+	return nil
+}
+
+func genName(m *ceilometer.Metric, cNameShards []string) string {
+	nameParts := []string{"ceilometer"}
+	nameParts = append(nameParts, cNameShards...)
+	return strings.Join(nameParts, "_")
+}
+
+func genLabels(m *ceilometer.Metric, publisher string, cNameShards []string) ([]string, []string) {
+	labelKeys := make([]string, 7) //TODO: set to persistant var
+	labelVals := make([]string, 7)
+	plugin := cNameShards[0]
+	pluginVal := m.ResourceID
+	if len(cNameShards) > 2 {
+		pluginVal = cNameShards[2]
+	}
+	labelKeys[0] = plugin
+	labelVals[0] = pluginVal
+
+	//TODO: should we instead do plugin: <name>, plugin_id: <id> ?
+
+	labelKeys[1] = "publisher"
+	labelVals[1] = publisher
+
+	labelKeys[2] = "counter"
+	labelVals[2] = m.CounterName
+
+	var ctype string
+	if len(cNameShards) > 1 {
+		ctype = cNameShards[1]
+	} else {
+		ctype = cNameShards[0]
+	}
+	labelKeys[3] = "type"
+	labelVals[3] = ctype
+
+	labelKeys[4] = "project"
+	labelVals[4] = m.ProjectID
+
+	labelKeys[5] = "unit"
+	labelVals[5] = m.CounterUnit
+
+	labelKeys[6] = "resource"
+	labelVals[6] = m.ResourceID
+
+	return labelKeys, labelVals
 }
 
 func (c *ceilometerMetricHandler) Identify() string {

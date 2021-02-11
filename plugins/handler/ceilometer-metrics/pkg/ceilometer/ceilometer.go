@@ -23,8 +23,9 @@ type Metric struct {
 	CounterVolume    float64 `json:"counter_volume"`
 	UserID           string  `json:"user_id"`
 	ProjectID        string  `json:"project_id"`
+	ResourceID       string  `json:"resource_id"`
 	Timestamp        string
-	ResourceMetadata map[string]string `json:"resource_metadata"`
+	ResourceMetadata map[string]string `json:"resource_metadata"` //TODO: do we need this?
 }
 
 //Message struct represents an incoming ceilometer metrics message

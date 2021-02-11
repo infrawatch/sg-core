@@ -10,16 +10,16 @@ import (
 type MetricType int
 
 const (
+	//UNTYPED ...
+	UNTYPED MetricType = iota
 	//COUNTER ...
-	COUNTER MetricType = iota
+	COUNTER
 	//GAUGE ...
 	GAUGE
-	//UNTYPED ...
-	UNTYPED
 )
 
 func (mt MetricType) String() string {
-	return []string{"counter", "gauge", "untyped"}[mt]
+	return []string{"untyped", "counter", "gauge"}[mt]
 }
 
 // EventType marks type of data held in event message
@@ -51,7 +51,6 @@ type Event struct {
 // Metric internal metric type
 type Metric struct {
 	Name      string
-	Labels    map[string]string
 	LabelKeys []string
 	LabelVals []string
 	Time      float64

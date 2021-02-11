@@ -14,10 +14,6 @@ var (
 	json = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
-const (
-	metricPrintFormat = "{\n\tname: %s,\n\ttime: %.2f,\n\ttype: %s,\n\tinterval: %d,\n\tvalue: %.2f,\n\tlabelVals: %v,\n\tlabelKeys: %v\n}\n"
-)
-
 //CeilometerMetricTemplate holds correct parsings for comparing against parsed results
 type CeilometerMetricTestTemplate struct {
 	TestInput        jsoniter.RawMessage `json:"testInput"`
@@ -58,16 +54,21 @@ func EventReceive(handler string, eType data.EventType, msg string) {
 }
 
 func MetricReceive(name string, mTime float64, mType data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
-	fmt.Println(name)
-	fmt.Printf(metricPrintFormat,
-		name,
-		mTime,
-		mType.String(),
-		interval/time.Second,
-		value,
-		labelKeys,
-		labelVals,
-	)
+	m := data.Metric{
+		Name:      name,
+		Time:      mTime,
+		Type:      mType,
+		Interval:  interval,
+		Value:     value,
+		LabelKeys: labelKeys,
+		LabelVals: labelVals,
+	}
+
+	blob, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	fmt.Println(string(blob))
 }
 
 func TestCeilometerIncoming(t *testing.T) {

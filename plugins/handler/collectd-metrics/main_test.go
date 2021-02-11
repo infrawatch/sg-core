@@ -1,9 +1,5 @@
 package main
 
-import (
-	"github.com/infrawatch/sg-core/pkg/data"
-)
-
 var testMsgsInvalid map[string]string = map[string]string{
 	"Null":                    ``,
 	"Non-list":                `{}`,
@@ -23,56 +19,56 @@ var testMsgsValid map[string]string = map[string]string{
 	"Multi-dimensional Metrics": `[{"values": [2121], "dstypes": ["derive"], "dsnames":["samples"], "host":"localhost","plugin":"metric","type":"type0"},{"values": [2121, 1010], "dstypes": ["derive","counter"], "dsnames":["samples","samples"], "host":"localhost","plugin":"metric","type":"type0"}]`,
 }
 
-var validResults map[string][]data.Metric = map[string][]data.Metric{
-	"Without Instance Types": {{
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 2121.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	}},
-	"With Instance Types": {{
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 2121.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "plugin0",
-			"type_instance":   "type0",
-		},
-	}},
-	"Multi-dimensional Metrics": {{
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 2121.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	}, {
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 2121.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	}, {
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 1010.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	}},
-}
+// var validResults map[string][]data.Metric = map[string][]data.Metric{
+// 	"Without Instance Types": {{
+// 		Name:  "collectd_metric_type0_samples_total",
+// 		Value: 2121.0,
+// 		Type:  data.COUNTER,
+// 		Labels: map[string]string{
+// 			"host":            "localhost",
+// 			"plugin_instance": "base",
+// 			"type_instance":   "base",
+// 		},
+// 	}},
+// 	"With Instance Types": {{
+// 		Name:  "collectd_metric_type0_samples_total",
+// 		Value: 2121.0,
+// 		Type:  data.COUNTER,
+// 		Labels: map[string]string{
+// 			"host":            "localhost",
+// 			"plugin_instance": "plugin0",
+// 			"type_instance":   "type0",
+// 		},
+// 	}},
+// 	"Multi-dimensional Metrics": {{
+// 		Name:  "collectd_metric_type0_samples_total",
+// 		Value: 2121.0,
+// 		Type:  data.COUNTER,
+// 		Labels: map[string]string{
+// 			"host":            "localhost",
+// 			"plugin_instance": "base",
+// 			"type_instance":   "base",
+// 		},
+// 	}, {
+// 		Name:  "collectd_metric_type0_samples_total",
+// 		Value: 2121.0,
+// 		Type:  data.COUNTER,
+// 		Labels: map[string]string{
+// 			"host":            "localhost",
+// 			"plugin_instance": "base",
+// 			"type_instance":   "base",
+// 		},
+// 	}, {
+// 		Name:  "collectd_metric_type0_samples_total",
+// 		Value: 1010.0,
+// 		Type:  data.COUNTER,
+// 		Labels: map[string]string{
+// 			"host":            "localhost",
+// 			"plugin_instance": "base",
+// 			"type_instance":   "base",
+// 		},
+// 	}},
+// }
 
 //TestMsgParsing collectd metric parsing
 // func TestMsgParsing(t *testing.T) {

@@ -16,6 +16,6 @@ type Handler interface {
 	//Returns identification string for a handler
 	Identify() string
 
-	//Handle parse incoming messages from the transport and write resulting metrics or events to the corresponding bus
+	//Handle parse incoming messages from the transport and write resulting metrics or events to the corresponding bus. Handlers MUST ensure that labelValues and labelKeys for metrics are always submitted int the same order
 	Handle([]byte, bool, bus.MetricPublishFunc, bus.EventPublishFunc) error
 }
