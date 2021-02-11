@@ -132,7 +132,7 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 
 func validateMessage(msg *ceilometer.Message) error {
 	if msg.Publisher == "" {
-		return errors.New("message missing field 'publisher'")
+		return errors.New("message missing field 'publisher_id'")
 	}
 
 	if len(msg.Payload) == 0 {
