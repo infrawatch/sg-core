@@ -1,95 +1,91 @@
 package bus
 
-import (
-	"github.com/infrawatch/sg-core/pkg/data"
-)
-
-var sampleMetrics []data.Metric = []data.Metric{
-	{
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 2121.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	}, {
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 2121.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	}, {
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 1010.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	},
-	{
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 2121.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	}, {
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 2121.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	}, {
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 1010.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	},
-	{
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 2121.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	}, {
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 2121.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	}, {
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 1010.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	},
-}
+// var sampleMetrics []data.Metric = []data.Metric{
+// 	{
+// 		Name:  "collectd_metric_type0_samples_total",
+// 		Value: 2121.0,
+// 		Type:  data.COUNTER,
+// 		Labels: map[string]string{
+// 			"host":            "localhost",
+// 			"plugin_instance": "base",
+// 			"type_instance":   "base",
+// 		},
+// 	}, {
+// 		Name:  "collectd_metric_type0_samples_total",
+// 		Value: 2121.0,
+// 		Type:  data.COUNTER,
+// 		Labels: map[string]string{
+// 			"host":            "localhost",
+// 			"plugin_instance": "base",
+// 			"type_instance":   "base",
+// 		},
+// 	}, {
+// 		Name:  "collectd_metric_type0_samples_total",
+// 		Value: 1010.0,
+// 		Type:  data.COUNTER,
+// 		Labels: map[string]string{
+// 			"host":            "localhost",
+// 			"plugin_instance": "base",
+// 			"type_instance":   "base",
+// 		},
+// 	},
+// 	{
+// 		Name:  "collectd_metric_type0_samples_total",
+// 		Value: 2121.0,
+// 		Type:  data.COUNTER,
+// 		Labels: map[string]string{
+// 			"host":            "localhost",
+// 			"plugin_instance": "base",
+// 			"type_instance":   "base",
+// 		},
+// 	}, {
+// 		Name:  "collectd_metric_type0_samples_total",
+// 		Value: 2121.0,
+// 		Type:  data.COUNTER,
+// 		Labels: map[string]string{
+// 			"host":            "localhost",
+// 			"plugin_instance": "base",
+// 			"type_instance":   "base",
+// 		},
+// 	}, {
+// 		Name:  "collectd_metric_type0_samples_total",
+// 		Value: 1010.0,
+// 		Type:  data.COUNTER,
+// 		Labels: map[string]string{
+// 			"host":            "localhost",
+// 			"plugin_instance": "base",
+// 			"type_instance":   "base",
+// 		},
+// 	},
+// 	{
+// 		Name:  "collectd_metric_type0_samples_total",
+// 		Value: 2121.0,
+// 		Type:  data.COUNTER,
+// 		Labels: map[string]string{
+// 			"host":            "localhost",
+// 			"plugin_instance": "base",
+// 			"type_instance":   "base",
+// 		},
+// 	}, {
+// 		Name:  "collectd_metric_type0_samples_total",
+// 		Value: 2121.0,
+// 		Type:  data.COUNTER,
+// 		Labels: map[string]string{
+// 			"host":            "localhost",
+// 			"plugin_instance": "base",
+// 			"type_instance":   "base",
+// 		},
+// 	}, {
+// 		Name:  "collectd_metric_type0_samples_total",
+// 		Value: 1010.0,
+// 		Type:  data.COUNTER,
+// 		Labels: map[string]string{
+// 			"host":            "localhost",
+// 			"plugin_instance": "base",
+// 			"type_instance":   "base",
+// 		},
+// 	},
+// }
 
 // func BenchmarkBus(b *testing.B) {
 // 	//This is similar to a real life confiuration of a metric bus in the sg-core

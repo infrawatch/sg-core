@@ -1,7 +1,14 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
+	"testing"
+	"time"
+
 	"github.com/infrawatch/sg-core/pkg/data"
+	jsoniter "github.com/json-iterator/go"
+	"gopkg.in/go-playground/assert.v1"
 )
 
 var testMsgsInvalid map[string]string = map[string]string{
@@ -23,78 +30,75 @@ var testMsgsValid map[string]string = map[string]string{
 	"Multi-dimensional Metrics": `[{"values": [2121], "dstypes": ["derive"], "dsnames":["samples"], "host":"localhost","plugin":"metric","type":"type0"},{"values": [2121, 1010], "dstypes": ["derive","counter"], "dsnames":["samples","samples"], "host":"localhost","plugin":"metric","type":"type0"}]`,
 }
 
-var validResults map[string][]data.Metric = map[string][]data.Metric{
-	"Without Instance Types": {{
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 2121.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	}},
-	"With Instance Types": {{
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 2121.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "plugin0",
-			"type_instance":   "type0",
-		},
-	}},
-	"Multi-dimensional Metrics": {{
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 2121.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	}, {
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 2121.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	}, {
-		Name:  "collectd_metric_type0_samples_total",
-		Value: 1010.0,
-		Type:  data.COUNTER,
-		Labels: map[string]string{
-			"host":            "localhost",
-			"plugin_instance": "base",
-			"type_instance":   "base",
-		},
-	}},
+var (
+	json      = jsoniter.ConfigCompatibleWithStandardLibrary
+	metricsUT []data.Metric
+)
+
+func EventReceive(handler string, eType data.EventType, msg string) {
+	fmt.Println(handler)
 }
 
-//TestMsgParsing collectd metric parsing
-// func TestMsgParsing(t *testing.T) {
+func MetricReceive(name string, mTime float64, mType data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
+	metricsUT = append(metricsUT, data.Metric{
+		Name:      name,
+		Time:      mTime,
+		Type:      mType,
+		Interval:  interval,
+		Value:     value,
+		LabelKeys: labelKeys,
+		LabelVals: labelVals,
+	})
+}
+
+//Use this to update messages in metric-tests-expected.json if behavior should change
+
+// func TestPrintMsgs(t *testing.T) {
 // 	metricHandler := New().(*collectdMetricsHandler)
-// 	t.Run("Invalid Messages", func(t *testing.T) {
-// 		for test, blob := range testMsgsInvalid {
-// 			metricHandler.totalDecodeErrors = 0
-// 			metricHandler.Handle([]byte(blob))
-// 			assert.Equal(t, uint64(1), metricHandler.totalDecodeErrors, fmt.Sprintf("Wrong # of errors in test iteration '%s'", test))
-// 		}
-// 	})
-
-// 	metricHandler.totalDecodeErrors = 0
-// 	t.Run("Valid Messages", func(t *testing.T) {
-// 		for test, blob := range testMsgsValid {
-// 			metrics := metricHandler.Handle([]byte(blob))
-// 			assert.Equal(t, uint64(0), metricHandler.totalDecodeErrors, test)
-
-// 			assert.Equal(t, validResults[test], metrics[:len(validResults[test])], test)
-// 		}
-// 	})
+// 	for test, data := range testMsgsValid {
+// 		t.Run(test, func(t *testing.T) {
+// 			metricHandler.Handle([]byte(data), false, MetricReceive, EventReceive)
+// 			blob, _ := json.MarshalIndent(metricsUT, "", "  ")
+// 			fmt.Printf("%s\n", string(blob))
+// 		})
+// 	}
 // }
+
+func TestMessageParsing(t *testing.T) {
+	expectedData, err := ioutil.ReadFile("messages/metrics-tests-expected.json")
+	if err != nil {
+		t.Error(err)
+	}
+
+	validResults := map[string][]data.Metric{}
+	err = json.Unmarshal(expectedData, &validResults)
+	if err != nil {
+		t.Error(err)
+	}
+
+	metricHandler := New().(*collectdMetricsHandler)
+	t.Run("Invalid Messages", func(t *testing.T) {
+		for _, blob := range testMsgsInvalid {
+			metricHandler.totalDecodeErrors = 0
+			metricHandler.Handle([]byte(blob), false, MetricReceive, EventReceive)
+			assert.Equal(t, uint64(1), metricHandler.totalDecodeErrors)
+		}
+	})
+
+	metricHandler.totalDecodeErrors = 0
+	t.Run("Valid Messages", func(t *testing.T) {
+		for test, blob := range testMsgsValid {
+			err := metricHandler.Handle([]byte(blob), false, MetricReceive, EventReceive)
+			if err != nil {
+				t.Error(err)
+			}
+			assert.Equal(t, uint64(0), metricHandler.totalDecodeErrors)
+			for index, res := range validResults[test] {
+				assert.Equal(t, res, metricsUT[index])
+			}
+		}
+	})
+}
 
 // func BenchmarkParsing(b *testing.B) {
 // 	// GOMAXPROCS = 8

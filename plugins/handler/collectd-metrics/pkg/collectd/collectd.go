@@ -30,12 +30,11 @@ func ParseInputByte(jsonBlob []byte) (*[]Metric, error) {
 	//var json = jsoniter.ConfigCompatibleWithStandardLibrary.BorrowIterator(jsonBlob)
 	var json = jsoniter.ConfigFastest.BorrowIterator(jsonBlob)
 	//defer jsoniter.ConfigCompatibleWithStandardLibrary.ReturnIterator(json)
-	defer jsoniter.ConfigFastest.ReturnIterator(json)
 	json.ReadVal(&collect)
 	//	err := json.Unmarshal(jsonBlob, &collect)
 	if json.Error != nil {
 		return nil, json.Error
 	}
-
+	jsoniter.ConfigFastest.ReturnIterator(json)
 	return &collect, nil
 }
