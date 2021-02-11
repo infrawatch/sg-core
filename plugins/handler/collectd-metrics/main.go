@@ -34,7 +34,7 @@ func (c *collectdMetricsHandler) Run(ctx context.Context, mpf bus.MetricPublishF
 			return
 		case <-time.After(time.Second):
 			mpf(
-				"sg_total_metric_decode_count",
+				"sg_total_collectd_metric_decode_count",
 				0,
 				data.COUNTER,
 				0,
@@ -43,7 +43,7 @@ func (c *collectdMetricsHandler) Run(ctx context.Context, mpf bus.MetricPublishF
 				[]string{"SG"},
 			)
 			mpf(
-				"sg_total_metric_decode_error_count",
+				"sg_total_collectd_metric_decode_error_count",
 				0,
 				data.COUNTER,
 				0,
@@ -52,7 +52,7 @@ func (c *collectdMetricsHandler) Run(ctx context.Context, mpf bus.MetricPublishF
 				[]string{"SG"},
 			)
 			mpf(
-				"sg_total_msg_received_count",
+				"sg_total_collectd_msg_received_count",
 				0,
 				data.COUNTER,
 				0,

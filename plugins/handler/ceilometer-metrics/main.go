@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -25,14 +26,52 @@ var (
 )
 
 type ceilometerMetricHandler struct {
-	ceilo *ceilometer.Ceilometer
+	ceilo                 *ceilometer.Ceilometer
+	totalMetricsDecoded   uint64
+	totalDecodeErrors     uint64
+	totalMessagesReceived uint64
 }
 
 func (c *ceilometerMetricHandler) Run(ctx context.Context, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Second):
+			mpf(
+				"sg_total_ceilometer_metric_decode_count",
+				0,
+				data.COUNTER,
+				0,
+				float64(c.totalMetricsDecoded),
+				[]string{"source"},
+				[]string{"SG"},
+			)
+			mpf(
+				"sg_total_ceilometer_metric_decode_error_count",
+				0,
+				data.COUNTER,
+				0,
+				float64(c.totalDecodeErrors),
+				[]string{"source"},
+				[]string{"SG"},
+			)
+			mpf(
+				"sg_total_ceilometer_msg_received_count",
+				0,
+				data.COUNTER,
+				0,
+				float64(c.totalMessagesReceived),
+				[]string{"source"},
+				[]string{"SG"},
+			)
+		}
+	}
 
 }
 
 func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) error {
+	c.totalMessagesReceived++
 	msg, err := c.ceilo.ParseInputJSON(blob)
 	if err != nil {
 		return err
@@ -40,7 +79,14 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 
 	err = validateMessage(msg)
 	if err != nil {
-		//TODO: write event to event bus
+		c.totalDecodeErrors++
+		if reportErrs {
+			epf(
+				c.Identify(),
+				data.ERROR,
+				fmt.Sprintf(`"error": "%s"`, err),
+			)
+		}
 		return err
 	}
 
@@ -57,7 +103,19 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 
 		cNameShards := strings.Split(m.CounterName, ".")
 		labelKeys, labelVals := genLabels(&m, msg.Publisher, cNameShards)
-		validateMetric(&m, cNameShards)
+		err = validateMetric(&m, cNameShards)
+		if err != nil {
+			c.totalDecodeErrors++
+			if reportErrs {
+				epf(
+					c.Identify(),
+					data.ERROR,
+					fmt.Sprintf(`"error": "%s"`, err),
+				)
+			}
+			return err
+		}
+		c.totalMetricsDecoded++
 		mpf(
 			genName(&m, cNameShards),
 			t,
