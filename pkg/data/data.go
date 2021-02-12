@@ -12,9 +12,9 @@ type MetricType int
 const (
 	//UNTYPED ...
 	UNTYPED MetricType = iota
-	//COUNTER ...
+	//COUNTER only increases in value
 	COUNTER
-	//GAUGE ...
+	//GAUGE can increase or decrease in value
 	GAUGE
 )
 
@@ -41,20 +41,20 @@ func (et EventType) String() string {
 	return []string{"error", "event", "result", "log"}[et]
 }
 
-// Event internal event type
+// Event convenience type that contains all elements of an event on the bus. This type is good to use for caching and testing
 type Event struct {
 	Handler string
 	Type    EventType
 	Message string
 }
 
-// Metric internal metric type
+// Metric convenience type that contains all elements of a metric on the bus. This type is good to use for caching and testing
 type Metric struct {
 	Name      string
-	LabelKeys []string
-	LabelVals []string
 	Time      float64
 	Type      MetricType
 	Interval  time.Duration
 	Value     float64
+	LabelKeys []string
+	LabelVals []string
 }
