@@ -81,6 +81,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	go func() {
 		for {
 			n, err := pc.Read(msgBuffer)
+			msgBuffer[n] = 0
 			//fmt.Printf("received message: %s\n", string(msgBuffer))
 
 			if err != nil || n < 1 {
