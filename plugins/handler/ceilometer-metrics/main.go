@@ -222,6 +222,10 @@ func (c *ceilometerMetricHandler) Identify() string {
 	return "ceilometer-metrics"
 }
 
+func (c *ceilometerMetricHandler) Config(blob []byte) error {
+	return nil
+}
+
 //New ceilometer metric handler constructor
 func New() handler.Handler {
 	return &ceilometerMetricHandler{

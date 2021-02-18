@@ -10,8 +10,11 @@ type configT struct {
 	HandlerErrors bool
 	Transports    []struct {
 		Name     string `validate:"required"`
-		Handlers []string
-		Config   interface{}
+		Handlers []struct {
+			Name   string `validate:"required"`
+			Config interface{}
+		} `validate:"dive"`
+		Config interface{}
 	} `validate:"dive"`
 	Applications []struct {
 		Name   string `validate:"required"`

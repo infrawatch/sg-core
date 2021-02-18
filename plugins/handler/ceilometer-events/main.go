@@ -103,6 +103,10 @@ func (c *ceilometerEventsHandler) Identify() string {
 	return "ceilometer-events"
 }
 
+func (c *ceilometerEventsHandler) Config(blob []byte) error {
+	return nil
+}
+
 //New create new collectdEventsHandler object
 func New() handler.Handler {
 	return &ceilometerEventsHandler{}
