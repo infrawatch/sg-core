@@ -128,6 +128,12 @@ func (c *collectdMetricsHandler) writeMetrics(cdmetric *collectd.Metric, pf bus.
 	return nil
 }
 
+func (c *collectdMetricsHandler) Config(blob []byte) error {
+	return nil
+}
+
+// helper functions
+
 func validateMetric(cdmetric *collectd.Metric) bool {
 	if cdmetric.Dsnames == nil ||
 		cdmetric.Dstypes == nil ||

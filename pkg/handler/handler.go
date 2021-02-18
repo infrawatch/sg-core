@@ -18,4 +18,7 @@ type Handler interface {
 
 	//Handle parse incoming messages from the transport and write resulting metrics or events to the corresponding bus. Handlers MUST ensure that labelValues and labelKeys for metrics are always submitted int the same order
 	Handle([]byte, bool, bus.MetricPublishFunc, bus.EventPublishFunc) error
+
+	//Config a yaml object from the config file associated with this plugin is passed into this function. The plugin is responsible for handling this data
+	Config([]byte) error
 }

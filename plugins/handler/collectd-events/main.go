@@ -105,6 +105,10 @@ func (c *collectdEventsHandler) Identify() string {
 	return "collectd-events"
 }
 
+func (c *collectdEventsHandler) Config(blob []byte) error {
+	return nil
+}
+
 //New create new collectdEventsHandler object
 func New() handler.Handler {
 	return &collectdEventsHandler{}

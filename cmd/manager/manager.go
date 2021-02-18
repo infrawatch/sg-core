@@ -122,20 +122,35 @@ func InitApplication(name string, config interface{}) error {
 }
 
 //SetTransportHandlers load handlers binaries for transport
-func SetTransportHandlers(name string, handlerNames []string) error {
-	for _, hName := range handlerNames {
-		n, err := initPlugin(hName)
+func SetTransportHandlers(name string, handlerBlocks []struct {
+	Name   string `validate:"required"`
+	Config interface{}
+}) error {
+	for _, block := range handlerBlocks {
+		n, err := initPlugin(block.Name)
 		if err != nil {
 			return errors.Wrap(err, "failed initializing handler")
 		}
 
 		new, ok := n.(func() handler.Handler)
 		if !ok {
-			return fmt.Errorf("handler %s constructor did not return type handler.Handler", hName)
+			return fmt.Errorf("handler %s constructor did not return type handler.Handler", block.Name)
 		}
-		handlers[name] = append(handlers[name], new())
+		h := new()
 
-		logger.Metadata(logging.Metadata{"transport pair": name, "handler": hName})
+		configBlob, err := yaml.Marshal(block.Config)
+		if err != nil {
+			return errors.Wrapf(err, "failed parsing handler plugin config for '%s'", block.Name)
+		}
+
+		err = h.Config(configBlob)
+		if err != nil {
+			return err
+		}
+
+		handlers[name] = append(handlers[name], h)
+
+		logger.Metadata(logging.Metadata{"transport pair": name, "handler": block.Name})
 		logger.Info("initialized handler")
 	}
 	return nil

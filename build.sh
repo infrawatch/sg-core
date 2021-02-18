@@ -3,7 +3,7 @@
 base=$(pwd)
 
 PLUGIN_DIR=${PLUGIN_DIR:-"/tmp/plugins/"}
-CONTAINER_BUILD=${CONTAINER_BUILD:-"/tmp/plugins/"}
+CONTAINER_BUILD=${CONTAINER_BUILD:-false}
 
 for i in plugins/transport/*; do 
   cd "$base/$i"
