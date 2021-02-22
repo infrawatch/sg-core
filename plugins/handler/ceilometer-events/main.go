@@ -34,10 +34,7 @@ func verify(jsondata []byte) bool {
 		return false
 	}
 	match = rexForPayload.FindSubmatchIndex(jsondata)
-	if match == nil {
-		return false
-	}
-	return true
+	return match != nil
 }
 
 func sanitize(jsondata []byte) string {

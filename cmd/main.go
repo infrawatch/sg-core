@@ -10,7 +10,6 @@ import (
 	"syscall"
 
 	"github.com/infrawatch/apputils/logging"
-	log "github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/apputils/system"
 	"github.com/infrawatch/sg-core/cmd/manager"
 	"github.com/infrawatch/sg-core/pkg/config"
@@ -28,7 +27,7 @@ func main() {
 	}
 	flag.Parse()
 
-	logger, err := log.NewLogger(log.DEBUG, "console")
+	logger, err := logging.NewLogger(logging.DEBUG, "console")
 	if err != nil {
 		fmt.Printf("failed initializing logger: %s", err)
 		return
@@ -47,14 +46,14 @@ func main() {
 
 	file, err := os.Open(*configPath)
 	if err != nil {
-		logger.Metadata(log.Metadata{"error": err})
+		logger.Metadata(logging.Metadata{"error": err})
 		logger.Error("failed opening configuration file")
 		return
 	}
 
 	err = config.ParseConfig(file, &configuration)
 	if err != nil {
-		logger.Metadata(log.Metadata{"error": err})
+		logger.Metadata(logging.Metadata{"error": err})
 		logger.Error("failed parsing config file")
 		return
 	}
@@ -72,17 +71,17 @@ func main() {
 	for _, tConfig := range configuration.Transports {
 		err = manager.InitTransport(tConfig.Name, tConfig.Config)
 		if err != nil {
-			logger.Metadata(log.Metadata{"transport": tConfig.Name, "error": err})
+			logger.Metadata(logging.Metadata{"transport": tConfig.Name, "error": err})
 			logger.Error("failed configuring transport")
 			continue
 		}
 		err = manager.SetTransportHandlers(tConfig.Name, tConfig.Handlers)
 		if err != nil {
-			logger.Metadata(log.Metadata{"transport": tConfig.Name, "error": err})
+			logger.Metadata(logging.Metadata{"transport": tConfig.Name, "error": err})
 			logger.Error("transport handlers failed to load")
 			continue
 		}
-		logger.Metadata(log.Metadata{"transport": tConfig.Name})
+		logger.Metadata(logging.Metadata{"transport": tConfig.Name})
 		logger.Info("loaded transport")
 	}
 
@@ -90,15 +89,15 @@ func main() {
 		err = manager.InitApplication(aConfig.Name, aConfig.Config)
 		if err != nil {
 			if err == manager.ErrAppNotReceiver {
-				logger.Metadata(log.Metadata{"application": aConfig.Name})
+				logger.Metadata(logging.Metadata{"application": aConfig.Name})
 				logger.Warn(err.Error())
 			} else {
-				logger.Metadata(log.Metadata{"application": aConfig.Name, "error": err})
+				logger.Metadata(logging.Metadata{"application": aConfig.Name, "error": err})
 				logger.Error("failed configuring application")
 				continue
 			}
 		}
-		logger.Metadata(log.Metadata{"application": aConfig.Name})
+		logger.Metadata(logging.Metadata{"application": aConfig.Name})
 		logger.Info("loaded application plugin")
 	}
 

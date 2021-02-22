@@ -19,7 +19,7 @@ func ParseConfig(r io.Reader, config interface{}) error {
 	if err != nil {
 		return errors.Wrap(err, "while reading configuration")
 	}
-	if "null\n" == string(configBytes) {
+	if string(configBytes) == "null\n" {
 		return nil
 	}
 	err = yaml.Unmarshal(configBytes, config)

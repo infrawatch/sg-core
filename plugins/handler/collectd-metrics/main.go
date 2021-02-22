@@ -145,10 +145,7 @@ func validateMetric(cdmetric *collectd.Metric) bool {
 	}
 
 	equal := int64((len(cdmetric.Dsnames) ^ len(cdmetric.Dstypes)) ^ (len(cdmetric.Dsnames) ^ len(cdmetric.Values)))
-	if equal != 0 {
-		return false
-	}
-	return true
+	return equal == 0
 }
 
 func genMetricName(cdmetric *collectd.Metric, index int) (name string) {

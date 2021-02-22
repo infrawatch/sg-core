@@ -48,7 +48,6 @@ func createTLSConfig(serverName string, certFile string, keyFile string, caFile 
 	} else {
 		tlsConfig.ServerName = serverName
 	}
-	tlsConfig.BuildNameToCertificate()
 
 	return tlsConfig, nil
 }
@@ -97,7 +96,7 @@ func (esc *Client) IndicesDelete(indices []string) error {
 	}
 	if res.StatusCode != 200 {
 		body, _ := ioutil.ReadAll(res.Body)
-		return fmt.Errorf("Failed to delete indices [%d]: %s", res.StatusCode, body)
+		return fmt.Errorf("failed to delete indices [%d]: %s", res.StatusCode, body)
 	}
 	return nil
 }
@@ -111,7 +110,7 @@ func (esc *Client) IndicesCreate(indices []string) error {
 		}
 		if res.StatusCode != 200 {
 			body, _ := ioutil.ReadAll(res.Body)
-			return fmt.Errorf("Failed to create index [%d]: %s", res.StatusCode, body)
+			return fmt.Errorf("failed to create index [%d]: %s", res.StatusCode, body)
 		}
 	}
 	return nil
@@ -126,7 +125,7 @@ func (esc *Client) Index(index string, documents []string) error {
 		}
 		if res.StatusCode != 200 && res.StatusCode != 201 {
 			body, _ := ioutil.ReadAll(res.Body)
-			return fmt.Errorf("Failed to index document[%d]: %s", res.StatusCode, body)
+			return fmt.Errorf("failed to index document[%d]: %s", res.StatusCode, body)
 		}
 	}
 	return nil

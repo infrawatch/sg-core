@@ -67,6 +67,9 @@ func (c *Ceilometer) ParseInputJSON(blob []byte) (*Message, error) {
 	}
 	sanitized := c.sanitize()
 	err = json.Unmarshal([]byte(sanitized), &msg)
+	if err != nil {
+		return nil, err
+	}
 	return msg, nil
 }
 

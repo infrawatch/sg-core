@@ -13,14 +13,6 @@ import (
 	"github.com/infrawatch/sg-core/pkg/transport"
 )
 
-const maxBufferSize = 4096
-
-var msgBuffer []byte
-
-func init() {
-	msgBuffer = make([]byte, maxBufferSize)
-}
-
 type collectdMetric struct {
 	Values         []float64 `json:"values"`
 	Dstypes        []string  `json:"dstypes"`

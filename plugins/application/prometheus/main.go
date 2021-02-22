@@ -60,11 +60,7 @@ type collectorExpiry struct {
 }
 
 func (ce *collectorExpiry) Expired(interval time.Duration) bool {
-
-	if syncMapLen(&ce.collector.mProc) == 0 {
-		return true
-	}
-	return false
+	return (syncMapLen(&ce.collector.mProc) == 0)
 }
 
 func (ce *collectorExpiry) Delete() {
@@ -342,9 +338,4 @@ func syncMapLen(m *sync.Map) int {
 		return true
 	})
 	return len
-}
-
-func syncMapContains(m *sync.Map, key interface{}) bool {
-	_, ok := m.Load(key)
-	return ok
 }

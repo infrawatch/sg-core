@@ -42,7 +42,7 @@ func (m *Map) Len() int {
 //Get get item with key. Returns nil if does not exist
 func (m *Map) Get(key string) interface{} {
 	m.RLock()
-	val, _ := m.Items[key]
+	val := m.Items[key]
 	m.RUnlock()
 	return val
 }

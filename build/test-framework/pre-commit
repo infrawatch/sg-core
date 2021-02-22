@@ -10,10 +10,10 @@ DEPCHECK_OK=1
 # TODO: uncomment each of these tests during future pull-requests with
 #       resolving code changes
 main() {
-    mv_vendor_out
+#    mv_vendor_out
     run_gofmt
     run_golint
-    mv_vendor_in
+#    mv_vendor_in
     run_govet
     run_staticcheck
     check_results

@@ -1,0 +1,29 @@
+name: Coveralls Badge
+on: pull_request
+
+jobs:
+  coveralls_badge:
+    name: Coveralls Badge
+#    if: |
+#      (
+#        (github.event.issue.author_association == 'OWNER') ||
+#        (github.event.issue.author_association == 'COLLABORATOR') ||
+#        (github.event.issue.author_association == 'CONTRIBUTOR') ||
+#        (github.event.issue.author_association == 'MEMBER')
+#      )
+    runs-on: ubuntu-20.04
+    steps:
+      - name: update PR with coveralls badge
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            var BRANCH_NAME = process.env.BRANCH_NAME;
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `[![Coverage Status](https://coveralls.io/repos/github/${context.repo.owner}/${context.repo.repo}/badge.svg?branch=${BRANCH_NAME})](https://coveralls.io/github/${context.repo.owner}/${context.repo.repo}?branch=${BRANCH_NAME})`
+            })
+        env:
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}

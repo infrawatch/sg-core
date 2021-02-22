@@ -2,8 +2,8 @@
 set -ex
 
 # bootstrap
-mkdir -p /go/bin /go/src /go/pkg
-export GOPATH=/go
+mkdir -p go/bin go/src go/pkg
+export GOPATH="$PWD/go"
 export PATH=$PATH:$GOPATH/bin
 
 # get dependencies
@@ -24,7 +24,7 @@ go test -v ./...
 
 set +e
 echo " *** Running code coverage tooling"
-go test ./... -race -covermode=atomic -coverprofile=coverage.txt
+go test ./... -race -covermode=atomic -coverprofile=coverage.out
 
 echo " *** Running Coveralls test coverage report"
-goveralls -coverprofile=coverage.txt
+goveralls -coverprofile=coverage.out

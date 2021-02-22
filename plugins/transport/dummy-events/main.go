@@ -11,12 +11,6 @@ import (
 	"github.com/infrawatch/sg-core/pkg/transport"
 )
 
-const maxBufferSize = 4096
-
-var msgBuffer []byte
-
-var sent bool
-
 var eventMessages = []string{
 	// Ceilometer events
 	`{"request":{"oslo.version":"2.0","oslo.message":` +
@@ -64,10 +58,6 @@ var eventMessages = []string{
 		`\"duration\":\"0.043279\",\"executed\":\"1601900769\",\"issued\":\"1601900769\",\"output\":\"time=\\\"2020-10-05T14:26:09+02:00\\\" ` +
 		`level=error msg=\\\"cannot mkdir /run/user/0/libpod: mkdir /run/user/0/libpod: permission denied\\\"\\n\",\"status\":\"2\"}}}"},` +
 		`"startsAt":"2020-10-05T14:26:09+02:00"}`,
-}
-
-func init() {
-	msgBuffer = make([]byte, maxBufferSize)
 }
 
 type configT struct {
