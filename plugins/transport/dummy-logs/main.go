@@ -23,7 +23,7 @@ var logMessages = []string{
 
 //DummyLogs plugin struct
 type DummyLogs struct {
-	logger logging.Logger
+	logger *logging.Logger
 }
 
 //Run implements type Transport
@@ -34,8 +34,8 @@ func (dl *DummyLogs) Run(ctx context.Context, wrFn transport.WriteFn, done chan 
 			t := time.Now()
 			timestamp, err := t.MarshalText()
 			if err != nil {
-				dl.Metadata(logging.Metadata{"plugin": "dummy-logs"})
-				dl.Warn("Failed to get current timestamp")
+				dl.logger.Metadata(logging.Metadata{"plugin": "dummy-logs"})
+				dl.logger.Warn("Failed to get current timestamp")
 				continue
 			}
 			log := "{\"@timestamp\":\"" + string(timestamp) + logEnding
