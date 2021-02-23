@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
+	"encoding/json"
 
 	"github.com/infrawatch/apputils/connector"
 	"github.com/infrawatch/apputils/logging"
@@ -15,9 +17,15 @@ import (
 	"github.com/infrawatch/sg-core/plugins/application/loki/pkg/lib"
 )
 
-//Print plugin suites for logging both internal buses to a file.
+type LokiConfig struct {
+	Connection  string `validate:"required"`
+	BatchSize   int64
+	MaxWaitTime time.Duration
+}
+
+//Loki plugin for forwarding logs to loki
 type Loki struct {
-	config *lib.LokiConfig
+	config *LokiConfig
 	client *connector.LokiConnector
 	logger *logging.Logger
 	logChannel chan interface{}
@@ -35,27 +43,23 @@ func New(logger *logging.Logger) application.Application {
 func (l *Loki) ReceiveEvent(hName string, eType data.EventType, msg string) {
 	switch eType {
 	case data.LOG:
-		switch hName {
-		case "rsyslog-logs":
-			log, err := lib.ParseRsyslog(msg, l.logger)
-			if err == nil {
-				l.logChannel <- *log
-			} else {
-				l.logger.Metadata(logging.Metadata{"plugin": "loki", "log": msg})
-				l.logger.Info("failed to parse the data in event bus - disregarding")
-
-			}
-		default:
+		log, err := lib.CreateLokiLog(msg)
+		a, err := json.Marshal(log)
+		fmt.Println(string(a))
+		if err == nil {
+			l.logChannel <- log
+		} else {
 			l.logger.Metadata(logging.Metadata{"plugin": "loki", "log": msg})
-			l.logger.Info("received unknown data in event bus - disregarding")
+			l.logger.Info("failed to parse the data in event bus - disregarding")
+
 		}
 	default:
 		l.logger.Metadata(logging.Metadata{"plugin": "loki", "event": msg})
-		l.logger.Info("received event data in event bus - disregarding")
+		l.logger.Info("received event data (instead of log data) in event bus - disregarding")
 	}
 }
 
-//Run run scrape endpoint
+//Run run loki application plugin
 func (l *Loki) Run(ctx context.Context, done chan bool) {
 	l.logger.Metadata(logging.Metadata{"plugin": "loki", "url": l.config.Connection})
 	l.logger.Info("storing logs to loki.")
@@ -70,7 +74,7 @@ func (l *Loki) Run(ctx context.Context, done chan bool) {
 
 //Config implements application.Application
 func (l *Loki) Config(c []byte) error {
-	l.config = &lib.LokiConfig {
+	l.config = &LokiConfig {
 		Connection:  "",
 		BatchSize:   20,
 		MaxWaitTime: 100,
@@ -79,10 +83,12 @@ func (l *Loki) Config(c []byte) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println(l.config.MaxWaitTime)
 
-	fmt.Println(l.config.Connection)
-
-	l.client, err = lib.NewLokiClient(l.config, l.logger)
+	l.client, err = connector.CreateLokiConnector(l.logger,
+	                                              l.config.Connection,
+	                                              l.config.MaxWaitTime,
+	                                              l.config.BatchSize)
 	if err != nil {
 		return errors.Wrap(err, "failed to connect to Loki host")
 	}
