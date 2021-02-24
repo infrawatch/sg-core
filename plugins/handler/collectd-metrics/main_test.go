@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -35,9 +34,7 @@ var (
 	metricsUT []data.Metric
 )
 
-func EventReceive(handler string, eType data.EventType, msg string) {
-	fmt.Println(handler)
-}
+func EventReceive(data.Event)
 
 func MetricReceive(name string, mTime float64, mType data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
 	metricsUT = append(metricsUT, data.Metric{

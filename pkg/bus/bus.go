@@ -8,12 +8,10 @@ import (
 )
 
 //EventReceiveFunc callback type for receiving events from the event bus
-// arguments: handler name, event type, message
-type EventReceiveFunc func(string, data.EventType, string)
+type EventReceiveFunc func(data.Event)
 
 //EventPublishFunc function to for publishing to the event bus
-// arguments: handler name, event type, message
-type EventPublishFunc func(string, data.EventType, string)
+type EventPublishFunc func(data.Event)
 
 //EventBus bus for data.Event type
 type EventBus struct {
@@ -29,15 +27,15 @@ func (eb *EventBus) Subscribe(rf EventReceiveFunc) {
 }
 
 //Publish publish to bus
-func (eb *EventBus) Publish(hName string, eType data.EventType, msg string) {
+func (eb *EventBus) Publish(e data.Event) {
 	eb.rw.RLock()
 
 	for _, rf := range eb.subscribers {
 		go func(rf EventReceiveFunc) {
-			rf(hName, eType, msg)
+			rf(e)
 		}(rf)
 	}
-	eb.rw.RUnlock() //defer is actually very slow
+	eb.rw.RUnlock()
 }
 
 // MetricReceiveFunc callback type for receiving metrics

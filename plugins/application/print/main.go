@@ -19,6 +19,14 @@ type configT struct {
 	EventsOutput string
 }
 
+type eventOutput struct {
+	Index       string
+	Type        string
+	Publisher   string
+	Labels      map[string]interface{}
+	Annotations map[string]interface{}
+}
+
 //Print plugin suites for logging both internal buses to a file.
 type Print struct {
 	configuration configT
@@ -41,13 +49,8 @@ func New(logger *logging.Logger) application.Application {
 }
 
 // ReceiveEvent ...
-func (p *Print) ReceiveEvent(hName string, eType data.EventType, msg string) {
-	event := data.Event{
-		Handler: hName,
-		Type:    eType,
-		Message: msg,
-	}
-	p.eChan <- event
+func (p *Print) ReceiveEvent(e data.Event) {
+	p.eChan <- e
 }
 
 // ReceiveMetric ...
@@ -92,7 +95,14 @@ func (p *Print) Run(ctx context.Context, done chan bool) {
 			case <-ctx.Done():
 				goto done
 			case event := <-p.eChan:
-				encoded, err := json.MarshalIndent(event, "", "  ")
+				eo := eventOutput{
+					Index:       event.Index,
+					Type:        event.Type.String(),
+					Publisher:   event.Publisher,
+					Labels:      event.Labels,
+					Annotations: event.Annotations,
+				}
+				encoded, err := json.MarshalIndent(eo, "", "  ")
 				if err != nil {
 					p.logger.Metadata(logging.Metadata{"plugin": "print", "data": event})
 					p.logger.Warn("failed to marshal event data")

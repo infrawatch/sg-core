@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -81,11 +80,19 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 	if err != nil {
 		c.totalDecodeErrors++
 		if reportErrs {
-			epf(
-				c.Identify(),
-				data.ERROR,
-				fmt.Sprintf(`"error": "%s"`, err),
-			)
+			epf(data.Event{ //THIS IS EXTREMELY SLOW
+				Index:    c.Identify(),
+				Type:     data.ERROR,
+				Severity: data.CRITICAL,
+				Time:     0.0,
+				Labels: map[string]interface{}{
+					"error":   err.Error(),
+					"message": "failed to parse metric - disregarding",
+				},
+				Annotations: map[string]interface{}{
+					"description": "internal smartgateway ceilometer-metrics handler error",
+				},
+			})
 		}
 		return err
 	}
@@ -107,11 +114,19 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 		if err != nil {
 			c.totalDecodeErrors++
 			if reportErrs {
-				epf(
-					c.Identify(),
-					data.ERROR,
-					fmt.Sprintf(`"error": "%s"`, err),
-				)
+				epf(data.Event{
+					Index:    c.Identify(),
+					Type:     data.ERROR,
+					Severity: data.CRITICAL,
+					Time:     0.0,
+					Labels: map[string]interface{}{
+						"error":   err.Error(),
+						"message": "failed to parse metric - disregarding",
+					},
+					Annotations: map[string]interface{}{
+						"description": "internal smartgateway ceilometer-metrics handler error",
+					},
+				})
 			}
 			return err
 		}

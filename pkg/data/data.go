@@ -6,17 +6,7 @@ import (
 
 // package data defines the data descriptions for objects used in the internal buses
 
-// MetricType follows standard metric conventions from prometheus
-type MetricType int
-
-const (
-	//UNTYPED ...
-	UNTYPED MetricType = iota
-	//COUNTER only increases in value
-	COUNTER
-	//GAUGE can increase or decrease in value
-	GAUGE
-)
+//----------------------------------- events ----------------------------------
 
 func (mt MetricType) String() string {
 	return []string{"untyped", "counter", "gauge"}[mt]
@@ -30,25 +20,63 @@ const (
 	ERROR EventType = iota
 	// EVENT contains regular event data
 	EVENT
+	// LOG event contains log record
+	LOG
 	// RESULT event contains data about result of check execution
 	// perfomed by any supported client side agent (collectd-sensubility, sg-agent)
 	RESULT
-	// LOG event contains log record
-	LOG
+	// TASK contains request of performing some task, for example scheduler app asking transport to send message
+	TASK
 )
 
 func (et EventType) String() string {
-	return []string{"error", "event", "result", "log"}[et]
+	return []string{"error", "event", "log", "result", "task"}[et]
+}
+
+// EventSeverity indicates severity of an event
+type EventSeverity int
+
+const (
+	//UNKNOWN ... default
+	UNKNOWN EventSeverity = iota
+	//INFO ...
+	INFO
+	//WARNING ...
+	WARNING
+	//CRITICAL ...
+	CRITICAL
+)
+
+func (es EventSeverity) String() string {
+	return []string{"unknown", "info", "warning", "critical"}[es]
 }
 
 // Event convenience type that contains all elements of an event on the bus. This type is good to use for caching and testing
 type Event struct {
-	Handler string
-	Type    EventType
-	Message string
+	Index       string
+	Time        float64
+	Type        EventType
+	Publisher   string
+	Severity    EventSeverity
+	Labels      map[string]interface{}
+	Annotations map[string]interface{}
 }
 
-// Metric convenience type that contains all elements of a metric on the bus. This type is good to use for caching and testing
+//---------------------------------- metrics ----------------------------------
+
+// MetricType follows standard metric conventions from prometheus
+type MetricType int
+
+const (
+	//UNTYPED ...
+	UNTYPED MetricType = iota
+	//COUNTER only increases in value
+	COUNTER
+	//GAUGE can increase or decrease in value
+	GAUGE
+)
+
+// Metric internal metric type
 type Metric struct {
 	Name      string
 	Time      float64
