@@ -441,7 +441,7 @@ void amqp_snd_th_cleanup(void *app_ptr) {
     app_data_t *app = (app_data_t *)app_ptr;
 
     if (app) {
-        app->amqp_snd_th_running = 0;
+     app->amqp_snd_th_running = false;
     }
     pthread_getname_np(app->amqp_snd_th,thread_name,16);
 

@@ -1,0 +1,144 @@
+{
+    "Without Instance Types": [
+        {
+          "Name": "collectd_metric_type0_samples_total",
+          "LabelKeys": [
+            "host",
+            "plugin_instance",
+            "type_instance"
+          ],
+          "LabelVals": [
+            "localhost",
+            "base",
+            "base"
+          ],
+          "Time": 0,
+          "Type": 1,
+          "Interval": 0,
+          "Value": 2121
+        }
+      ],
+    "With Instance Types": [
+        {
+          "Name": "collectd_metric_type0_samples_total",
+          "LabelKeys": [
+            "host",
+            "plugin_instance",
+            "type_instance"
+          ],
+          "LabelVals": [
+            "localhost",
+            "base",
+            "base"
+          ],
+          "Time": 0,
+          "Type": 1,
+          "Interval": 0,
+          "Value": 2121
+        },
+        {
+          "Name": "collectd_metric_type0_samples_total",
+          "LabelKeys": [
+            "host",
+            "plugin_instance",
+            "type_instance"
+          ],
+          "LabelVals": [
+            "localhost",
+            "plugin0",
+            "type0"
+          ],
+          "Time": 0,
+          "Type": 1,
+          "Interval": 0,
+          "Value": 2121
+        }
+      ],
+      "Multi-dimensional Metrics": [
+        {
+          "Name": "collectd_metric_type0_samples_total",
+          "LabelKeys": [
+            "host",
+            "plugin_instance",
+            "type_instance"
+          ],
+          "LabelVals": [
+            "localhost",
+            "base",
+            "base"
+          ],
+          "Time": 0,
+          "Type": 1,
+          "Interval": 0,
+          "Value": 2121
+        },
+        {
+          "Name": "collectd_metric_type0_samples_total",
+          "LabelKeys": [
+            "host",
+            "plugin_instance",
+            "type_instance"
+          ],
+          "LabelVals": [
+            "localhost",
+            "plugin0",
+            "type0"
+          ],
+          "Time": 0,
+          "Type": 1,
+          "Interval": 0,
+          "Value": 2121
+        },
+        {
+          "Name": "collectd_metric_type0_samples_total",
+          "LabelKeys": [
+            "host",
+            "plugin_instance",
+            "type_instance"
+          ],
+          "LabelVals": [
+            "localhost",
+            "base",
+            "base"
+          ],
+          "Time": 0,
+          "Type": 1,
+          "Interval": 0,
+          "Value": 2121
+        },
+        {
+          "Name": "collectd_metric_type0_samples_total",
+          "LabelKeys": [
+            "host",
+            "plugin_instance",
+            "type_instance"
+          ],
+          "LabelVals": [
+            "localhost",
+            "base",
+            "base"
+          ],
+          "Time": 0,
+          "Type": 1,
+          "Interval": 0,
+          "Value": 2121
+        },
+        {
+          "Name": "collectd_metric_type0_samples_total",
+          "LabelKeys": [
+            "host",
+            "plugin_instance",
+            "type_instance"
+          ],
+          "LabelVals": [
+            "localhost",
+            "base",
+            "base"
+          ],
+          "Time": 0,
+          "Type": 1,
+          "Interval": 0,
+          "Value": 1010
+        }
+      ]
+}
