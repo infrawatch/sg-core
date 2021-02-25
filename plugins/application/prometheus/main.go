@@ -327,7 +327,6 @@ func (p *Prometheus) Config(c []byte) error {
 		return err
 	}
 
-	fmt.Printf("%v\n", p.configuration)
 	return nil
 }
 
