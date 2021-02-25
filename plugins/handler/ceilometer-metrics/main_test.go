@@ -31,7 +31,9 @@ func ceilometerMetricTestTemplateFromJSON(jsonData jsoniter.RawMessage) (*Ceilom
 	return &testData, nil
 }
 
-func EventReceive(data.Event)
+func EventReceive(data.Event) {
+
+}
 
 func MetricReceive(name string, mTime float64, mType data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
 	metricsUT = append(metricsUT, data.Metric{
