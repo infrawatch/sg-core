@@ -99,6 +99,18 @@ func (es *Elasticsearch) Run(ctx context.Context, done chan bool) {
 	es.logger.Metadata(logging.Metadata{"plugin": appname, "url": es.configuration.HostURL})
 	es.logger.Info("storing events to Elasticsearch.")
 
+	if es.configuration.ResetIndices != nil {
+		err := es.client.IndicesDelete(es.configuration.ResetIndices)
+		if err != nil {
+			es.logger.Metadata(logging.Metadata{"plugin": appname, "error": err})
+			es.logger.Error("failed removing indices")
+			done <- true
+			return
+		}
+		es.logger.Metadata(logging.Metadata{"plugin": appname, "indices": es.configuration.ResetIndices})
+		es.logger.Info("removed indices")
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
