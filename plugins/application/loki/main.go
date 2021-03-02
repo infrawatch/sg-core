@@ -3,9 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"time"
-	"encoding/json"
 
 	"github.com/infrawatch/apputils/connector"
 	"github.com/infrawatch/apputils/logging"
@@ -44,15 +42,12 @@ func (l *Loki) ReceiveEvent(hName string, eType data.EventType, msg string) {
 	switch eType {
 	case data.LOG:
 		log, err := lib.CreateLokiLog(msg)
-		a, err := json.Marshal(log)
-		fmt.Println(string(a))
-		if err == nil {
-			l.logChannel <- log
-		} else {
+		if err != nil {
 			l.logger.Metadata(logging.Metadata{"plugin": "loki", "log": msg})
 			l.logger.Info("failed to parse the data in event bus - disregarding")
-
+			return
 		}
+		l.logChannel <- log
 	default:
 		l.logger.Metadata(logging.Metadata{"plugin": "loki", "event": msg})
 		l.logger.Info("received event data (instead of log data) in event bus - disregarding")
@@ -83,7 +78,6 @@ func (l *Loki) Config(c []byte) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(l.config.MaxWaitTime)
 
 	l.client, err = connector.CreateLokiConnector(l.logger,
 	                                              l.config.Connection,

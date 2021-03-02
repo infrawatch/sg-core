@@ -27,7 +27,6 @@ func CreateLokiLog(msg string) (connector.LokiLog, error) {
 	if err != nil {
 		return connector.LokiLog{}, err
 	}
-	delete(parsedLog.Tags, "file")
 	output := connector.LokiLog{
 		Labels: parsedLog.Tags,
 	}
