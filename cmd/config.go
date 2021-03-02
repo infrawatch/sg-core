@@ -5,9 +5,9 @@ import (
 )
 
 type configT struct {
-	PluginDir     string
-	LogLevel      string `validate:"oneof=error warn info debug"`
-	HandlerErrors bool
+	PluginDir     string `yaml:"pluginDir"`
+	LogLevel      string `yaml:"logLevel" validate:"oneof=error warn info debug"`
+	HandlerErrors bool   `yaml:"handleErrors"`
 	Transports    []struct {
 		Name     string `validate:"required"`
 		Handlers []struct {
