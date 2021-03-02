@@ -24,8 +24,8 @@ var typeToPromType map[data.MetricType]prometheus.ValueType = map[data.MetricTyp
 
 type configT struct {
 	Host          string
-	Port          int `validate:"required"`
-	WithTimestamp bool
+	Port          int  `validate:"required"`
+	WithTimestamp bool `yaml:"withTimeStamp"`
 }
 
 // used to expire stale metrics
