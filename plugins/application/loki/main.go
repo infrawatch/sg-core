@@ -38,18 +38,18 @@ func New(logger *logging.Logger) application.Application {
 }
 
 // ReceiveEvent ...
-func (l *Loki) ReceiveEvent(hName string, eType data.EventType, msg string) {
-	switch eType {
+func (l *Loki) ReceiveEvent(log data.Event) {
+	switch log.Type {
 	case data.LOG:
-		log, err := lib.CreateLokiLog(msg)
+		lokiLog, err := lib.CreateLokiLog(log)
 		if err != nil {
-			l.logger.Metadata(logging.Metadata{"plugin": "loki", "log": msg})
+			l.logger.Metadata(logging.Metadata{"plugin": "loki", "log": log, "error": err})
 			l.logger.Info("failed to parse the data in event bus - disregarding")
 			return
 		}
-		l.logChannel <- log
+		l.logChannel <- lokiLog
 	default:
-		l.logger.Metadata(logging.Metadata{"plugin": "loki", "event": msg})
+		l.logger.Metadata(logging.Metadata{"plugin": "loki", "event": log})
 		l.logger.Info("received event data (instead of log data) in event bus - disregarding")
 	}
 }

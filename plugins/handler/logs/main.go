@@ -5,53 +5,115 @@ import (
 	"fmt"
 	"time"
 	"bytes"
+	"strconv"
 	"encoding/json"
 
 	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/config"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/infrawatch/sg-core/pkg/handler"
+	"github.com/infrawatch/sg-core/plugins/handler/logs/pkg/lib"
 )
+
+type SyslogSeverity int
+
+const (
+	EMERGENCY SyslogSeverity = iota
+	ALERT
+	CRITICAL
+	ERROR
+	WARNING
+	NOTICE
+	INFORMATIONAL
+	DEBUG
+	UNKNOWN
+)
+
+func (rs SyslogSeverity) toEventSeverity() data.EventSeverity {
+	return []data.EventSeverity{data.CRITICAL,
+	                            data.CRITICAL,
+	                            data.CRITICAL,
+	                            data.CRITICAL,
+	                            data.WARNING,
+	                            data.INFO,
+	                            data.INFO,
+	                            data.INFO,
+	                            data.UNKNOWN,
+	                           }[rs]
+}
 
 type logConfig struct {
 	MessageField   string `validate:"required"`
 	TimestampField string `validate:"required"`
+	HostnameField  string `validate:"required"`
+	SeverityField  string
 }
+
 type logHandler struct {
 	totalLogsReceived uint64
 	config            logConfig
 }
 
-type logFormat struct {
-	Message   string
-	Timestamp time.Time
-	Tags      map[string]string
-}
-
-func (l *logHandler) parse(log []byte) ([]byte, error) {
-	data := make(map[string]string)
-	err := json.Unmarshal(log, &data)
+func (l *logHandler) parse(log []byte) (data.Event, error) {
+	parsedLog := data.Event{}
+	logFields := make(map[string]interface{})
+	err := json.Unmarshal(log, &logFields)
 	if err != nil {
-		return nil, err
+		return parsedLog, err
 	}
 
-	msg := data[l.config.MessageField]
-	timestamp, err := time.Parse(time.RFC3339, data[l.config.TimestampField])
+	msg, ok := logFields[l.config.MessageField].(string)
+	if !ok {
+		return parsedLog, fmt.Errorf("Unable to find a log message under field called: %s", l.config.MessageField)
+	}
 
+	severity := UNKNOWN
+	severitystring, ok := logFields[l.config.SeverityField].(string)
+	if ok {
+		s, err := strconv.Atoi(severitystring)
+		if err == nil {
+			severity = SyslogSeverity(s)
+		}
+	}
+	eventSeverity := severity.toEventSeverity()
+
+	hostname, ok := logFields[l.config.HostnameField].(string)
+	if !ok {
+		return parsedLog, fmt.Errorf("Unable to find the hostname under field called: %s", l.config.HostnameField)
+	}
+
+	timestring, ok := logFields[l.config.TimestampField].(string)
+	if !ok {
+		return parsedLog, fmt.Errorf("Unable to find the timestamp under field called: %s", l.config.TimestampField)
+	}
+	t, err := lib.TimeFromFormat(timestring)
 	if err != nil {
-		return nil, err
+		return parsedLog, err
 	}
 
-	delete(data, l.config.MessageField)
-	delete(data, l.config.TimestampField)
+	timestamp := float64(t.Unix())
+	year, month, day := t.Date()
 
-	parsedLog := logFormat {
-		Message:   msg,
-		Timestamp: timestamp,
-		Tags:      data,
+	index := fmt.Sprintf("logs-%s-%d-%d-%d", hostname, year, month, day)
+
+
+	// remove message and timestamp from labels (leave the rest)
+	delete(logFields, l.config.MessageField)
+	delete(logFields, l.config.TimestampField)
+
+	parsedLog = data.Event {
+		Index: index,
+		Time: timestamp,
+		Type: data.LOG,
+		Publisher: "sg-core",
+		Severity: eventSeverity,
+		Labels: logFields,
+		Annotations: map[string]interface{}{
+			"log_message": msg,
+		},
 	}
 
-	return json.Marshal(parsedLog)
+	return parsedLog, nil
 }
 
 //Handle implements the data.EventsHandler interface
@@ -63,17 +125,24 @@ func (l *logHandler) Handle(msg []byte, reportErrors bool, mpf bus.MetricPublish
 	log, err := l.parse(msg[:msgLength])
 	if err == nil {
 		epf(
-			l.Identify(),
-			data.LOG,
-			string(log),
+			log,
 		)
 	} else {
 		if reportErrors {
-			epf(
-				l.Identify(),
-				data.ERROR,
-				fmt.Sprintf(`"error": "%s", "msg": "%s"`, err.Error(), string(msg)),
-			)
+			epf(data.Event{
+				Index:    l.Identify(),
+				Type:     data.ERROR,
+				Severity: data.CRITICAL,
+				Time:     0.0,
+				Labels: map[string]interface{}{
+					"error":   err.Error(),
+					"context": string(msg),
+					"message": "failed to parse log - disregarding",
+				},
+				Annotations: map[string]interface{}{
+					"description": "internal smartgateway log handler error",
+				},
+			})
 		}
 	}
 
