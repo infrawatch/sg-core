@@ -121,8 +121,7 @@ func (l *logHandler) Handle(msg []byte, reportErrors bool, mpf bus.MetricPublish
 	var err error
 	l.totalLogsReceived++
 
-	msgLength := bytes.IndexByte(msg, 0)
-	log, err := l.parse(msg[:msgLength])
+	log, err := l.parse(msg)
 	if err == nil {
 		epf(
 			log,
