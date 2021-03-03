@@ -91,7 +91,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 				done <- true
 				return
 			}
-			w(msgBuffer)
+			w(msgBuffer[:n])
 			msgCount++
 		}
 	}()
