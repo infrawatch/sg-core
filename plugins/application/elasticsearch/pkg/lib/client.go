@@ -65,10 +65,17 @@ func (esc *Client) Connect(cfg *AppConfig) error {
 		}
 		transport.TLSClientConfig = tlsConfig
 	}
-	esc.conn, err = esv7.NewClient(esv7.Config{
+
+	esCfg := esv7.Config{
 		Addresses: []string{cfg.HostURL},
 		Transport: transport,
-	})
+	}
+	if cfg.UseBasicAuth {
+		esCfg.Username = cfg.User
+		esCfg.Password = cfg.Password
+	}
+
+	esc.conn, err = esv7.NewClient(esCfg)
 	if err != nil {
 		return fmt.Errorf("failed to initialize connection: %s", err.Error())
 	}

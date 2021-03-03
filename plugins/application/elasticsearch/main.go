@@ -150,6 +150,11 @@ func (es *Elasticsearch) Config(c []byte) error {
 		return err
 	}
 
+	if es.configuration.UseBasicAuth && !es.configuration.UseTLS {
+		es.logger.Metadata(logging.Metadata{"plugin": appname})
+		es.logger.Warn("insecure: using basic authentication without TLS enabled")
+	}
+
 	es.client, err = lib.NewElasticClient(es.configuration)
 	if err != nil {
 		return errors.Wrap(err, "failed to connect to Elasticsearch host")
