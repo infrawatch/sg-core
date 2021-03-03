@@ -17,8 +17,8 @@ type collectdMetric struct {
 	Values         []float64 `json:"values"`
 	Dstypes        []string  `json:"dstypes"`
 	Dsnames        []string  `json:"dsnames"`
-	Time           int64     `json:"time"`
-	Interval       int       `json:"interval"`
+	Time           float64   `json:"time"`
+	Interval       float64   `json:"interval"`
 	Host           string    `json:"host"`
 	Plugin         string    `json:"plugin"`
 	PluginInstance string    `json:"plugin_instance"`
@@ -44,7 +44,7 @@ func genCollectdMessage() ([]byte, error) {
 				"tx",
 			},
 			Host:           "controller-0.redhat.local",
-			Time:           time.Now().Unix(),
+			Time:           float64(time.Now().Unix()),
 			Interval:       5,
 			Plugin:         "virt",
 			PluginInstance: "asdf",
@@ -65,7 +65,7 @@ func genCollectdMessage() ([]byte, error) {
 				"out",
 			},
 			Host:           "controller-0.redhat.local",
-			Time:           time.Now().Unix(),
+			Time:           float64(time.Now().Unix()),
 			Interval:       5,
 			Plugin:         "virt",
 			PluginInstance: "asdf",
