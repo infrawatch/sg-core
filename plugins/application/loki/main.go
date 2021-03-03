@@ -57,7 +57,7 @@ func (l *Loki) ReceiveEvent(log data.Event) {
 //Run run loki application plugin
 func (l *Loki) Run(ctx context.Context, done chan bool) {
 	l.logger.Metadata(logging.Metadata{"plugin": "loki", "url": l.config.Connection})
-	l.logger.Info("storing logs to loki.")
+	l.logger.Debug("storing logs to loki.")
 	l.client.Start(nil, l.logChannel)
 
 	<-ctx.Done()

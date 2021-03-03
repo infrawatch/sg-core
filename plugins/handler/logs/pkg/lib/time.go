@@ -10,7 +10,7 @@ var (
 	rFC3339       = "2006-01-02T15:04:05.000000"
 )
 
-//EpochFromFormat get epoch time from one of select time string formats
+//TimeFromFormat get time from one of select time string formats
 func TimeFromFormat(ts string) (time.Time, error) {
 	for _, layout := range []string{rFC3339, time.RFC3339, time.RFC3339Nano, time.ANSIC, isoTimeLayout} {
 		stamp, err := time.Parse(layout, ts)
@@ -18,5 +18,5 @@ func TimeFromFormat(ts string) (time.Time, error) {
 			return stamp, nil
 		}
 	}
-	return time.Now(), fmt.Errorf("Unable to parse timestamp.")
+	return time.Now(), fmt.Errorf("unable to parse timestamp.")
 }

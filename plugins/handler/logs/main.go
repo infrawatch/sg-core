@@ -64,7 +64,7 @@ func (l *logHandler) parse(log []byte) (data.Event, error) {
 
 	msg, ok := logFields[l.config.MessageField].(string)
 	if !ok {
-		return parsedLog, fmt.Errorf("Unable to find a log message under field called: %s", l.config.MessageField)
+		return parsedLog, fmt.Errorf("unable to find a log message under field called: %s", l.config.MessageField)
 	}
 
 	severity := UNKNOWN
@@ -79,12 +79,12 @@ func (l *logHandler) parse(log []byte) (data.Event, error) {
 
 	hostname, ok := logFields[l.config.HostnameField].(string)
 	if !ok {
-		return parsedLog, fmt.Errorf("Unable to find the hostname under field called: %s", l.config.HostnameField)
+		return parsedLog, fmt.Errorf("unable to find the hostname under field called: %s", l.config.HostnameField)
 	}
 
 	timestring, ok := logFields[l.config.TimestampField].(string)
 	if !ok {
-		return parsedLog, fmt.Errorf("Unable to find the timestamp under field called: %s", l.config.TimestampField)
+		return parsedLog, fmt.Errorf("unable to find the timestamp under field called: %s", l.config.TimestampField)
 	}
 	t, err := lib.TimeFromFormat(timestring)
 	if err != nil {
@@ -105,7 +105,7 @@ func (l *logHandler) parse(log []byte) (data.Event, error) {
 		Index: index,
 		Time: timestamp,
 		Type: data.LOG,
-		Publisher: "sg-core",
+		Publisher: hostname,
 		Severity: eventSeverity,
 		Labels: logFields,
 		Annotations: map[string]interface{}{

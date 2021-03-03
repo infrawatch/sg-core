@@ -24,7 +24,7 @@ func createLabels(rawLabels map[string]interface{}) (map[string]string, error) {
 		}
 	}
 	if len(result) == 0 {
-		return nil, fmt.Errorf("Unable to create log labels")
+		return nil, fmt.Errorf("unable to create log labels")
 	}
 	return result, nil
 }
@@ -37,7 +37,7 @@ func CreateLokiLog(log data.Event) (connector.LokiLog, error) {
 
 	msg, ok := log.Annotations["log_message"].(string)
 	if !ok {
-		return connector.LokiLog{}, fmt.Errorf("Unable to locate the log message")
+		return connector.LokiLog{}, fmt.Errorf("unable to locate the log message")
 	}
 
 	output := connector.LokiLog {
