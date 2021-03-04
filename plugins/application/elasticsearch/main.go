@@ -3,13 +3,13 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/application"
 	"github.com/infrawatch/sg-core/pkg/config"
 	"github.com/infrawatch/sg-core/pkg/data"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
 	"github.com/infrawatch/sg-core/plugins/application/elasticsearch/pkg/lib"
@@ -21,6 +21,10 @@ const (
 	eventRecordFormat = `{"event_type":"%s","generated":"%s","severity":"%s","labels":%s,"annotations":%s}`
 )
 
+var (
+	json = jsoniter.ConfigCompatibleWithStandardLibrary
+)
+
 //wrapper object for elasitcsearch index
 type esIndex struct {
 	index  string
@@ -29,11 +33,11 @@ type esIndex struct {
 
 //used to marshal event into es usable json
 type record struct {
-	EventType   string `json:"event_type"`
-	Generated   string
-	Severity    string
-	Labels      map[string]interface{}
-	Annotations map[string]interface{}
+	EventType   string                 `json:"event_type"`
+	Generated   string                 `json:"generated"`
+	Severity    string                 `json:"severity"`
+	Labels      map[string]interface{} `json:"labels"`
+	Annotations map[string]interface{} `json:"annotations"`
 }
 
 //Elasticsearch plugin saves events to Elasticsearch database
@@ -148,6 +152,11 @@ func (es *Elasticsearch) Config(c []byte) error {
 	err := config.ParseConfig(bytes.NewReader(c), es.configuration)
 	if err != nil {
 		return err
+	}
+
+	if es.configuration.UseBasicAuth && !es.configuration.UseTLS {
+		es.logger.Metadata(logging.Metadata{"plugin": appname})
+		es.logger.Warn("insecure: using basic authentication without TLS enabled")
 	}
 
 	es.client, err = lib.NewElasticClient(es.configuration)
