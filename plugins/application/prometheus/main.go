@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -100,10 +101,11 @@ type metricProcess struct {
 //PromCollector implements prometheus.Collector for incoming metrics. Metrics
 // with differing label dimensions must create separate PromCollectors.
 type PromCollector struct {
-	logger        *logWrapper
-	mProc         sync.Map
-	dimensions    int
-	withtimestamp bool
+	logger            *logWrapper
+	mProc             sync.Map
+	dimensions        int
+	withtimestamp     bool
+	cacheindexbuilder strings.Builder
 }
 
 //NewPromCollector PromCollector constructor
@@ -155,9 +157,15 @@ func (pc *PromCollector) Dimensions() int {
 //UpdateMetrics update metrics in collector
 func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string, ep *expiryProc) {
 	var mProc *metricProcess
-	mProcItf, found := pc.mProc.Load(name)
+	pc.cacheindexbuilder.Grow(len(name))
+	pc.cacheindexbuilder.WriteString(name)
+	for _, v := range labelVals {
+		pc.cacheindexbuilder.Grow(len(v))
+		pc.cacheindexbuilder.WriteString(v)
+	}
+	mProcItf, found := pc.mProc.Load(pc.cacheindexbuilder.String())
 	if !found {
-		mProcItf, _ = pc.mProc.LoadOrStore(name, &metricProcess{
+		mProcItf, _ = pc.mProc.LoadOrStore(pc.cacheindexbuilder.String(), &metricProcess{
 			metric: &data.Metric{
 				Name:      name,
 				LabelKeys: labelKeys,
@@ -183,6 +191,7 @@ func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.Metri
 		mProc = mProcItf.(*metricProcess)
 		ep.register(mProc.expiry)
 		mProc.expiry.keepAlive()
+		pc.cacheindexbuilder.Reset()
 		return
 	}
 
@@ -194,6 +203,7 @@ func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.Metri
 	mProc.metric.Type = typ
 	mProc.metric.Value = value
 	mProc.expiry.keepAlive()
+	pc.cacheindexbuilder.Reset()
 }
 
 //Prometheus plugin for interfacing with Prometheus. Metrics with the same dimensions
