@@ -15,8 +15,9 @@ func (m *metric) Expired(i time.Duration) bool {
 	return true
 }
 
-func (m *metric) Delete() {
+func (m *metric) Delete() bool {
 	m.delete()
+	return true
 }
 
 func TestExpiry(t *testing.T) {
