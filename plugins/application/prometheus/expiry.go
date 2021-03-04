@@ -11,7 +11,7 @@ import (
 
 type expiry interface {
 	Expired(time.Duration) bool
-	Delete()
+	Delete() bool
 }
 
 type expiryProc struct {
@@ -38,11 +38,12 @@ func (ep *expiryProc) check() {
 		}
 
 		if e.Value.(expiry).Expired(ep.interval) {
-			e.Value.(expiry).Delete()
-			n := e.Next()
-			ep.entries.Remove(e)
-			e = n
-			continue
+			if e.Value.(expiry).Delete() {
+				n := e.Next()
+				ep.entries.Remove(e)
+				e = n
+				continue
+			}
 		}
 		e = e.Next()
 	}

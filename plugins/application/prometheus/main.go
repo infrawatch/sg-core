@@ -32,7 +32,7 @@ type configT struct {
 type metricExpiry struct {
 	sync.RWMutex
 	lastArrival time.Time
-	delete      func()
+	delete      func() bool
 }
 
 func (me *metricExpiry) keepAlive() {
@@ -47,26 +47,26 @@ func (me *metricExpiry) Expired(interval time.Duration) bool {
 	return (time.Since(me.lastArrival) >= interval)
 }
 
-func (me *metricExpiry) Delete() {
+func (me *metricExpiry) Delete() bool {
 	me.Lock()
 	defer me.Unlock()
-	me.delete()
+	return me.delete()
 }
 
 type collectorExpiry struct {
 	sync.RWMutex
 	collector *PromCollector
-	delete    func()
+	delete    func() bool
 }
 
 func (ce *collectorExpiry) Expired(interval time.Duration) bool {
 	return (syncMapLen(&ce.collector.mProc) == 0)
 }
 
-func (ce *collectorExpiry) Delete() {
+func (ce *collectorExpiry) Delete() bool {
 	ce.Lock()
 	defer ce.Unlock()
-	ce.delete()
+	return ce.delete()
 }
 
 type logWrapper struct {
@@ -169,12 +169,14 @@ func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.Metri
 			},
 			description: prometheus.NewDesc(name, "", labelKeys, nil),
 			expiry: &metricExpiry{
-				delete: func() {
+				delete: func() bool {
 					mp, _ := pc.mProc.Load(name)
 					if mp.(*metricProcess).scrapped {
 						pc.mProc.Delete(name)
 						pc.logger.Infof("metric '%s' deleted after %.1fs of stale time", name, interval.Seconds())
+						return true
 					}
+					return false
 				},
 			},
 		})
@@ -236,10 +238,11 @@ func (p *Prometheus) ReceiveMetric(name string, t float64, typ data.MetricType, 
 		promCol = pc.(*PromCollector)
 		ce := &collectorExpiry{
 			collector: promCol,
-			delete: func() {
+			delete: func() bool {
 				p.logger.Warn("prometheus collector expired")
 				p.registry.Unregister(promCol)
 				p.collectors.Delete(len(labelKeys))
+				return true
 			},
 		}
 		numLabels := fmt.Sprintf("%d labels", labelLen)
