@@ -94,6 +94,7 @@ type metricProcess struct {
 	description *prometheus.Desc
 	expiry      *metricExpiry
 	metric      *data.Metric
+	scrapped    bool
 }
 
 //PromCollector implements prometheus.Collector for incoming metrics. Metrics
@@ -127,6 +128,7 @@ func (pc *PromCollector) Collect(ch chan<- prometheus.Metric) {
 	pc.mProc.Range(func(mName interface{}, itf interface{}) bool {
 		//fmt.Println(mName)
 		mProc := itf.(*metricProcess)
+		mProc.scrapped = true
 		pMetric, err := prometheus.NewConstMetric(mProc.description, typeToPromType[mProc.metric.Type], mProc.metric.Value, mProc.metric.LabelVals...)
 		if err != nil {
 			pc.logger.Error("prometheus failed scrapping metric", err)
@@ -168,8 +170,11 @@ func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.Metri
 			description: prometheus.NewDesc(name, "", labelKeys, nil),
 			expiry: &metricExpiry{
 				delete: func() {
-					pc.mProc.Delete(name)
-					pc.logger.Infof("metric '%s' deleted after %.1fs of stale time", name, interval.Seconds())
+					mp, _ := pc.mProc.Load(name)
+					if mp.(*metricProcess).scrapped {
+						pc.mProc.Delete(name)
+						pc.logger.Infof("metric '%s' deleted after %.1fs of stale time", name, interval.Seconds())
+					}
 				},
 			},
 		})
@@ -234,7 +239,6 @@ func (p *Prometheus) ReceiveMetric(name string, t float64, typ data.MetricType, 
 			delete: func() {
 				p.logger.Warn("prometheus collector expired")
 				p.registry.Unregister(promCol)
-
 				p.collectors.Delete(len(labelKeys))
 			},
 		}
