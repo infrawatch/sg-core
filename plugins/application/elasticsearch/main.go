@@ -63,7 +63,7 @@ func (es *Elasticsearch) ReceiveEvent(event data.Event) {
 	switch event.Type {
 	case data.ERROR:
 		//TODO: error handling
-	case data.EVENT:
+	case data.EVENT, data.LOG:
 		// buffer or index record
 		var recordList []string
 		record, err := formatRecord(event)
@@ -92,8 +92,6 @@ func (es *Elasticsearch) ReceiveEvent(event data.Event) {
 		es.dump <- esIndex{index: event.Index, record: recordList}
 	case data.RESULT:
 		//TODO: result
-	case data.LOG:
-		//TODO: log
 	}
 
 }
