@@ -108,9 +108,7 @@ func (l *logHandler) parse(log []byte) (data.Event, error) {
 		Publisher: hostname,
 		Severity: eventSeverity,
 		Labels: logFields,
-		Annotations: map[string]interface{}{
-			"log_message": msg,
-		},
+		Message: msg,
 	}
 
 	return parsedLog, nil

@@ -60,6 +60,7 @@ type Event struct {
 	Severity    EventSeverity
 	Labels      map[string]interface{}
 	Annotations map[string]interface{}
+	Message     string
 }
 
 //---------------------------------- metrics ----------------------------------

@@ -30,13 +30,8 @@ func CreateLokiLog(log data.Event) (connector.LokiLog, error) {
 		return connector.LokiLog{}, err
 	}
 
-	msg, ok := log.Annotations["log_message"].(string)
-	if !ok {
-		return connector.LokiLog{}, fmt.Errorf("unable to locate the log message")
-	}
-
 	output := connector.LokiLog {
-		LogMessage: msg,
+		LogMessage: log.Message,
 		Timestamp: time.Duration(time.Duration(log.Time) * time.Second),
 		Labels: labels,
 	}
