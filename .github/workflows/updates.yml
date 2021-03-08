@@ -1,7 +1,8 @@
 name: Coveralls Badge
 on:
   pull_request:
-    types: opened
+    types:
+      - opened
 
 jobs:
   coveralls_badge:
