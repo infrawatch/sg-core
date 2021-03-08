@@ -7,7 +7,7 @@ WORKDIR $D
 COPY . $D/
 
 RUN dnf install golang git -y --setopt=tsflags=nodocs
-RUN CONTAINER_BUILD=true ./build.sh
+RUN PRODUCTION_BUILD=true ./build.sh
 
 # --- end build, create smart gateway layer ---
 FROM registry.access.redhat.com/ubi8
