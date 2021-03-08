@@ -44,13 +44,13 @@ func (l *Loki) ReceiveEvent(log data.Event) {
 		lokiLog, err := lib.CreateLokiLog(log)
 		if err != nil {
 			l.logger.Metadata(logging.Metadata{"plugin": "loki", "log": log, "error": err})
-			l.logger.Info("failed to parse the data in event bus - disregarding")
+			l.logger.Error("failed to parse the data in event bus - disregarding")
 			return
 		}
 		l.logChannel <- lokiLog
 	default:
 		l.logger.Metadata(logging.Metadata{"plugin": "loki", "event": log})
-		l.logger.Info("received event data (instead of log data) in event bus - disregarding")
+		l.logger.Error("received event data (instead of log data) in event bus - disregarding")
 	}
 }
 
