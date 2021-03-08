@@ -9,8 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Grab collectd dependencies
-        run: go mod download collectd.org
+      # - name: Grab extra dependencies
+      #   run: |
+      #     go mod download collectd.org
+      #     go get github.com/infrawatch/sg-core/cmd/manager
+      #     go get gopkg.in/go-playground/validator.v9
+      - name: tidy
+        run: go mod tidy
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
