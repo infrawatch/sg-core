@@ -14,15 +14,10 @@ type LokiConfig struct {
 	MaxWaitTime int
 }
 
-// Creates labels used by Loki. Discards everything, that isn't
-// a string
+// Creates labels used by Loki.
 func createLabels(rawLabels map[string]interface{}) (map[string]string, error) {
 	result := make(map[string]string)
-	for key, value := range rawLabels {
-		if typedValue, ok := value.(string); ok {
-			result[key] = typedValue
-		}
-	}
+	assimilateMap(rawLabels, &result)
 	if len(result) == 0 {
 		return nil, fmt.Errorf("unable to create log labels")
 	}
