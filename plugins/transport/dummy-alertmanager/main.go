@@ -23,13 +23,13 @@ type configT struct {
 	Output string
 }
 
-//DummyAM listens on given port and prints all HTTP requests
+// DummyAM listens on given port and prints all HTTP requests
 type DummyAM struct {
 	conf   configT
 	logger *logging.Logger
 }
 
-//Run implements type Transport
+// Run implements type Transport
 func (dam *DummyAM) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	// print all received requests
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
@@ -68,11 +68,11 @@ func (dam *DummyAM) Run(ctx context.Context, w transport.WriteFn, done chan bool
 	dam.logger.Info("exited")
 }
 
-//Listen ...
+// Listen ...
 func (dam *DummyAM) Listen(e data.Event) {
 }
 
-//Config load configurations
+// Config load configurations
 func (dam *DummyAM) Config(c []byte) error {
 	err := config.ParseConfig(bytes.NewReader(c), &dam.conf)
 	if err != nil {
@@ -81,7 +81,7 @@ func (dam *DummyAM) Config(c []byte) error {
 	return nil
 }
 
-//New create new socket transport
+// New create new socket transport
 func New(l *logging.Logger) transport.Transport {
 	return &DummyAM{
 		conf: configT{

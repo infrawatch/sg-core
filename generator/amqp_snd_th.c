@@ -210,7 +210,7 @@ static bool handle(app_data_t *app, pn_event_t *event) {
             if (app->verbose > 1) {
                 printf("PN_LINK_FLOW %d\n", pn_link_credit(sender));
             }
-            //printf("link_credits: %d, sent: %ld\n",pn_link_credit(sender), app->amqp_sent );
+            // printf("link_credits: %d, sent: %ld\n",pn_link_credit(sender), app->amqp_sent );
             exit_code = send_burst(app, event);
             break;
         }
@@ -265,7 +265,7 @@ static bool handle(app_data_t *app, pn_event_t *event) {
             }
             pn_connection_t *c = pn_event_connection(event);
             pn_connection_set_container(c, app->container_id);
-            //pn_connection_open(c);
+            // pn_connection_open(c);
 
             pn_session_t *s = pn_session(c);
             pn_session_open(s);

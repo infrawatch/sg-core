@@ -16,7 +16,7 @@ var (
 	metricsUT []data.Metric
 )
 
-//CeilometerMetricTemplate holds correct parsings for comparing against parsed results
+// CeilometerMetricTemplate holds correct parsings for comparing against parsed results
 type CeilometerMetricTestTemplate struct {
 	TestInput        jsoniter.RawMessage `json:"testInput"`
 	ValidatedResults []data.Metric       `json:"validatedResults"`

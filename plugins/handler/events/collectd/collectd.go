@@ -32,13 +32,6 @@ var (
 
 const source string = "collectd"
 
-type msgType int
-
-const (
-	collectd msgType = iota
-	sensubility
-)
-
 type eventMessage struct {
 	Labels      map[string]interface{}
 	Annotations map[string]interface{}

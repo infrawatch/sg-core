@@ -111,9 +111,9 @@ func main() {
 
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	wg := new(sync.WaitGroup)
-	//run main processes
+	// run main processes
 
-	pluginDone := make(chan bool) //notified if a plugin stops execution before main or interrupt Received
+	pluginDone := make(chan bool) // notified if a plugin stops execution before main or interrupt Received
 	interrupt := make(chan bool)
 	manager.RunTransports(ctx, wg, pluginDone, configuration.HandlerErrors)
 	manager.RunApplications(ctx, wg, pluginDone)

@@ -43,20 +43,20 @@ func New(logger *logging.Logger) application.Application {
 func (am *AlertManager) ReceiveEvent(event data.Event) {
 	switch event.Type {
 	case data.ERROR:
-		//TODO: error handling
+		// TODO: error handling
 	case data.EVENT:
 		// generate alert
 		am.dump <- lib.GenerateAlert(am.configuration.GeneratorURL, event)
 	case data.RESULT:
-		//TODO: result type handling
+		// TODO: result type handling
 	case data.LOG:
-		//TODO: log handling
+		// TODO: log handling
 	case data.TASK:
 	}
 
 }
 
-//Run implements main process of the application
+// Run implements main process of the application
 func (am *AlertManager) Run(ctx context.Context, done chan bool) {
 	wg := sync.WaitGroup{}
 
@@ -113,7 +113,7 @@ done:
 	am.logger.Info("exited")
 }
 
-//Config implements application.Application
+// Config implements application.Application
 func (am *AlertManager) Config(c []byte) error {
 	am.configuration = lib.AppConfig{
 		AlertManagerURL: "http://localhost",

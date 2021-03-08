@@ -12,7 +12,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-//ParseConfig parses and validates input into config object
+// ParseConfig parses and validates input into config object
 func ParseConfig(r io.Reader, config interface{}) error {
 	validate := validator.New()
 	configBytes, err := ioutil.ReadAll(r)

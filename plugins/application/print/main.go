@@ -27,7 +27,7 @@ type eventOutput struct {
 	Annotations map[string]interface{}
 }
 
-//Print plugin suites for logging both internal buses to a file.
+// Print plugin suites for logging both internal buses to a file.
 type Print struct {
 	configuration configT
 	logger        *logging.Logger
@@ -35,7 +35,7 @@ type Print struct {
 	mChan         chan data.Metric
 }
 
-//New constructor
+// New constructor
 func New(logger *logging.Logger) application.Application {
 	return &Print{
 		configuration: configT{
@@ -67,7 +67,7 @@ func (p *Print) ReceiveMetric(name string, t float64, mType data.MetricType, int
 	p.mChan <- metric
 }
 
-//Run run scrape endpoint
+// Run run scrape endpoint
 func (p *Print) Run(ctx context.Context, done chan bool) {
 
 	metrF, err := os.OpenFile(p.configuration.MetricOutput, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -123,7 +123,7 @@ done:
 	p.logger.Info("exited")
 }
 
-//Config implements application.Application
+// Config implements application.Application
 func (p *Print) Config(c []byte) error {
 	err := config.ParseConfig(bytes.NewReader(c), &p.configuration)
 	if err != nil {

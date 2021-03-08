@@ -3,6 +3,8 @@ run:
     - plugins/transport/dummy-alertmanager
     - plugins/transport/dummy-events
     - plugins/transport/dummy-metrics
+    - plugins/application/print
+    - devenv
 issues:
   exclude-rules:
     - linters:

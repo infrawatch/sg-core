@@ -24,12 +24,10 @@ type Metric struct {
 	Meta           collectdMeta `json:"meta,omitempty"`
 }
 
-//ParseInputByte   ...
+// ParseInputByte   ...
 func ParseInputByte(jsonBlob []byte) (*[]Metric, error) {
 	collect := []Metric{}
-	//var json = jsoniter.ConfigCompatibleWithStandardLibrary.BorrowIterator(jsonBlob)
 	var json = jsoniter.ConfigFastest.BorrowIterator(jsonBlob)
-	//defer jsoniter.ConfigCompatibleWithStandardLibrary.ReturnIterator(json)
 	json.ReadVal(&collect)
 	//	err := json.Unmarshal(jsonBlob, &collect)
 	if json.Error != nil {

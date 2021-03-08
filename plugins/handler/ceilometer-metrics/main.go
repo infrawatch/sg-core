@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	metricTimeout = 100 // TODO - further research on best interval to use here
+	metricTimeout = 100 //  TODO - further research on best interval to use here
 )
 
 var (
@@ -80,7 +80,7 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 	if err != nil {
 		c.totalDecodeErrors++
 		if reportErrs {
-			epf(data.Event{ //THIS IS EXTREMELY SLOW
+			epf(data.Event{ // THIS IS EXTREMELY SLOW
 				Index:    c.Identify(),
 				Type:     data.ERROR,
 				Severity: data.CRITICAL,
@@ -106,7 +106,7 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 			t = 0.0
 		}
 
-		mType := ceilTypeToMetricType[m.CounterType] //zero value is UNTYPED
+		mType := ceilTypeToMetricType[m.CounterType] // zero value is UNTYPED
 
 		cNameShards := strings.Split(m.CounterName, ".")
 		labelKeys, labelVals := genLabels(m, msg.Publisher, cNameShards)
@@ -191,7 +191,7 @@ func genName(cNameShards []string) string {
 }
 
 func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]string, []string) {
-	labelKeys := make([]string, 8) // TODO: set to persistent var
+	labelKeys := make([]string, 8) //  TODO: set to persistent var
 	labelVals := make([]string, 8)
 	plugin := cNameShards[0]
 	pluginVal := m.ResourceID
@@ -201,7 +201,7 @@ func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]s
 	labelKeys[0] = plugin
 	labelVals[0] = pluginVal
 
-	// TODO: should we instead do plugin: <name>, plugin_id: <id> ?
+	//  TODO: should we instead do plugin: <name>, plugin_id: <id> ?
 
 	labelKeys[1] = "publisher"
 	labelVals[1] = publisher
@@ -241,7 +241,7 @@ func (c *ceilometerMetricHandler) Config(blob []byte) error {
 	return nil
 }
 
-// New ceilometer metric handler constructor
+//  New ceilometer metric handler constructor
 func New() handler.Handler {
 	return &ceilometerMetricHandler{
 		ceilo: ceilometer.New(),
