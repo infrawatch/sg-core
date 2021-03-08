@@ -14,12 +14,12 @@ var (
 	json              = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
-//Metedata represents metadataof a metric from ceilometer
+// Metedata represents metadataof a metric from ceilometer
 type metadata struct {
 	Host string
 }
 
-//Metric represents a single metric from ceilometer for unmarshalling
+// Metric represents a single metric from ceilometer for unmarshalling
 type Metric struct {
 	Source           string
 	CounterName      string  `json:"counter_name"`
@@ -33,32 +33,32 @@ type Metric struct {
 	ResourceMetadata metadata `json:"resource_metadata"`
 }
 
-//Message struct represents an incoming ceilometer metrics message
+// Message struct represents an incoming ceilometer metrics message
 type Message struct {
 	Publisher string   `json:"publisher_id"`
 	Payload   []Metric `json:"payload"`
 }
 
-//OsloSchema initial OsloSchema
+// OsloSchema initial OsloSchema
 type OsloSchema struct {
 	Request struct {
 		OsloMessage string `json:"oslo.message"`
 	}
 }
 
-//Ceilometer instance for parsing and handling ceilometer metric messages
+// Ceilometer instance for parsing and handling ceilometer metric messages
 type Ceilometer struct {
 	schema OsloSchema
 }
 
-//New Ceilometer constructor
+// New Ceilometer constructor
 func New() *Ceilometer {
 	return &Ceilometer{
 		schema: OsloSchema{},
 	}
 }
 
-//ParseInputJSON parse blob into list of metrics
+// ParseInputJSON parse blob into list of metrics
 func (c *Ceilometer) ParseInputJSON(blob []byte) (*Message, error) {
 	msg := &Message{}
 	err := json.Unmarshal(blob, &c.schema)
@@ -73,7 +73,7 @@ func (c *Ceilometer) ParseInputJSON(blob []byte) (*Message, error) {
 	return msg, nil
 }
 
-//sanitize remove extraneous characters
+// sanitize remove extraneous characters
 func (c *Ceilometer) sanitize() string {
 	sanitized := rexForNestedQuote.ReplaceAllString(c.schema.Request.OsloMessage, `"`)
 

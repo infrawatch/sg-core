@@ -111,8 +111,9 @@ type PromCollector struct {
 //NewPromCollector PromCollector constructor
 func NewPromCollector(l *logWrapper, dimensions int, withtimestamp bool) *PromCollector {
 	return &PromCollector{
-		logger:     l,
-		dimensions: dimensions,
+		logger:        l,
+		dimensions:    dimensions,
+		withtimestamp: withtimestamp,
 	}
 }
 

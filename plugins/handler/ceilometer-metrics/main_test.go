@@ -56,7 +56,7 @@ func TestCeilometerIncoming(t *testing.T) {
 	}
 
 	tests := make(map[string]jsoniter.RawMessage)
-	err = json.Unmarshal([]byte(testData), &tests)
+	err = json.Unmarshal(testData, &tests)
 	if err != nil {
 		t.Errorf("failed to unmarshal test data: %s", err.Error())
 	}

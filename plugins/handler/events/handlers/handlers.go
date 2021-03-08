@@ -27,7 +27,7 @@ func collectdEventHandler(blob []byte, epf bus.EventPublishFunc) error {
 	return nil
 }
 
-//EventHandlers handle messages according to the expected data source and write parsed events to the events bus
+// EventHandlers handle messages according to the expected data source and write parsed events to the events bus
 var EventHandlers = map[string]func([]byte, bus.EventPublishFunc) error{
 	"ceilometer": ceilometerEventHandler,
 	"collectd":   collectdEventHandler,

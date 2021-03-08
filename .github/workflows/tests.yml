@@ -9,11 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      # - name: Grab extra dependencies
-      #   run: |
-      #     go mod download collectd.org
-      #     go get github.com/infrawatch/sg-core/cmd/manager
-      #     go get gopkg.in/go-playground/validator.v9
       - name: tidy
         run: go mod tidy
       - name: golangci-lint
@@ -21,7 +16,6 @@ jobs:
         with:
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
           version: v1.33
-
   test-framework:
     name: Base testing
     runs-on: ubuntu-20.04

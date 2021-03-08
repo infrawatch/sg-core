@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	metricTimeout = 100 //TODO - further research on best interval to use here
+	metricTimeout = 100 // TODO - further research on best interval to use here
 )
 
 var (
@@ -109,8 +109,8 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 		mType := ceilTypeToMetricType[m.CounterType] //zero value is UNTYPED
 
 		cNameShards := strings.Split(m.CounterName, ".")
-		labelKeys, labelVals := genLabels(&m, msg.Publisher, cNameShards)
-		err = validateMetric(&m, cNameShards)
+		labelKeys, labelVals := genLabels(m, msg.Publisher, cNameShards)
+		err = validateMetric(m, cNameShards)
 		if err != nil {
 			c.totalDecodeErrors++
 			if reportErrs {
@@ -132,7 +132,7 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 		}
 		c.totalMetricsDecoded++
 		mpf(
-			genName(&m, cNameShards),
+			genName(cNameShards),
 			t,
 			mType,
 			time.Second*metricTimeout,
@@ -156,7 +156,7 @@ func validateMessage(msg *ceilometer.Message) error {
 	return nil
 }
 
-func validateMetric(m *ceilometer.Metric, cNameShards []string) error {
+func validateMetric(m ceilometer.Metric, cNameShards []string) error {
 	if len(cNameShards) < 1 {
 		return errors.New("missing 'counter_name' in metric payload")
 	}
@@ -184,14 +184,14 @@ func validateMetric(m *ceilometer.Metric, cNameShards []string) error {
 	return nil
 }
 
-func genName(m *ceilometer.Metric, cNameShards []string) string {
+func genName(cNameShards []string) string {
 	nameParts := []string{"ceilometer"}
 	nameParts = append(nameParts, cNameShards...)
 	return strings.Join(nameParts, "_")
 }
 
-func genLabels(m *ceilometer.Metric, publisher string, cNameShards []string) ([]string, []string) {
-	labelKeys := make([]string, 8) //TODO: set to persistant var
+func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]string, []string) {
+	labelKeys := make([]string, 8) // TODO: set to persistent var
 	labelVals := make([]string, 8)
 	plugin := cNameShards[0]
 	pluginVal := m.ResourceID
@@ -201,7 +201,7 @@ func genLabels(m *ceilometer.Metric, publisher string, cNameShards []string) ([]
 	labelKeys[0] = plugin
 	labelVals[0] = pluginVal
 
-	//TODO: should we instead do plugin: <name>, plugin_id: <id> ?
+	// TODO: should we instead do plugin: <name>, plugin_id: <id> ?
 
 	labelKeys[1] = "publisher"
 	labelVals[1] = publisher
@@ -241,7 +241,7 @@ func (c *ceilometerMetricHandler) Config(blob []byte) error {
 	return nil
 }
 
-//New ceilometer metric handler constructor
+// New ceilometer metric handler constructor
 func New() handler.Handler {
 	return &ceilometerMetricHandler{
 		ceilo: ceilometer.New(),
