@@ -7,7 +7,6 @@ WORKDIR $D
 COPY . $D/
 
 RUN dnf install golang git -y --setopt=tsflags=nodocs
-RUN go get -d ./...
 RUN CONTAINER_BUILD=true ./build.sh
 
 # --- end build, create smart gateway layer ---
