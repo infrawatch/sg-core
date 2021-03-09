@@ -7,29 +7,17 @@ jobs:
   golangci:
     name: Linting
     runs-on: ubuntu-20.04
+    container: 'centos:8'
     steps:
       - uses: actions/checkout@v2
       - name: Set up Go
         uses: actions/setup-go@v1
         with:
           go-version: '1.14'
-      - name: tidy
-        run: go mod tidy
-
-        # dev files are not complete on ubuntu, thus we need to install them manually
-      - name: C qpid-proton lib
-        # run: |
-        #   git clone https://github.com/apache/qpid-proton
-        #   cd qpid-proton
-        #   mkdir build && cd build
-        #   sudo apt-get install gcc g++ cmake cmake-curses-gui uuid-dev
-        #   cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DSYSINSTALL_BINDINGS=ON
-        #   sudo make install
+      - name: install qpid-proton dependencies
         run: |
-          sudo apt-get install libqpid-proton-cpp12 -y
-          sudo apt-get install libqpid-proton-cpp12-dev -y
-          sudo apt-get install libqpid-proton11 -y
-          sudo apt-get install libqpid-proton11-dev -y
+          dnf search qpid
+          dnf install -y qpid-proton-c-devel qpid-proton-c
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
@@ -38,41 +26,41 @@ jobs:
           skip-build-cache: true
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
           version: v1.33
-  test-framework:
-    name: Base testing
-    runs-on: ubuntu-20.04
+  # test-framework:
+  #   name: Base testing
+  #   runs-on: ubuntu-20.04
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Set up Go
-        uses: actions/setup-go@v1
-        with:
-          go-version: '1.14'
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v2
+  #     - name: Set up Go
+  #       uses: actions/setup-go@v1
+  #       with:
+  #         go-version: '1.14'
 
-      # dev files are not complete on ubuntu, thus we need to install them manually
-      - name: C qpid-proton lib
-        # run: |
-        #   git clone https://github.com/apache/qpid-proton
-        #   cd qpid-proton
-        #   mkdir build && cd build
-        #   sudo apt-get install gcc g++ cmake cmake-curses-gui uuid-dev
-        #   cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DSYSINSTALL_BINDINGS=ON
-        #   sudo make install
-        run: |
-          sudo apt-get install libqpid-proton-cpp12 -y
-          sudo apt-get install libqpid-proton-cpp12-dev -y
-          sudo apt-get install libqpid-proton11 -y
-          sudo apt-get install libqpid-proton11-dev -y
-      - name: Run unit tests and code coverage
-        run: go test -v -coverprofile=profile.cov ./...
-      - name: Send coverage
-        uses: shogo82148/actions-goveralls@v1
-        with:
-          path-to-profile: profile.cov
-      - name: Verify image builds
-        run: |
-          docker build --tag infrawatch/sg-core:latest --file build/Dockerfile .
-      - name: List images
-        run: |
-          docker images
+  #     # dev files are not complete on ubuntu, thus we need to install them manually
+  #     - name: C qpid-proton lib
+  #       # run: |
+  #       #   git clone https://github.com/apache/qpid-proton
+  #       #   cd qpid-proton
+  #       #   mkdir build && cd build
+  #       #   sudo apt-get install gcc g++ cmake cmake-curses-gui uuid-dev
+  #       #   cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DSYSINSTALL_BINDINGS=ON
+  #       #   sudo make install
+  #       run: |
+  #         sudo apt-get install libqpid-proton-cpp12 -y
+  #         sudo apt-get install libqpid-proton-cpp12-dev -y
+  #         sudo apt-get install libqpid-proton11 -y
+  #         sudo apt-get install libqpid-proton11-dev -y
+  #     - name: Run unit tests and code coverage
+  #       run: go test -v -coverprofile=profile.cov ./...
+  #     - name: Send coverage
+  #       uses: shogo82148/actions-goveralls@v1
+  #       with:
+  #         path-to-profile: profile.cov
+  #     - name: Verify image builds
+  #       run: |
+  #         docker build --tag infrawatch/sg-core:latest --file build/Dockerfile .
+  #     - name: List images
+  #       run: |
+  #         docker images
