@@ -19,7 +19,7 @@ jobs:
         # dev files are not complete on ubuntu, thus we need to install them manually
       - name: C qpid-proton lib
         run: |
-          git clone github.com/apache/qpid-proton
+          git clone https://github.com/apache/qpid-proton
           cd qpid-proton
           mkdir build && cd build
           sudo apt-get install gcc g++ cmake cmake-curses-gui uuid-dev
@@ -46,7 +46,7 @@ jobs:
       # dev files are not complete on ubuntu, thus we need to install them manually
       - name: C qpid-proton lib
         run: |
-          git clone github.com/apache/qpid-proton
+          git clone https://github.com/apache/qpid-proton
           cd qpid-proton
           mkdir build && cd build
           sudo apt-get install gcc g++ cmake cmake-curses-gui uuid-dev
