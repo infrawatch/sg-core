@@ -6,11 +6,16 @@ on: push
 jobs:
   golangci:
     name: Linting
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
-      - name: tidy
-        run: go mod tidy
+      - name: Set up Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: '1.14'
+      - name: C libraries install
+        run: |
+          apt-get install -y libqpid-proton-dev
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
@@ -28,6 +33,9 @@ jobs:
         uses: actions/setup-go@v1
         with:
           go-version: '1.14'
+      - name: C libraries install
+        run: |
+          apt-get install -y libqpid-proton-dev
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Run unit tests and code coverage
