@@ -241,7 +241,7 @@ func (c *ceilometerMetricHandler) Config(blob []byte) error {
 	return nil
 }
 
-//  New ceilometer metric handler constructor
+// New ceilometer metric handler constructor
 func New() handler.Handler {
 	return &ceilometerMetricHandler{
 		ceilo: ceilometer.New(),

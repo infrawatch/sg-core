@@ -9,9 +9,9 @@ import (
 
 // package application defines the interfaces for interacting with application plugins
 
-//  Application describes application plugin interfaces.
-//  Configuration bytes are passed into the Config() function as a sequence of bytes in yaml format. It is recommended to use the config.ParseConfig() method to parse the input. This is a convenience method that uses the validations library to validate the input and provide specific feedback.
-//  The main process must be implemented in the Run() method and respect the context.Done() signal. If the plugin wishes to send an exit signal to sg-core, it must send a true value to the boolean channel. This should be done in the case of plugin failure.
+// Application describes application plugin interfaces.
+// Configuration bytes are passed into the Config() function as a sequence of bytes in yaml format. It is recommended to use the config.ParseConfig() method to parse the input. This is a convenience method that uses the validations library to validate the input and provide specific feedback.
+// The main process must be implemented in the Run() method and respect the context.Done() signal. If the plugin wishes to send an exit signal to sg-core, it must send a true value to the boolean channel. This should be done in the case of plugin failure.
 type Application interface {
 	Config([]byte) error
 	Run(context.Context, chan bool)

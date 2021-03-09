@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-//  ElasticSearch client implementation using official library from ElasticClient
+// ElasticSearch client implementation using official library from ElasticClient
 
 // Client holds cluster connection configuration
 type Client struct {

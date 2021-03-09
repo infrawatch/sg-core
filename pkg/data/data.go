@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-//  package data defines the data descriptions for objects used in the internal buses
+// package data defines the data descriptions for objects used in the internal buses
 
 // ----------------------------------- events ----------------------------------
 
@@ -12,7 +12,7 @@ func (mt MetricType) String() string {
 	return []string{"untyped", "counter", "gauge"}[mt]
 }
 
-//  EventType marks type of data held in event message
+// EventType marks type of data held in event message
 type EventType int
 
 const (
@@ -33,7 +33,7 @@ func (et EventType) String() string {
 	return []string{"error", "event", "log", "result", "task"}[et]
 }
 
-//  EventSeverity indicates severity of an event
+// EventSeverity indicates severity of an event
 type EventSeverity int
 
 const (
@@ -51,7 +51,7 @@ func (es EventSeverity) String() string {
 	return []string{"unknown", "info", "warning", "critical"}[es]
 }
 
-//  Event convenience type that contains all elements of an event on the bus. This type is good to use for caching and testing
+// Event convenience type that contains all elements of an event on the bus. This type is good to use for caching and testing
 type Event struct {
 	Index       string
 	Time        float64
@@ -65,7 +65,7 @@ type Event struct {
 
 // ---------------------------------- metrics ----------------------------------
 
-//  MetricType follows standard metric conventions from prometheus
+// MetricType follows standard metric conventions from prometheus
 type MetricType int
 
 const (
@@ -77,7 +77,7 @@ const (
 	GAUGE
 )
 
-//  Metric internal metric type
+// Metric internal metric type
 type Metric struct {
 	Name      string
 	Time      float64

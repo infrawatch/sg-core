@@ -156,7 +156,7 @@ static void send_message(app_data_t *app, pn_link_t *sender, pn_rwbytes_t *data)
 }
 
 static bool send_burst(app_data_t *app, pn_event_t *event) {
-//    pn_link_t *sender = pn_event_link(event);
+// pn_link_t *sender = pn_event_link(event);
     pn_link_t *sender = app->sender;
 
     int credits = pn_link_credit(sender);

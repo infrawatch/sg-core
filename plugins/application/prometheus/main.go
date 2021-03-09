@@ -29,7 +29,7 @@ type configT struct {
 	WithTimestamp bool `yaml:"withTimeStamp"`
 }
 
-//  used to expire stale metrics
+// used to expire stale metrics
 type metricExpiry struct {
 	sync.RWMutex
 	lastArrival time.Time
@@ -90,7 +90,7 @@ func (lw *logWrapper) Infof(format string, a ...interface{}) {
 	lw.l.Info(fmt.Sprintf(format, a...))
 }
 
-//  container object for all metric related processes
+// container object for all metric related processes
 type metricProcess struct {
 	description *prometheus.Desc
 	expiry      *metricExpiry
@@ -99,7 +99,7 @@ type metricProcess struct {
 }
 
 // PromCollector implements prometheus.Collector for incoming metrics. Metrics
-//  with differing label dimensions must create separate PromCollectors.
+// with differing label dimensions must create separate PromCollectors.
 type PromCollector struct {
 	logger            *logWrapper
 	mProc             sync.Map
@@ -208,7 +208,7 @@ func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.Metri
 }
 
 // Prometheus plugin for interfacing with Prometheus. Metrics with the same dimensions
-//  are included in the same collectors even if the labels are different
+// are included in the same collectors even if the labels are different
 type Prometheus struct {
 	configuration       configT
 	logger              *logWrapper
@@ -348,7 +348,7 @@ func (p *Prometheus) Config(c []byte) error {
 	return nil
 }
 
-//  helper functions
+// helper functions
 
 func syncMapLen(m *sync.Map) int {
 	len := 0
