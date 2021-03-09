@@ -7,7 +7,7 @@ jobs:
   golangci:
     name: Linting
     runs-on: ubuntu-20.04
-    container: 'centos:8'
+    container: 'quay.io/plmr/sg-core-ci'
     steps:
       - uses: actions/checkout@v2
       - name: Set up Go
