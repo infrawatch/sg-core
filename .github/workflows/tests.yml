@@ -14,7 +14,7 @@ jobs:
         with:
           go-version: '1.14'
       - name: C libraries install
-        run: sudo apt-get install -y libqpid-proton-dev
+        run: sudo apt-get install -y libqpid-proton libqpid-proton-dev
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
@@ -33,7 +33,7 @@ jobs:
         with:
           go-version: '1.14'
       - name: C libraries install
-        run: sudo apt-get install -y libqpid-proton-dev
+        run: sudo apt-get install -y libqpid-proton libqpid-proton-dev
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Run unit tests and code coverage
