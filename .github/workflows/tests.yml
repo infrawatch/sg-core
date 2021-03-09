@@ -14,10 +14,8 @@ jobs:
         uses: actions/setup-go@v1
         with:
           go-version: '1.14'
-      - name: install qpid-proton dependencies
-        run: |
-          dnf search qpid
-          dnf install -y qpid-proton-c-devel qpid-proton-c
+      - name: Go dep
+        run: go mod tidy
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
