@@ -24,7 +24,7 @@ jobs:
           mkdir build && cd build
           sudo apt-get install gcc g++ cmake cmake-curses-gui uuid-dev
           cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DSYSINSTALL_BINDINGS=ON
-          make install
+          sudo make install
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
@@ -51,7 +51,7 @@ jobs:
           mkdir build && cd build
           sudo apt-get install gcc g++ cmake cmake-curses-gui uuid-dev
           cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DSYSINSTALL_BINDINGS=ON
-          make install
+          sudo make install
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Run unit tests and code coverage
