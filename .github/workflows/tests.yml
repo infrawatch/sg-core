@@ -18,13 +18,18 @@ jobs:
 
         # dev files are not complete on ubuntu, thus we need to install them manually
       - name: C qpid-proton lib
+        # run: |
+        #   git clone https://github.com/apache/qpid-proton
+        #   cd qpid-proton
+        #   mkdir build && cd build
+        #   sudo apt-get install gcc g++ cmake cmake-curses-gui uuid-dev
+        #   cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DSYSINSTALL_BINDINGS=ON
+        #   sudo make install
         run: |
-          git clone https://github.com/apache/qpid-proton
-          cd qpid-proton
-          mkdir build && cd build
-          sudo apt-get install gcc g++ cmake cmake-curses-gui uuid-dev
-          cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DSYSINSTALL_BINDINGS=ON
-          sudo make install
+          sudo apt-get install libqpid-proton-cpp12 -y
+          sudo apt-get install libqpid-proton-cpp12-dev -y
+          sudo apt-get install libqpid-proton11 -y
+          sudo apt-get install libqpid-proton11-dev -y
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
@@ -38,6 +43,8 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
       - name: Set up Go
         uses: actions/setup-go@v1
         with:
@@ -45,15 +52,18 @@ jobs:
 
       # dev files are not complete on ubuntu, thus we need to install them manually
       - name: C qpid-proton lib
+        # run: |
+        #   git clone https://github.com/apache/qpid-proton
+        #   cd qpid-proton
+        #   mkdir build && cd build
+        #   sudo apt-get install gcc g++ cmake cmake-curses-gui uuid-dev
+        #   cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DSYSINSTALL_BINDINGS=ON
+        #   sudo make install
         run: |
-          git clone https://github.com/apache/qpid-proton
-          cd qpid-proton
-          mkdir build && cd build
-          sudo apt-get install gcc g++ cmake cmake-curses-gui uuid-dev
-          cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DSYSINSTALL_BINDINGS=ON
-          sudo make install
-      - name: Checkout code
-        uses: actions/checkout@v2
+          sudo apt-get install libqpid-proton-cpp12 -y
+          sudo apt-get install libqpid-proton-cpp12-dev -y
+          sudo apt-get install libqpid-proton11 -y
+          sudo apt-get install libqpid-proton11-dev -y
       - name: Run unit tests and code coverage
         run: go test -v -coverprofile=profile.cov ./...
       - name: Send coverage
