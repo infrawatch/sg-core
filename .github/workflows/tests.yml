@@ -10,20 +10,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: tidy
-        run: |
-          echo "Gopaths:"
-          go env GOPATH
-          echo "Workdir"
-          pwd
-          echo "Files"
-          ls -al
-          go mod tidy
+        run: go mod tidy
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
+          # Caching conflicts happen in GHA, so just disable for now
           skip-pkg-cache: true
           skip-build-cache: true
+          # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
           version: v1.33
   test-framework:
     name: Base testing
