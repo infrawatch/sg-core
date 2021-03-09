@@ -23,6 +23,7 @@ type eventOutput struct {
 	Index       string
 	Type        string
 	Publisher   string
+	Severity    data.EventSeverity
 	Labels      map[string]interface{}
 	Annotations map[string]interface{}
 }
@@ -99,6 +100,7 @@ func (p *Print) Run(ctx context.Context, done chan bool) {
 					Index:       event.Index,
 					Type:        event.Type.String(),
 					Publisher:   event.Publisher,
+					Severity:    event.Severity,
 					Labels:      event.Labels,
 					Annotations: event.Annotations,
 				}
