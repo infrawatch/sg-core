@@ -83,12 +83,12 @@ type configT struct {
 	Interval   int
 }
 
-//DummyMetrics basic struct
+// DummyMetrics basic struct
 type DummyMetrics struct {
 	c configT
 }
 
-//Run implements type Transport
+// Run implements type Transport
 func (dm *DummyMetrics) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 
 	for {
@@ -109,12 +109,12 @@ func (dm *DummyMetrics) Run(ctx context.Context, w transport.WriteFn, done chan 
 done:
 }
 
-//Listen ...
+// Listen ...
 func (dm *DummyMetrics) Listen(e data.Event) {
 
 }
 
-//Config load configurations
+// Config load configurations
 func (dm *DummyMetrics) Config(c []byte) error {
 	dm.c = configT{
 		Ceilometer: true,
@@ -128,7 +128,7 @@ func (dm *DummyMetrics) Config(c []byte) error {
 	return nil
 }
 
-//New create new socket transport
+// New create new socket transport
 func New(l *logging.Logger) transport.Transport {
 	return &DummyMetrics{}
 }

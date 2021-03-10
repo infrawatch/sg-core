@@ -6,7 +6,7 @@ import (
 
 // package data defines the data descriptions for objects used in the internal buses
 
-//----------------------------------- events ----------------------------------
+// ----------------------------------- events ----------------------------------
 
 func (mt MetricType) String() string {
 	return []string{"untyped", "counter", "gauge"}[mt]
@@ -16,16 +16,16 @@ func (mt MetricType) String() string {
 type EventType int
 
 const (
-	// ERROR event contains handler failure data and should be handled on application level
+	//  ERROR event contains handler failure data and should be handled on application level
 	ERROR EventType = iota
-	// EVENT contains regular event data
+	//  EVENT contains regular event data
 	EVENT
-	// LOG event contains log record
+	//  LOG event contains log record
 	LOG
-	// RESULT event contains data about result of check execution
-	// perfomed by any supported client side agent (collectd-sensubility, sg-agent)
+	//  RESULT event contains data about result of check execution
+	//  perfomed by any supported client side agent (collectd-sensubility, sg-agent)
 	RESULT
-	// TASK contains request of performing some task, for example scheduler app asking transport to send message
+	//  TASK contains request of performing some task, for example scheduler app asking transport to send message
 	TASK
 )
 
@@ -37,13 +37,13 @@ func (et EventType) String() string {
 type EventSeverity int
 
 const (
-	//UNKNOWN ... default
+	// UNKNOWN ... default
 	UNKNOWN EventSeverity = iota
-	//INFO ...
+	// INFO ...
 	INFO
-	//WARNING ...
+	// WARNING ...
 	WARNING
-	//CRITICAL ...
+	// CRITICAL ...
 	CRITICAL
 )
 
@@ -60,19 +60,20 @@ type Event struct {
 	Severity    EventSeverity
 	Labels      map[string]interface{}
 	Annotations map[string]interface{}
+	Message     string
 }
 
-//---------------------------------- metrics ----------------------------------
+// ---------------------------------- metrics ----------------------------------
 
 // MetricType follows standard metric conventions from prometheus
 type MetricType int
 
 const (
-	//UNTYPED ...
+	// UNTYPED ...
 	UNTYPED MetricType = iota
-	//COUNTER only increases in value
+	// COUNTER only increases in value
 	COUNTER
-	//GAUGE can increase or decrease in value
+	// GAUGE can increase or decrease in value
 	GAUGE
 )
 

@@ -21,7 +21,7 @@ var (
 )
 
 type collectdMetricsHandler struct {
-	totalMetricsDecoded   uint64 //total number of collectd metrics decoded from messages
+	totalMetricsDecoded   uint64 // total number of collectd metrics decoded from messages
 	totalMessagesReceived uint64
 	totalDecodeErrors     uint64
 }
@@ -91,7 +91,7 @@ func (c *collectdMetricsHandler) Handle(blob []byte, reportErrors bool, pf bus.M
 	}
 
 	for _, cdmetric := range *cdmetrics {
-		err = c.writeMetrics(&cdmetric, pf)
+		err = c.writeMetrics(cdmetric, pf)
 		if err != nil {
 			c.totalDecodeErrors++
 			if reportErrors {
@@ -118,8 +118,8 @@ func (c *collectdMetricsHandler) Identify() string {
 	return "collectd-metrics"
 }
 
-func (c *collectdMetricsHandler) writeMetrics(cdmetric *collectd.Metric, pf bus.MetricPublishFunc) error {
-	if !validateMetric(cdmetric) {
+func (c *collectdMetricsHandler) writeMetrics(cdmetric collectd.Metric, pf bus.MetricPublishFunc) error {
+	if !validateMetric(&cdmetric) {
 		return errors.New(0, "")
 	}
 	pluginInstance := cdmetric.PluginInstance
@@ -137,7 +137,7 @@ func (c *collectdMetricsHandler) writeMetrics(cdmetric *collectd.Metric, pf bus.
 			mType = data.UNTYPED
 		}
 		pf(
-			genMetricName(cdmetric, index),
+			genMetricName(&cdmetric, index),
 			cdmetric.Time.Float(),
 			mType,
 			time.Duration(cdmetric.Interval)*time.Second,
@@ -189,7 +189,7 @@ func genMetricName(cdmetric *collectd.Metric, index int) (name string) {
 	return
 }
 
-//New create new collectdMetricsHandler object
+// New create new collectdMetricsHandler object
 func New() handler.Handler {
 	return &collectdMetricsHandler{}
 }

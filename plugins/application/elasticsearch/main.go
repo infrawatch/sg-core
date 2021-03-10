@@ -16,22 +16,20 @@ import (
 )
 
 const (
-	appname           = "elasticsearch"
-	genericSuffix     = "_generic"
-	eventRecordFormat = `{"event_type":"%s","generated":"%s","severity":"%s","labels":%s,"annotations":%s}`
+	appname = "elasticsearch"
 )
 
 var (
 	json = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
-//wrapper object for elasitcsearch index
+// wrapper object for elasitcsearch index
 type esIndex struct {
 	index  string
 	record []string
 }
 
-//used to marshal event into es usable json
+// used to marshal event into es usable json
 type record struct {
 	EventType   string                 `json:"event_type"`
 	Generated   string                 `json:"generated"`
@@ -40,7 +38,7 @@ type record struct {
 	Annotations map[string]interface{} `json:"annotations"`
 }
 
-//Elasticsearch plugin saves events to Elasticsearch database
+// Elasticsearch plugin saves events to Elasticsearch database
 type Elasticsearch struct {
 	configuration *lib.AppConfig
 	logger        *logging.Logger
@@ -49,7 +47,7 @@ type Elasticsearch struct {
 	dump          chan esIndex
 }
 
-//New constructor
+// New constructor
 func New(logger *logging.Logger) application.Application {
 	return &Elasticsearch{
 		logger: logger,
@@ -58,7 +56,7 @@ func New(logger *logging.Logger) application.Application {
 	}
 }
 
-//ReceiveEvent receive event from event bus
+// ReceiveEvent receive event from event bus
 func (es *Elasticsearch) ReceiveEvent(event data.Event) {
 	switch event.Type {
 	case data.ERROR:
@@ -92,11 +90,12 @@ func (es *Elasticsearch) ReceiveEvent(event data.Event) {
 		es.dump <- esIndex{index: event.Index, record: recordList}
 	case data.RESULT:
 		//TODO: result
+	default:
 	}
 
 }
 
-//Run plugin process
+// Run plugin process
 func (es *Elasticsearch) Run(ctx context.Context, done chan bool) {
 	es.logger.Metadata(logging.Metadata{"plugin": appname, "url": es.configuration.HostURL})
 	es.logger.Info("storing events to Elasticsearch.")
@@ -132,7 +131,7 @@ done:
 	es.logger.Info("exited")
 }
 
-//Config implements application.Application
+// Config implements application.Application
 func (es *Elasticsearch) Config(c []byte) error {
 	es.configuration = &lib.AppConfig{
 		HostURL:       "",

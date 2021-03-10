@@ -18,7 +18,7 @@ import (
 func main() {
 	configPath := flag.String("config", "/etc/sg-core.conf.yaml", "configuration file path")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
-	//memprofile := flag.String("memprofile", "", "write cpu profile to file")
+	// memprofile := flag.String("memprofile", "", "write cpu profile to file")
 	flag.Usage = func() {
 		fmt.Printf("Usage: %s [OPTIONS]\n\nAvailable options:\n", os.Args[0])
 		flag.PrintDefaults()
@@ -40,7 +40,11 @@ func main() {
 			logger.Metadata(logging.Metadata{"error": err})
 			logger.Error("failed to start cpu profile")
 		}
-		pprof.StartCPUProfile(f)
+		err = pprof.StartCPUProfile(f)
+		if err != nil {
+			logger.Metadata(logging.Metadata{"error": err})
+			logger.Error("failed to start cpu profile")
+		}
 		defer pprof.StopCPUProfile()
 	}
 
@@ -107,9 +111,9 @@ func main() {
 
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	wg := new(sync.WaitGroup)
-	//run main processes
+	// run main processes
 
-	pluginDone := make(chan bool) //notified if a plugin stops execution before main or interrupt Received
+	pluginDone := make(chan bool) // notified if a plugin stops execution before main or interrupt Received
 	interrupt := make(chan bool)
 	manager.RunTransports(ctx, wg, pluginDone, configuration.HandlerErrors)
 	manager.RunApplications(ctx, wg, pluginDone)

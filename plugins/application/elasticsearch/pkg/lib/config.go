@@ -1,6 +1,6 @@
 package lib
 
-//AppConfig holds configuration for Elasticsearch client
+// AppConfig holds configuration for Elasticsearch client
 type AppConfig struct {
 	HostURL       string   `yaml:"hostURL"`
 	UseTLS        bool     `yaml:"useTLS"`

@@ -15,18 +15,18 @@ import (
 
 // ElasticSearch client implementation using official library from ElasticClient
 
-//Client holds cluster connection configuration
+// Client holds cluster connection configuration
 type Client struct {
 	conn *esv7.Client
 }
 
-//NewElasticClient constructor
+// NewElasticClient constructor
 func NewElasticClient(cfg *AppConfig) (*Client, error) {
 	client := &Client{}
 	return client, client.Connect(cfg)
 }
 
-//createTLSConfig creates appropriate TLS configuration with enabled cert-based authentication
+// createTLSConfig creates appropriate TLS configuration with enabled cert-based authentication
 func createTLSConfig(serverName string, certFile string, keyFile string, caFile string) (*tls.Config, error) {
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
@@ -41,6 +41,7 @@ func createTLSConfig(serverName string, certFile string, keyFile string, caFile 
 	certPool.AppendCertsFromPEM(ca)
 
 	tlsConfig := &tls.Config{
+		MinVersion:   tls.VersionTLS13,
 		Certificates: []tls.Certificate{cert},
 		RootCAs:      certPool,
 	}
@@ -53,7 +54,7 @@ func createTLSConfig(serverName string, certFile string, keyFile string, caFile 
 	return tlsConfig, nil
 }
 
-//Connect initiates connection with ES host and tests the connection
+// Connect initiates connection with ES host and tests the connection
 func (esc *Client) Connect(cfg *AppConfig) error {
 	var err error
 
@@ -84,7 +85,7 @@ func (esc *Client) Connect(cfg *AppConfig) error {
 	return err
 }
 
-//IndicesExists returns true if given indices exists, otherwise return false
+// IndicesExists returns true if given indices exists, otherwise return false
 func (esc *Client) IndicesExists(indices []string) (bool, error) {
 	res, err := esc.conn.Indices.Exists(indices)
 	if err != nil {
@@ -96,7 +97,7 @@ func (esc *Client) IndicesExists(indices []string) (bool, error) {
 	return false, nil
 }
 
-//IndicesDelete ...
+// IndicesDelete ...
 func (esc *Client) IndicesDelete(indices []string) error {
 	res, err := esc.conn.Indices.Delete(indices)
 	if err != nil {
@@ -109,7 +110,7 @@ func (esc *Client) IndicesDelete(indices []string) error {
 	return nil
 }
 
-//IndicesCreate ...
+// IndicesCreate ...
 func (esc *Client) IndicesCreate(indices []string) error {
 	for _, index := range indices {
 		res, err := esc.conn.Indices.Create(index)
@@ -124,7 +125,7 @@ func (esc *Client) IndicesCreate(indices []string) error {
 	return nil
 }
 
-//Index saves given documents under given index
+// Index saves given documents under given index
 func (esc *Client) Index(index string, documents []string, bulk bool) error {
 	if !bulk {
 		for _, doc := range documents {

@@ -16,7 +16,7 @@ var (
 	metricsUT []data.Metric
 )
 
-//CeilometerMetricTemplate holds correct parsings for comparing against parsed results
+// CeilometerMetricTemplate holds correct parsings for comparing against parsed results
 type CeilometerMetricTestTemplate struct {
 	TestInput        jsoniter.RawMessage `json:"testInput"`
 	ValidatedResults []data.Metric       `json:"validatedResults"`
@@ -31,7 +31,9 @@ func ceilometerMetricTestTemplateFromJSON(jsonData jsoniter.RawMessage) (*Ceilom
 	return &testData, nil
 }
 
-func EventReceive(data.Event)
+func EventReceive(data.Event) {
+
+}
 
 func MetricReceive(name string, mTime float64, mType data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
 	metricsUT = append(metricsUT, data.Metric{
@@ -54,7 +56,7 @@ func TestCeilometerIncoming(t *testing.T) {
 	}
 
 	tests := make(map[string]jsoniter.RawMessage)
-	err = json.Unmarshal([]byte(testData), &tests)
+	err = json.Unmarshal(testData, &tests)
 	if err != nil {
 		t.Errorf("failed to unmarshal test data: %s", err.Error())
 	}
