@@ -40,6 +40,11 @@ jobs:
         uses: shogo82148/actions-goveralls@v1
         with:
           path-to-profile: profile.cov
+  image-build:
+    name: Test image building
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
       - name: Verify image builds
         run: |
           docker build --tag infrawatch/sg-core:latest --file build/Dockerfile .
