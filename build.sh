@@ -27,6 +27,7 @@ if $PRODUCTION_BUILD; then
       "dummy-alertmanager"
       "dummy-events"
       "dummy-metrics"
+      "dummy-logs"
   )
 
   OMIT_HANDLERS=(
