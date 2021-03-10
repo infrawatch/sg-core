@@ -7,20 +7,10 @@ import (
 )
 
 const (
-	alertSource     = "SmartGateway"
-	isoTimeLayout   = "2006-01-02 15:04:05.000000"
-	unknownSeverity = "unknown"
+	alertSource = "SmartGateway"
 )
 
-var (
-	collectdAlertSeverity = map[string]string{
-		"OKAY":    "info",
-		"WARNING": "warning",
-		"FAILURE": "critical",
-	}
-)
-
-//GenerateAlert generate prometheus alert from event
+// GenerateAlert generate prometheus alert from event
 func GenerateAlert(generatorURL string, event data.Event) PrometheusAlert {
 
 	alert := PrometheusAlert{
@@ -43,10 +33,4 @@ func GenerateAlert(generatorURL string, event data.Event) PrometheusAlert {
 	}
 	alert.SetSummary()
 	return alert
-}
-
-func timeFromEpoch(epoch float64) string {
-	whole := int64(epoch)
-	t := time.Unix(whole, int64((float64(whole)-epoch)*1000000000))
-	return t.Format(time.RFC3339)
 }

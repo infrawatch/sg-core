@@ -5,11 +5,11 @@ import (
 )
 
 var (
-	//Ceilometer data parsers
+	// Ceilometer data parsers
 	rexForOsloMessage = regexp.MustCompile(`\\*"oslo.message\\*"\s*:\s*\\*"({.*})\\*"`)
 	rexForPayload     = regexp.MustCompile(`\\+"payload\\+"\s*:\s*\[(.*)\]`)
 	rexForEventType   = regexp.MustCompile(`\\+"event_type\\+"\s*:\s*\\*"`)
-	//collectd data parsers
+	// collectd data parsers
 	rexForLabelsField     = regexp.MustCompile(`\\?"labels\\?"\w?:\w?\{`)
 	rexForAnnotationField = regexp.MustCompile(`\\?"annotations\\?"\w?:\w?\{`)
 )
@@ -24,10 +24,7 @@ func recognizeCeilometer(jsondata []byte) bool {
 		return false
 	}
 	match = rexForPayload.FindSubmatchIndex(jsondata)
-	if match == nil {
-		return false
-	}
-	return true
+	return match != nil
 }
 
 func recognizeCollectd(jsondata []byte) bool {
@@ -41,15 +38,15 @@ var recognizers = map[string](func([]byte) bool){
 	"ceilometer": recognizeCeilometer,
 }
 
-//DataSource indentifies a format of incoming data in the message bus channel.
+// DataSource indentifies a format of incoming data in the message bus channel.
 type DataSource int
 
-//ListAll returns slice of supported data sources in form of human readable names.
+// ListAll returns slice of supported data sources in form of human readable names.
 func (src DataSource) ListAll() []string {
 	return []string{"ceilometer", "collectd", "generic"}
 }
 
-//SetFromString resets value according to given human readable identification. Returns false if invalid identification was given.
+// SetFromString resets value according to given human readable identification. Returns false if invalid identification was given.
 func (src *DataSource) SetFromString(name string) bool {
 	for index, value := range src.ListAll() {
 		if name == value {
@@ -60,7 +57,7 @@ func (src *DataSource) SetFromString(name string) bool {
 	return false
 }
 
-//SetFromMessage resets value according to given message data format
+// SetFromMessage resets value according to given message data format
 func (src *DataSource) SetFromMessage(jsondata []byte) {
 	for source, rec := range recognizers {
 		if rec(jsondata) {
@@ -73,7 +70,7 @@ func (src *DataSource) SetFromMessage(jsondata []byte) {
 	src.SetFromString("generic")
 }
 
-//String returns human readable data type identification.
+// String returns human readable data type identification.
 func (src DataSource) String() string {
 	return (src.ListAll())[src]
 }

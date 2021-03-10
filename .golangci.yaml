@@ -1,0 +1,58 @@
+run:
+  skip-dirs:
+    - plugins/transport/dummy-alertmanager
+    - plugins/transport/dummy-events
+    - plugins/transport/dummy-metrics
+    - plugins/transport/dummy-logs
+    - plugins/application/print
+    - devenv
+issues:
+  exclude-rules:
+    - linters:
+      - errcheck
+      text: "[a-zA-Z]+.[a-zA-Z]+.(Error|Info|Debug|Warn)" # from logger
+    - text: "[A-Z]+" #omit enums
+      linters:
+        - deadcode
+    - text: New
+      linters:
+        - deadcode
+
+linters:
+  disable-all: true
+  enable:
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - dupl
+    - errcheck
+    # - exhaustive
+    # - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - golint
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    - rowserrcheck
+    - scopelint
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - typecheck
+    # - unused
+    - unconvert
+    - unparam
+    - varcheck
+    # - whitespace
+   

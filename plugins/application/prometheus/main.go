@@ -98,7 +98,7 @@ type metricProcess struct {
 	scrapped    bool
 }
 
-//PromCollector implements prometheus.Collector for incoming metrics. Metrics
+// PromCollector implements prometheus.Collector for incoming metrics. Metrics
 // with differing label dimensions must create separate PromCollectors.
 type PromCollector struct {
 	logger            *logWrapper
@@ -108,15 +108,16 @@ type PromCollector struct {
 	cacheindexbuilder strings.Builder
 }
 
-//NewPromCollector PromCollector constructor
+// NewPromCollector PromCollector constructor
 func NewPromCollector(l *logWrapper, dimensions int, withtimestamp bool) *PromCollector {
 	return &PromCollector{
-		logger:     l,
-		dimensions: dimensions,
+		logger:        l,
+		dimensions:    dimensions,
+		withtimestamp: withtimestamp,
 	}
 }
 
-//Describe implements prometheus.Collector
+// Describe implements prometheus.Collector
 func (pc *PromCollector) Describe(ch chan<- *prometheus.Desc) {
 	pc.mProc.Range(func(mName interface{}, itf interface{}) bool {
 		ch <- itf.(*metricProcess).description
@@ -124,11 +125,11 @@ func (pc *PromCollector) Describe(ch chan<- *prometheus.Desc) {
 	})
 }
 
-//Collect implements prometheus.Collector
+// Collect implements prometheus.Collector
 func (pc *PromCollector) Collect(ch chan<- prometheus.Metric) {
-	//fmt.Printf("\nScrapping collector of size %d with %d metrics:\n", pc.dimensions, syncMapLen(&pc.mProc))
+	// fmt.Printf("\nScrapping collector of size %d with %d metrics:\n", pc.dimensions, syncMapLen(&pc.mProc))
 	pc.mProc.Range(func(mName interface{}, itf interface{}) bool {
-		//fmt.Println(mName)
+		// fmt.Println(mName)
 		mProc := itf.(*metricProcess)
 		mProc.scrapped = true
 		pMetric, err := prometheus.NewConstMetric(mProc.description, typeToPromType[mProc.metric.Type], mProc.metric.Value, mProc.metric.LabelVals...)
@@ -149,12 +150,12 @@ func (pc *PromCollector) Collect(ch chan<- prometheus.Metric) {
 	})
 }
 
-//Dimensions return dimension size of labels in collector
+// Dimensions return dimension size of labels in collector
 func (pc *PromCollector) Dimensions() int {
 	return pc.dimensions
 }
 
-//UpdateMetrics update metrics in collector
+// UpdateMetrics update metrics in collector
 func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string, ep *expiryProc) {
 	var mProc *metricProcess
 	pc.cacheindexbuilder.Grow(len(name))
@@ -206,20 +207,20 @@ func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.Metri
 	pc.cacheindexbuilder.Reset()
 }
 
-//Prometheus plugin for interfacing with Prometheus. Metrics with the same dimensions
+// Prometheus plugin for interfacing with Prometheus. Metrics with the same dimensions
 // are included in the same collectors even if the labels are different
 type Prometheus struct {
 	configuration       configT
 	logger              *logWrapper
-	collectors          sync.Map //collectors mapped according to label dimensions
-	metricExpiryProcs   sync.Map //stores expiry processes based for each metric interval
+	collectors          sync.Map // collectors mapped according to label dimensions
+	metricExpiryProcs   sync.Map // stores expiry processes based for each metric interval
 	collectorExpiryProc *expiryProc
 	registry            *prometheus.Registry
 	ctx                 context.Context
 	sync.RWMutex
 }
 
-//New constructor
+// New constructor
 func New(l *logging.Logger) application.Application {
 	return &Prometheus{
 		configuration: configT{
@@ -236,7 +237,7 @@ func New(l *logging.Logger) application.Application {
 	}
 }
 
-//ReceiveMetric callback function for recieving metric from the bus
+// ReceiveMetric callback function for receiving metric from the bus
 func (p *Prometheus) ReceiveMetric(name string, t float64, typ data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
 	p.Lock()
 	labelLen := len(labelKeys)
@@ -281,12 +282,12 @@ func (p *Prometheus) ReceiveMetric(name string, t float64, typ data.MetricType, 
 	p.Unlock()
 }
 
-//Run run scrape endpoint
+// Run run scrape endpoint
 func (p *Prometheus) Run(ctx context.Context, done chan bool) {
 	p.ctx = ctx
 	p.registry = prometheus.NewRegistry()
 
-	//Set up Metric Exporter
+	// Set up Metric Exporter
 	handler := http.NewServeMux()
 	handler.Handle("/metrics", promhttp.HandlerFor(p.registry, promhttp.HandlerOpts{}))
 	handler.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -302,7 +303,7 @@ func (p *Prometheus) Run(ctx context.Context, done chan bool) {
 		}
 	})
 
-	//run exporter for prometheus to scrape
+	// run exporter for prometheus to scrape
 	metricsURL := fmt.Sprintf("%s:%d", p.configuration.Host, p.configuration.Port)
 
 	srv := &http.Server{Addr: metricsURL}
@@ -320,7 +321,7 @@ func (p *Prometheus) Run(ctx context.Context, done chan bool) {
 
 	p.logger.Infof("metric server at : %s", metricsURL)
 
-	//run collector expiry process
+	// run collector expiry process
 	go p.collectorExpiryProc.run(ctx)
 
 	<-ctx.Done()
@@ -336,7 +337,7 @@ func (p *Prometheus) Run(ctx context.Context, done chan bool) {
 	p.logger.Infof("exited")
 }
 
-//Config implements application.Application
+// Config implements application.Application
 func (p *Prometheus) Config(c []byte) error {
 	p.configuration = configT{}
 	err := config.ParseConfig(bytes.NewReader(c), &p.configuration)

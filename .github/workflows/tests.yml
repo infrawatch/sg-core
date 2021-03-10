@@ -7,31 +7,44 @@ jobs:
   golangci:
     name: Linting
     runs-on: ubuntu-20.04
+    container: 'quay.io/plmr/sg-core-ci'
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.16'
+      - name: tidy
+        run: go mod tidy
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
+          # Caching conflicts happen in GHA, so just disable for now
+          skip-pkg-cache: true
+          skip-build-cache: true
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
           version: v1.33
-
   test-framework:
-    name: Base testing
+    name: Unit tests
     runs-on: ubuntu-20.04
-
+    container: 'quay.io/plmr/sg-core-ci'
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v1
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
         with:
-          go-version: '1.14'
-      - name: Checkout code
-        uses: actions/checkout@v2
+          go-version: '1.16'
+      - name: tidy
+        run: go mod tidy
       - name: Run unit tests and code coverage
         run: go test -v -coverprofile=profile.cov ./...
       - name: Send coverage
         uses: shogo82148/actions-goveralls@v1
         with:
           path-to-profile: profile.cov
+  image-build:
+    name: Image build
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
       - name: Verify image builds
         run: |
           docker build --tag infrawatch/sg-core:latest --file build/Dockerfile .

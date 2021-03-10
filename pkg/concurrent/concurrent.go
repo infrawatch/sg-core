@@ -2,13 +2,13 @@ package concurrent
 
 import "sync"
 
-//Map thread safe map type
+// Map thread safe map type
 type Map struct {
 	sync.RWMutex
-	Items map[string]interface{} //Optimize with unsafe types?
+	Items map[string]interface{} // Optimize with unsafe types?
 }
 
-//NewMap map constructor
+// NewMap map constructor
 func NewMap() *Map {
 	return &Map{
 		RWMutex: sync.RWMutex{},
@@ -16,14 +16,14 @@ func NewMap() *Map {
 	}
 }
 
-//Set set index in map
+// Set set index in map
 func (m *Map) Set(key string, value interface{}) {
 	m.Lock()
 	m.Items[key] = value
-	m.Unlock() //do not use defer() as it is too slow
+	m.Unlock() // do not use defer() as it is too slow
 }
 
-//Contains return true if key exists
+// Contains return true if key exists
 func (m *Map) Contains(key string) bool {
 	m.RLock()
 	_, ok := m.Items[key]
@@ -31,7 +31,7 @@ func (m *Map) Contains(key string) bool {
 	return ok
 }
 
-//Len return number of map indexes
+// Len return number of map indexes
 func (m *Map) Len() int {
 	m.RLock()
 	l := len(m.Items)
@@ -39,7 +39,7 @@ func (m *Map) Len() int {
 	return l
 }
 
-//Get get item with key. Returns nil if does not exist
+// Get get item with key. Returns nil if does not exist
 func (m *Map) Get(key string) interface{} {
 	m.RLock()
 	val := m.Items[key]
@@ -47,20 +47,20 @@ func (m *Map) Get(key string) interface{} {
 	return val
 }
 
-//Delete delete index in map
+// Delete delete index in map
 func (m *Map) Delete(key string) {
 	m.Lock()
 	delete(m.Items, key)
 	m.Unlock()
 }
 
-//MapItem key value pair for use in iteration
+// MapItem key value pair for use in iteration
 type MapItem struct {
 	Key   string
 	Value interface{}
 }
 
-//Iter iterate with range keyword
+// Iter iterate with range keyword
 func (m *Map) Iter() <-chan MapItem {
 	c := make(chan MapItem)
 
