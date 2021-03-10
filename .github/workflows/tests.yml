@@ -10,6 +10,9 @@ jobs:
     container: 'quay.io/plmr/sg-core-ci'
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+      - name: tidy
+        run: go mod tidy
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
@@ -23,8 +26,8 @@ jobs:
     runs-on: ubuntu-20.04
     container: 'quay.io/plmr/sg-core-ci'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
       - name: Run unit tests and code coverage
         run: go test -v -coverprofile=profile.cov ./...
       - name: Send coverage
