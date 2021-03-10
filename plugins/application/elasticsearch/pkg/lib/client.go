@@ -41,6 +41,7 @@ func createTLSConfig(serverName string, certFile string, keyFile string, caFile 
 	certPool.AppendCertsFromPEM(ca)
 
 	tlsConfig := &tls.Config{
+		MinVersion:   tls.VersionTLS13,
 		Certificates: []tls.Certificate{cert},
 		RootCAs:      certPool,
 	}
