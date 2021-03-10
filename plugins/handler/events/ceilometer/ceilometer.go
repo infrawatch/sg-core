@@ -14,9 +14,9 @@ import (
 var (
 	// Regular expression for sanitizing received data
 	rexForNestedQuote = regexp.MustCompile(`\\\"`)
-	//json parser
+	// json parser
 	json = jsoniter.ConfigCompatibleWithStandardLibrary
-	//severity converter. A DNE returns data.INFO
+	// severity converter. A DNE returns data.INFO
 	ceilometerAlertSeverity = map[string]data.EventSeverity{
 		"audit":    data.INFO,
 		"info":     data.INFO,
@@ -96,16 +96,19 @@ func (om *osloMessage) fromBytes(blob []byte) error {
 	return json.Unmarshal(blob, om)
 }
 
-//Ceilometer holds parsed ceilometer event data and provides methods for retrieving that data
+// Ceilometer holds parsed ceilometer event data and provides methods for retrieving that data
 // in a standardizes format
 type Ceilometer struct {
 	osloMessage osloMessage
 }
 
-//Parse parse ceilometer message data
+// Parse parse ceilometer message data
 func (c *Ceilometer) Parse(blob []byte) error {
 	rm := rawMessage{}
-	json.Unmarshal(blob, &rm)
+	err := json.Unmarshal(blob, &rm)
+	if err != nil {
+		return err
+	}
 	rm.sanitizeMessage()
 
 	c.osloMessage = osloMessage{}
@@ -124,7 +127,7 @@ func (c *Ceilometer) name(index int) string {
 	return buildName(fmt.Sprintf("%s%s", source, genericSuffix))
 }
 
-//PublishEvents iterate through events in payload calling publish function on each iteration
+// PublishEvents iterate through events in payload calling publish function on each iteration
 func (c *Ceilometer) PublishEvents(epf bus.EventPublishFunc) error {
 	for idx, event := range c.osloMessage.Payload {
 		ts, err := event.traitsFormatted()
@@ -149,7 +152,7 @@ func (c *Ceilometer) PublishEvents(epf bus.EventPublishFunc) error {
 }
 
 func (c *Ceilometer) getTimeAsEpoch(payload osloPayload) float64 {
-	//order of precedence: payload timestamp, message timestamp, zero
+	// order of precedence: payload timestamp, message timestamp, zero
 
 	if payload.Generated != "" {
 		return float64(lib.EpochFromFormat(payload.Generated))
@@ -168,7 +171,7 @@ func buildName(eventType string) string {
 	if len(etParts) > 1 {
 		output = strings.Join(etParts[:len(etParts)-1], "_")
 	}
-	strings.ReplaceAll(output, "-", "_")
+	output = strings.ReplaceAll(output, "-", "_")
 
 	// ensure index name is prefixed with source name
 	if !strings.HasPrefix(output, fmt.Sprintf("%s_", source)) {

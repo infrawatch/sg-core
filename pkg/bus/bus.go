@@ -7,26 +7,26 @@ import (
 	"github.com/infrawatch/sg-core/pkg/data"
 )
 
-//EventReceiveFunc callback type for receiving events from the event bus
+// EventReceiveFunc callback type for receiving events from the event bus
 type EventReceiveFunc func(data.Event)
 
-//EventPublishFunc function to for publishing to the event bus
+// EventPublishFunc function to for publishing to the event bus
 type EventPublishFunc func(data.Event)
 
-//EventBus bus for data.Event type
+// EventBus bus for data.Event type
 type EventBus struct {
 	subscribers []EventReceiveFunc
 	rw          sync.RWMutex
 }
 
-//Subscribe subscribe to bus
+// Subscribe subscribe to bus
 func (eb *EventBus) Subscribe(rf EventReceiveFunc) {
 	eb.rw.Lock()
 	defer eb.rw.Unlock()
 	eb.subscribers = append(eb.subscribers, rf)
 }
 
-//Publish publish to bus
+// Publish publish to bus
 func (eb *EventBus) Publish(e data.Event) {
 	eb.rw.RLock()
 
@@ -42,23 +42,23 @@ func (eb *EventBus) Publish(e data.Event) {
 // arguments are name, timestamp, metric type, interval, value, labels
 type MetricReceiveFunc func(string, float64, data.MetricType, time.Duration, float64, []string, []string)
 
-//MetricPublishFunc function type for publishing to the metric bus
+// MetricPublishFunc function type for publishing to the metric bus
 type MetricPublishFunc func(string, float64, data.MetricType, time.Duration, float64, []string, []string)
 
-//MetricBus bus for data.Metric type
+// MetricBus bus for data.Metric type
 type MetricBus struct {
 	sync.RWMutex
 	subscribers []MetricReceiveFunc
 }
 
-//Subscribe subscribe to bus
+// Subscribe subscribe to bus
 func (mb *MetricBus) Subscribe(rf MetricReceiveFunc) {
 	mb.Lock()
 	defer mb.Unlock()
 	mb.subscribers = append(mb.subscribers, rf)
 }
 
-//Publish publish to bus
+// Publish publish to bus
 func (mb *MetricBus) Publish(name string, time float64, mType data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
 	mb.RLock()
 	for _, rf := range mb.subscribers {

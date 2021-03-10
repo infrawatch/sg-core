@@ -17,9 +17,9 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-//errors
+// errors
 var (
-	//ErrAppNotReceiver return if application plugin does not implement any receiver. In this case, it will receive no messages from the internal buses
+	// ErrAppNotReceiver return if application plugin does not implement any receiver. In this case, it will receive no messages from the internal buses
 	ErrAppNotReceiver = errors.New("application plugin does not implement either application.MetricReceiver or application.EventReceiver")
 )
 var (
@@ -39,17 +39,17 @@ func init() {
 	pluginPath = "/usr/lib64/sg-core"
 }
 
-//SetPluginDir set directory path containing plugin binaries
+// SetPluginDir set directory path containing plugin binaries
 func SetPluginDir(path string) {
 	pluginPath = path
 }
 
-//SetLogger set logger
+// SetLogger set logger
 func SetLogger(l *logging.Logger) {
 	logger = l
 }
 
-//InitTransport load tranpsort binary and initialize with config
+// InitTransport load tranpsort binary and initialize with config
 func InitTransport(name string, config interface{}) error {
 	n, err := initPlugin(name)
 	if err != nil {
@@ -75,7 +75,7 @@ func InitTransport(name string, config interface{}) error {
 	return nil
 }
 
-//InitApplication initialize application plugin with configuration
+// InitApplication initialize application plugin with configuration
 func InitApplication(name string, config interface{}) error {
 	n, err := initPlugin(name)
 	if err != nil {
@@ -121,7 +121,7 @@ func InitApplication(name string, config interface{}) error {
 	return nil
 }
 
-//SetTransportHandlers load handlers binaries for transport
+// SetTransportHandlers load handlers binaries for transport
 func SetTransportHandlers(name string, handlerBlocks []struct {
 	Name   string `validate:"required"`
 	Config interface{}
@@ -156,7 +156,7 @@ func SetTransportHandlers(name string, handlerBlocks []struct {
 	return nil
 }
 
-//RunTransports spins off tranpsort + handler processes
+// RunTransports spins off tranpsort + handler processes
 func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool, report bool) {
 	for name, t := range transports {
 		for _, h := range handlers[name] {
@@ -183,7 +183,7 @@ func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool, repo
 	}
 }
 
-//RunApplications spins off application processes
+// RunApplications spins off application processes
 func RunApplications(ctx context.Context, wg *sync.WaitGroup, done chan bool) {
 	for _, a := range applications {
 		wg.Add(1)

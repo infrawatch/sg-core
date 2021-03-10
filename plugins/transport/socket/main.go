@@ -54,13 +54,13 @@ func (lw *logWrapper) Warnf(format string, a ...interface{}) {
 	lw.l.Warn(fmt.Sprintf(format, a...))
 }
 
-//Socket basic struct
+// Socket basic struct
 type Socket struct {
 	conf   configT
 	logger *logWrapper
 }
 
-//Run implements type Transport
+// Run implements type Transport
 func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 
 	msgBuffer := make([]byte, maxBufferSize)
@@ -81,7 +81,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	go func() {
 		for {
 			n, err := pc.Read(msgBuffer)
-			//fmt.Printf("received message: %s\n", string(msgBuffer))
+			// fmt.Printf("received message: %s\n", string(msgBuffer))
 
 			if err != nil || n < 1 {
 				if err != nil {
@@ -110,12 +110,12 @@ Done:
 	s.logger.Infof("exited")
 }
 
-//Listen ...
+// Listen ...
 func (s *Socket) Listen(e data.Event) {
 	fmt.Printf("Received event: %v\n", e)
 }
 
-//Config load configurations
+// Config load configurations
 func (s *Socket) Config(c []byte) error {
 	s.conf = configT{}
 	err := config.ParseConfig(bytes.NewReader(c), &s.conf)
@@ -125,7 +125,7 @@ func (s *Socket) Config(c []byte) error {
 	return nil
 }
 
-//New create new socket transport
+// New create new socket transport
 func New(l *logging.Logger) transport.Transport {
 	return &Socket{
 		logger: &logWrapper{

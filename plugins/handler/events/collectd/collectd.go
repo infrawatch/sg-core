@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-//collectd contains objects for handling collectd events
+// collectd contains objects for handling collectd events
 
 var (
 	// Regular expression for sanitizing received data
@@ -32,32 +32,25 @@ var (
 
 const source string = "collectd"
 
-type msgType int
-
-const (
-	collectd msgType = iota
-	sensubility
-)
-
 type eventMessage struct {
 	Labels      map[string]interface{}
 	Annotations map[string]interface{}
 	StartsAt    string `json:"startsAt"`
 }
 
-//Collectd type for handling collectd event messages
+// Collectd type for handling collectd event messages
 type Collectd struct {
 	events []data.Event
 }
 
-//PublishEvents write events to publish func
+// PublishEvents write events to publish func
 func (c *Collectd) PublishEvents(epf bus.EventPublishFunc) {
 	for _, e := range c.events {
 		epf(e)
 	}
 }
 
-//Parse parse event message
+// Parse parse event message
 func (c *Collectd) Parse(blob []byte) error {
 	message := []eventMessage{}
 	err := json.UnmarshalFromString(sanitize(blob), &message)
@@ -70,13 +63,13 @@ func (c *Collectd) Parse(blob []byte) error {
 		var name string
 		name, ok := eMsg.Labels["alertname"].(string)
 		if !ok {
-			//sensubility
+			// sensubility
 			v, ok := eMsg.Labels["check"].(string)
 			if ok {
 				name = strings.ReplaceAll(v, "-", "_")
 			}
 		}
-		//gets rid of last term showing type like "gauge"
+		// gets rid of last term showing type like "gauge"
 		if index := strings.LastIndex(name, "_"); index > len("collectd_") {
 			name = name[0:index]
 		}
@@ -139,7 +132,7 @@ func sanitize(jsondata []byte) string {
 		output = rexForVes.ReplaceAllLiteralString(output, fmt.Sprintf(`"ves":{%s}`, substr))
 		// messages from collectd-sensubility don't contain array, so add surrounding brackets
 		if rexForArray.FindString(output) == "" {
-			output = fmt.Sprintf("[%s]", string(output))
+			output = fmt.Sprintf("[%s]", output)
 		}
 	}
 	return output

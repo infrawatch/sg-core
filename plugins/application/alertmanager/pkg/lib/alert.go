@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-//PrometheusAlert represents data structure used for sending alerts to Prometheus Alert Manager
+// PrometheusAlert represents data structure used for sending alerts to Prometheus Alert Manager
 type PrometheusAlert struct {
 	Labels       map[string]string `json:"labels"`
 	Annotations  map[string]string `json:"annotations"`
@@ -14,7 +14,7 @@ type PrometheusAlert struct {
 	GeneratorURL string            `json:"generatorURL"`
 }
 
-//SetName generates unique name and description for the alert and creates new key/value pair for it in Labels
+// SetName generates unique name and description for the alert and creates new key/value pair for it in Labels
 func (alert *PrometheusAlert) SetName() {
 	if _, ok := alert.Labels["name"]; !ok {
 		keys := make([]string, 0, len(alert.Labels))
@@ -36,7 +36,7 @@ func (alert *PrometheusAlert) SetName() {
 	}
 }
 
-//SetSummary generates summary annotation in case it is empty
+// SetSummary generates summary annotation in case it is empty
 func (alert *PrometheusAlert) SetSummary() {
 	generate := false
 	if _, ok := alert.Annotations["summary"]; ok {

@@ -34,7 +34,9 @@ var (
 	metricsUT []data.Metric
 )
 
-func EventReceive(data.Event)
+func EventReceive(data.Event) {
+
+}
 
 func MetricReceive(name string, mTime float64, mType data.MetricType, interval time.Duration, value float64, labelKeys []string, labelVals []string) {
 	metricsUT = append(metricsUT, data.Metric{
@@ -48,7 +50,7 @@ func MetricReceive(name string, mTime float64, mType data.MetricType, interval t
 	})
 }
 
-//Use this to update messages in metric-tests-expected.json if behavior should change
+// Use this to update messages in metric-tests-expected.json if behavior should change
 
 // func TestPrintMsgs(t *testing.T) {
 // 	metricHandler := New().(*collectdMetricsHandler)
@@ -77,7 +79,7 @@ func TestMessageParsing(t *testing.T) {
 	t.Run("Invalid Messages", func(t *testing.T) {
 		for _, blob := range testMsgsInvalid {
 			metricHandler.totalDecodeErrors = 0
-			metricHandler.Handle([]byte(blob), false, MetricReceive, EventReceive)
+			_ = metricHandler.Handle([]byte(blob), false, MetricReceive, EventReceive)
 			assert.Equal(t, uint64(1), metricHandler.totalDecodeErrors)
 		}
 	})

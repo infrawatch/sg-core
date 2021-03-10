@@ -14,27 +14,20 @@ import (
 	"github.com/infrawatch/sg-core/plugins/handler/events/pkg/lib"
 )
 
-//EventsHandler is processing event messages
+// EventsHandler is processing event messages
 type EventsHandler struct {
 	eventsReceived map[string]uint64
 	configuration  *lib.HandlerConfig
 }
 
-//ProcessingError contains processing error data
-type ProcessingError struct {
-	Error   string `json:"error"`
-	Context string `json:"context"`
-	Message string `json:"message"`
-}
-
-//Handle implements the data.EventsHandler interface
+// Handle implements the data.EventsHandler interface
 func (eh *EventsHandler) Handle(msg []byte, reportErrors bool, sendMetric bus.MetricPublishFunc, sendEvent bus.EventPublishFunc) error {
 	source := lib.DataSource(0)
 	if eh.configuration.StrictSource != "" {
 		source.SetFromString(eh.configuration.StrictSource)
 	} else {
-		// if strict source is not set then handler is processing channel with multiple data sources
-		// and has to be recognized from message format
+		//  if strict source is not set then handler is processing channel with multiple data sources
+		//  and has to be recognized from message format
 		source.SetFromMessage(msg)
 	}
 
@@ -65,7 +58,7 @@ func (eh *EventsHandler) Handle(msg []byte, reportErrors bool, sendMetric bus.Me
 	return err
 }
 
-//Run send internal metrics to bus
+// Run send internal metrics to bus
 func (eh *EventsHandler) Run(ctx context.Context, sendMetric bus.MetricPublishFunc, sendEvent bus.EventPublishFunc) {
 	for {
 		select {
@@ -99,18 +92,18 @@ func (eh *EventsHandler) Run(ctx context.Context, sendMetric bus.MetricPublishFu
 done:
 }
 
-//Identify returns handler's name
+// Identify returns handler's name
 func (eh *EventsHandler) Identify() string {
 	return "events"
 }
 
-//Config ...
+// Config ...
 func (eh *EventsHandler) Config(blob []byte) error {
 	eh.configuration = &lib.HandlerConfig{StrictSource: ""}
 	return config.ParseConfig(bytes.NewReader(blob), eh.configuration)
 }
 
-//New create new eventsHandler object
+// New create new eventsHandler object
 func New() handler.Handler {
 	return &EventsHandler{eventsReceived: make(map[string]uint64)}
 }
