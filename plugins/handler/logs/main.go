@@ -1,12 +1,12 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"time"
 	"bytes"
-	"strconv"
+	"context"
 	"encoding/json"
+	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/config"
@@ -31,15 +31,15 @@ const (
 
 func (rs SyslogSeverity) toEventSeverity() data.EventSeverity {
 	return []data.EventSeverity{data.CRITICAL,
-	                            data.CRITICAL,
-	                            data.CRITICAL,
-	                            data.CRITICAL,
-	                            data.WARNING,
-	                            data.INFO,
-	                            data.INFO,
-	                            data.INFO,
-	                            data.UNKNOWN,
-	                           }[rs]
+		data.CRITICAL,
+		data.CRITICAL,
+		data.CRITICAL,
+		data.WARNING,
+		data.INFO,
+		data.INFO,
+		data.INFO,
+		data.UNKNOWN,
+	}[rs]
 }
 
 type logConfig struct {
@@ -96,25 +96,24 @@ func (l *logHandler) parse(log []byte) (data.Event, error) {
 
 	index := fmt.Sprintf("logs-%s-%d-%d-%d", hostname, year, month, day)
 
-
 	// remove message and timestamp from labels (leave the rest)
 	delete(logFields, l.config.MessageField)
 	delete(logFields, l.config.TimestampField)
 
-	parsedLog = data.Event {
-		Index: index,
-		Time: timestamp,
-		Type: data.LOG,
+	parsedLog = data.Event{
+		Index:     index,
+		Time:      timestamp,
+		Type:      data.LOG,
 		Publisher: hostname,
-		Severity: eventSeverity,
-		Labels: logFields,
-		Message: msg,
+		Severity:  eventSeverity,
+		Labels:    logFields,
+		Message:   msg,
 	}
 
 	return parsedLog, nil
 }
 
-//Handle implements the data.EventsHandler interface
+// Handle implements the data.EventsHandler interface
 func (l *logHandler) Handle(msg []byte, reportErrors bool, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) error {
 	var err error
 	l.totalLogsReceived++
@@ -146,7 +145,7 @@ func (l *logHandler) Handle(msg []byte, reportErrors bool, mpf bus.MetricPublish
 	return err
 }
 
-//Run send internal metrics to bus
+// Run send internal metrics to bus
 func (l *logHandler) Run(ctx context.Context, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) {
 	for {
 		select {
@@ -171,7 +170,7 @@ func (l *logHandler) Identify() string {
 	return "log"
 }
 
-//New create new logHandler object
+// New create new logHandler object
 func New() handler.Handler {
 	return &logHandler{}
 }

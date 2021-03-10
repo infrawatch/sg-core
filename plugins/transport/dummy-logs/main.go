@@ -21,12 +21,12 @@ var logMessages = []string{
 	`", "host":"localhost", "severity":"1", "facility":"authpriv", "tag":"sudo[803493]:", "source":"sudo", "message":"   jarda : 1 incorrect password attempt ; TTY=pts\/1 ; PWD=\/home\/jarda\/go\/src\/github.com\/vyzigold\/sg-core\/plugins\/application\/loki ; USER=root ; COMMAND=\/usr\/bin\/ls", "file":"", "cloud": "cloud1", "region": "<region-name>"}`,
 }
 
-//DummyLogs plugin struct
+// DummyLogs plugin struct
 type DummyLogs struct {
 	logger *logging.Logger
 }
 
-//Run implements type Transport
+// Run implements type Transport
 func (dl *DummyLogs) Run(ctx context.Context, wrFn transport.WriteFn, done chan bool) {
 
 	for {
@@ -54,17 +54,17 @@ func (dl *DummyLogs) Run(ctx context.Context, wrFn transport.WriteFn, done chan 
 done:
 }
 
-//Listen ...
+// Listen ...
 func (dl *DummyLogs) Listen(e data.Event) {
 
 }
 
-//Config load configurations
+// Config load configurations
 func (dl *DummyLogs) Config(c []byte) error {
 	return nil
 }
 
-//New create new socket transport
+// New create new socket transport
 func New(l *logging.Logger) transport.Transport {
 	return &DummyLogs{
 		logger: l,

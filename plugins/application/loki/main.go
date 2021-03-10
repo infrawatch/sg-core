@@ -21,17 +21,17 @@ type LokiConfig struct {
 	MaxWaitTime time.Duration
 }
 
-//Loki plugin for forwarding logs to loki
+// Loki plugin for forwarding logs to loki
 type Loki struct {
-	config *LokiConfig
-	client *connector.LokiConnector
-	logger *logging.Logger
+	config     *LokiConfig
+	client     *connector.LokiConnector
+	logger     *logging.Logger
 	logChannel chan interface{}
 }
 
-//New constructor
+// New constructor
 func New(logger *logging.Logger) application.Application {
-	return &Loki {
+	return &Loki{
 		logger:     logger,
 		logChannel: make(chan interface{}, 100),
 	}
@@ -54,7 +54,7 @@ func (l *Loki) ReceiveEvent(log data.Event) {
 	}
 }
 
-//Run run loki application plugin
+// Run run loki application plugin
 func (l *Loki) Run(ctx context.Context, done chan bool) {
 	l.logger.Metadata(logging.Metadata{"plugin": "loki", "url": l.config.Connection})
 	l.logger.Debug("storing logs to loki.")
@@ -67,9 +67,9 @@ func (l *Loki) Run(ctx context.Context, done chan bool) {
 	l.logger.Info("exited")
 }
 
-//Config implements application.Application
+// Config implements application.Application
 func (l *Loki) Config(c []byte) error {
-	l.config = &LokiConfig {
+	l.config = &LokiConfig{
 		Connection:  "",
 		BatchSize:   20,
 		MaxWaitTime: 100,
@@ -80,9 +80,9 @@ func (l *Loki) Config(c []byte) error {
 	}
 
 	l.client, err = connector.CreateLokiConnector(l.logger,
-	                                              l.config.Connection,
-	                                              l.config.MaxWaitTime,
-	                                              l.config.BatchSize)
+		l.config.Connection,
+		l.config.MaxWaitTime,
+		l.config.BatchSize)
 	if err != nil {
 		return errors.Wrap(err, "failed to connect to Loki host")
 	}

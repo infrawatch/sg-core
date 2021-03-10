@@ -23,8 +23,8 @@ linters:
     - dogsled
     - dupl
     - errcheck
-    - exhaustive
-    #- gochecknoinits
+    # - exhaustive
+    # - gochecknoinits
     - goconst
     - gocritic
     - gocyclo
