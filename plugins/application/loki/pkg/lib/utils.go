@@ -8,7 +8,7 @@ import (
 
 // assimilateMap recursively saves content of the given map to destination map of strings
 func assimilateMap(theMap map[string]interface{}, destination *map[string]string) {
-	defer func() { //recover from any panic
+	defer func() { // recover from any panic
 		if r := recover(); r != nil {
 			log.Printf("Panic:recovered in assimilateMap %v\n", r)
 		}

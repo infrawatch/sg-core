@@ -18,5 +18,5 @@ func TimeFromFormat(ts string) (time.Time, error) {
 			return stamp, nil
 		}
 	}
-	return time.Now(), fmt.Errorf("unable to parse timestamp.")
+	return time.Now(), fmt.Errorf("unable to parse timestamp")
 }

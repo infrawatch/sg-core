@@ -1,8 +1,8 @@
 package lib
 
 import (
-	"time"
 	"fmt"
+	"time"
 
 	"github.com/infrawatch/apputils/connector"
 	"github.com/infrawatch/sg-core/pkg/data"
@@ -30,12 +30,10 @@ func CreateLokiLog(log data.Event) (connector.LokiLog, error) {
 		return connector.LokiLog{}, err
 	}
 
-	output := connector.LokiLog {
+	output := connector.LokiLog{
 		LogMessage: log.Message,
-		Timestamp: time.Duration(time.Duration(log.Time) * time.Second),
-		Labels: labels,
+		Timestamp:  time.Duration(log.Time) * time.Second,
+		Labels:     labels,
 	}
 	return output, nil
 }
-
-

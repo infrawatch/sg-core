@@ -24,7 +24,7 @@ jobs:
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
           version: v1.33
   test-framework:
-    name: Base testing
+    name: Unit tests
     runs-on: ubuntu-20.04
     container: 'quay.io/plmr/sg-core-ci'
     steps:
@@ -41,7 +41,7 @@ jobs:
         with:
           path-to-profile: profile.cov
   image-build:
-    name: Test image building
+    name: Image build
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2

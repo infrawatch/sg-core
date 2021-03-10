@@ -3,13 +3,17 @@ run:
     - plugins/transport/dummy-alertmanager
     - plugins/transport/dummy-events
     - plugins/transport/dummy-metrics
+    - plugins/transport/dummy-logs
     - plugins/application/print
     - devenv
 issues:
   exclude-rules:
     - linters:
       - errcheck
-      text: "[a-zA-Z]+.[a-zA-Z]+.(Error|Info|Debug|Warn)"
+      text: "[a-zA-Z]+.[a-zA-Z]+.(Error|Info|Debug|Warn)" # from logger
+    - text: "[A-Z]+" #omit enums
+      linters:
+        - deadcode
     - text: New
       linters:
         - deadcode

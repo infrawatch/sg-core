@@ -123,23 +123,21 @@ func (l *logHandler) Handle(msg []byte, reportErrors bool, mpf bus.MetricPublish
 		epf(
 			log,
 		)
-	} else {
-		if reportErrors {
-			epf(data.Event{
-				Index:    l.Identify(),
-				Type:     data.ERROR,
-				Severity: data.CRITICAL,
-				Time:     0.0,
-				Labels: map[string]interface{}{
-					"error":   err.Error(),
-					"context": string(msg),
-					"message": "failed to parse log - disregarding",
-				},
-				Annotations: map[string]interface{}{
-					"description": "internal smartgateway log handler error",
-				},
-			})
-		}
+	} else if reportErrors {
+		epf(data.Event{
+			Index:    l.Identify(),
+			Type:     data.ERROR,
+			Severity: data.CRITICAL,
+			Time:     0.0,
+			Labels: map[string]interface{}{
+				"error":   err.Error(),
+				"context": string(msg),
+				"message": "failed to parse log - disregarding",
+			},
+			Annotations: map[string]interface{}{
+				"description": "internal smartgateway log handler error",
+			},
+		})
 	}
 
 	return err
