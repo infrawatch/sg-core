@@ -1,6 +1,8 @@
 name: Coveralls Badge
 on:
   pull_request:
+    branches-ignore:
+      - master
     types:
       - opened
 
