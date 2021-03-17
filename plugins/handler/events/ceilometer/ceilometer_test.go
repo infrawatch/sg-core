@@ -295,9 +295,11 @@ func TestCeilometerEvents(t *testing.T) {
 			// test timestamp
 			assert.Equal(t, testCase.Timestamp, ceilo.getTimeAsEpoch(0))
 			// test publishing
-			ceilo.PublishEvents(func(evt data.Event) {
-				assert.Equal(t, testCase.Event, evt)
+			expected := testCase.Event
+			err = ceilo.PublishEvents(func(evt data.Event) {
+				assert.Equal(t, expected, evt)
 			})
+			assert.NoError(t, err)
 		}
 	})
 

@@ -3,8 +3,8 @@ package lib
 import "time"
 
 var (
-	isoTimeLayout = "2006-01-02 15:04:05.000000"
-	rFC3339       = "2006-01-02T15:04:05.000000"
+	isoTimeLayout = "2006-01-02 15:04:05.999999"
+	rFC3339       = "2006-01-02T15:04:05.999999"
 )
 
 // EpochFromFormat get epoch time from one of select time string formats

@@ -279,8 +279,9 @@ func TestCeilometerEvents(t *testing.T) {
 			err := coll.Parse(testCase.EventBlob)
 			assert.NoError(t, err)
 			// test publishing
+			expected := testCase.Event
 			coll.PublishEvents(func(evt data.Event) {
-				assert.Equal(t, testCase.Event, evt)
+				assert.Equal(t, expected, evt)
 			})
 		}
 	})
