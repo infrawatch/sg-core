@@ -14,7 +14,7 @@ type parsingTestCase struct {
 }
 
 var parsingCases = []parsingTestCase{
-	parsingTestCase{
+	{
 		EventBlob: []byte("[{\"labels\":{\"alertname\":\"collectd_connectivity_gauge\",\"instance\":\"d60b3c68f23e\",\"connectivity\":\"eno2\"," +
 			"\"type\":\"interface_status\",\"severity\":\"FAILURE\",\"service\":\"collectd\"},\"annotations\":{\"summary\":\"\"," +
 			"\"ves\":\"{\\\"domain\\\":\\\"stateChange\\\",\\\"eventId\\\":2,\\\"eventName\\\":\\\"interface eno2 up\\\"," +
@@ -68,7 +68,7 @@ var parsingCases = []parsingTestCase{
 			Message: "",
 		},
 	},
-	parsingTestCase{
+	{
 		EventBlob: []byte("[{\"labels\":{\"alertname\":\"collectd_procevent_gauge\",\"instance\":\"d60b3c68f23e\",\"procevent\":\"bla.py\",\"type\":\"process_status\"," +
 			"\"severity\":\"FAILURE\",\"service\":\"collectd\"},\"annotations\":{\"summary\":\"\",\"ves\":\"{\\\"domain\\\":\\\"fault\\\"," +
 			"\\\"eventId\\\":3,\\\"eventName\\\":\\\"process bla.py (8537) down\\\",\\\"lastEpochMicrosec\\\":1518791119579620," +
@@ -128,7 +128,7 @@ var parsingCases = []parsingTestCase{
 			Message: "",
 		},
 	},
-	parsingTestCase{
+	{
 		EventBlob: []byte(`[{"labels":{"alertname":"collectd_interface_if_octets","instance":"localhost.localdomain","interface":"lo","severity":"FAILURE",` +
 			`"service":"collectd"},"annotations":{"summary":"Host localhost.localdomain, plugin interface (instance lo) type if_octets: ` +
 			`Data source \"rx\" is currently 43596.224329. That is above the failure threshold of 0.000000.","DataSource":"rx",` +
@@ -167,7 +167,7 @@ var parsingCases = []parsingTestCase{
 			Message: "",
 		},
 	},
-	parsingTestCase{
+	{
 		EventBlob: []byte(`[{"labels":{"alertname":"collectd_ovs_events_gauge","instance":"nfvha-comp-03","ovs_events":"br0","type":"link_status","severity":"OKAY",` +
 			`"service":"collectd"},"annotations":{"summary":"link state of \"br0\" interface has been changed to \"UP\"",` +
 			`"uuid":"c52f2aca-3cb1-48e3-bba3-100b54303d84"},"startsAt":"2018-02-22T20:12:19.547955618Z"}]`),
@@ -197,7 +197,7 @@ var parsingCases = []parsingTestCase{
 			Message: "",
 		},
 	},
-	parsingTestCase{
+	{
 		EventBlob: []byte(`{"labels":{"check":"elastic-check","client":"wubba.lubba.dub.dub.redhat.com","severity":"FAILURE"},"annotations":` +
 			`{"command":"podman ps | grep elastic || exit 2","duration":0.043278607,"executed":1601900769,"issued":1601900769,` +
 			`"output":"time=\"2020-10-05T14:26:09+02:00\" level=error msg=\"cannot mkdir /run/user/0/libpod: mkdir /run/user/0/libpod: permission denied\"\n",` +

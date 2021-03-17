@@ -20,7 +20,7 @@ type parsingTestCase struct {
 
 // NOTE: more test cases will come with coming sg-core usage and bug reports
 var parsingCases = []parsingTestCase{
-	parsingTestCase{ // standard ceilometer event
+	{ // standard ceilometer event
 		EventBlob: []byte(`{"request":{"oslo.version":"2.0","oslo.message":` +
 			`"{\"message_id\":\"4c9fbb58-c82d-4ca5-9f4c-2c61d0693214\",\"publisher_id\":\"telemetry.publisher.controller-0.redhat.local\",` +
 			`\"event_type\":\"event\",\"priority\":\"SAMPLE\",\"payload\":[{\"message_id\":\"084c0bca-0d19-40c0-a724-9916e4815845\",` +
@@ -50,7 +50,7 @@ var parsingCases = []parsingTestCase{
 				Timestamp:   "2020-03-06 14:13:30.057411",
 				Priority:    "SAMPLE",
 				Payload: []osloPayload{
-					osloPayload{
+					{
 						MessageID: "084c0bca-0d19-40c0-a724-9916e4815845",
 						EventType: "image.delete",
 						Generated: "2020-03-06T14:13:29.497096",
@@ -105,7 +105,7 @@ var parsingCases = []parsingTestCase{
 			},
 		},
 	},
-	parsingTestCase{ // used for testing non-standard values in event
+	{ // used for testing non-standard values in event
 		EventBlob: []byte(`{"request":{"oslo.version":"2.0","oslo.message":` +
 			`"{\"message_id\":\"4c9fbb58-c82d-4ca5-9f4c-2c61d0693214\",\"publisher_id\":\"telemetry.publisher\",` +
 			`\"event_type\":\"wubba\",\"priority\":\"SAMPLE\",\"payload\":[{\"message_id\":\"084c0bca-0d19-40c0-a724-9916e4815845\",` +
@@ -135,7 +135,7 @@ var parsingCases = []parsingTestCase{
 				Timestamp:   "2020-03-06 14:13:30.057411",
 				Priority:    "SAMPLE",
 				Payload: []osloPayload{
-					osloPayload{
+					{
 						MessageID: "084c0bca-0d19-40c0-a724-9916e4815845",
 						Generated: "",
 						Traits: []interface{}{
@@ -189,7 +189,7 @@ var parsingCases = []parsingTestCase{
 			},
 		},
 	},
-	parsingTestCase{ // used for testing non-standard values in event too
+	{ // used for testing non-standard values in event too
 		EventBlob: []byte(`{"request":{"oslo.version":"2.0","oslo.message":` +
 			`"{\"message_id\":\"4c9fbb58-c82d-4ca5-9f4c-2c61d0693214\",\"publisher_id\":\"telemetry.publisher\",` +
 			`\"priority\":\"SAMPLE\",\"payload\":[{\"message_id\":\"084c0bca-0d19-40c0-a724-9916e4815845\",` +
@@ -217,7 +217,7 @@ var parsingCases = []parsingTestCase{
 				Timestamp:   "2020-03-06 14:13:30.057411",
 				Priority:    "SAMPLE",
 				Payload: []osloPayload{
-					osloPayload{
+					{
 						MessageID: "084c0bca-0d19-40c0-a724-9916e4815845",
 						Generated: "2020-03-06T14:13:29.497096",
 						Traits: []interface{}{

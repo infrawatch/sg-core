@@ -12,7 +12,7 @@ type dataSourceTestCase struct {
 }
 
 var dsCases = []dataSourceTestCase{
-	dataSourceTestCase{
+	{
 		Source: "ceilometer",
 		EventBlob: []byte(`{"request":{"oslo.version":"2.0","oslo.message":` +
 			`"{\"message_id\":\"4c9fbb58-c82d-4ca5-9f4c-2c61d0693214\",\"publisher_id\":\"telemetry.publisher\",` +
@@ -24,7 +24,7 @@ var dsCases = []dataSourceTestCase{
 			`\"message_signature\":\"77e798b842991f9c0c35bda265fdf86075b4a1e58309db1d2adbf89386a3859e\"}],` +
 			`\"timestamp\":\"2020-03-06 14:13:30.057411\"}"},"context": {}}`),
 	},
-	dataSourceTestCase{
+	{
 		Source: "collectd",
 		EventBlob: []byte(`[{"labels":{"alertname":"collectd_interface_if_octets","instance":"localhost.localdomain","interface":"lo","severity":"FAILURE",` +
 			`"service":"collectd"},"annotations":{"summary":"Host localhost.localdomain, plugin interface (instance lo) type if_octets: ` +
