@@ -1,7 +1,7 @@
 name: CI
 env:
   COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
-on: push
+on: [push, pull_request]
 
 jobs:
   golangci:
