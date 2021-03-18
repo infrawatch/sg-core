@@ -14,8 +14,8 @@
           "LabelKeys": [
             "disk",
             "publisher",
-            "counter",
             "type",
+            "counter",
             "project",
             "unit",
             "resource",
@@ -24,8 +24,8 @@
           "LabelVals": [
             "size",
             "telemetry.publisher.controller-0.redhat.local",
-            "disk.ephemeral.size",
             "ephemeral",
+            "disk.ephemeral.size",
             "e56191ef77744c599dbcecae6af176bb",
             "GB",
             "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
@@ -41,8 +41,8 @@
           "LabelKeys": [
             "disk",
             "publisher",
-            "counter",
             "type",
+            "counter",
             "project",
             "unit",
             "resource",
@@ -51,8 +51,8 @@
           "LabelVals": [
             "size",
             "telemetry.publisher.controller-0.redhat.local",
-            "disk.root.size",
             "root",
+            "disk.root.size",
             "e56191ef77744c599dbcecae6af176bb",
             "GB",
             "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
@@ -68,8 +68,8 @@
           "LabelKeys": [
             "compute",
             "publisher",
-            "counter",
             "type",
+            "counter",
             "project",
             "unit",
             "resource",
@@ -78,8 +78,8 @@
           "LabelVals": [
             "booting",
             "telemetry.publisher.controller-0.redhat.local",
-            "compute.instance.booting.time",
             "instance",
+            "compute.instance.booting.time",
             "e56191ef77744c599dbcecae6af176bb",
             "sec",
             "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
@@ -95,8 +95,8 @@
           "LabelKeys": [
             "vcpus",
             "publisher",
-            "counter",
             "type",
+            "counter",
             "project",
             "unit",
             "resource",
@@ -122,8 +122,8 @@
           "LabelKeys": [
             "memory",
             "publisher",
-            "counter",
             "type",
+            "counter",
             "project",
             "unit",
             "resource",

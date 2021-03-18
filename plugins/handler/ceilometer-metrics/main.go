@@ -107,11 +107,7 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 		}
 
 		mType := ceilTypeToMetricType[m.CounterType] // zero value is UNTYPED
-
-		cNameShards := strings.Split(m.CounterName, ".")
-		labelKeys, labelVals := genLabels(m, msg.Publisher, cNameShards)
-		err = validateMetric(m, cNameShards)
-		if err != nil {
+		if m.CounterName == "" {
 			c.totalDecodeErrors++
 			if reportErrs {
 				epf(data.Event{
@@ -120,7 +116,7 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 					Severity: data.CRITICAL,
 					Time:     0.0,
 					Labels: map[string]interface{}{
-						"error":   err.Error(),
+						"error":   "missing 'counter_name' in metric payload",
 						"message": "failed to parse metric - disregarding",
 					},
 					Annotations: map[string]interface{}{
@@ -128,17 +124,20 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 					},
 				})
 			}
-			return err
+			return errors.New("missing 'counter_name' in metric payload")
 		}
+
 		c.totalMetricsDecoded++
+		cNameShards := strings.Split(m.CounterName, ".")
+		labelKeys, labelVals, len := genLabels(m, msg.Publisher, cNameShards)
 		mpf(
 			genName(cNameShards),
 			t,
 			mType,
 			time.Second*metricTimeout,
 			m.CounterVolume,
-			labelKeys,
-			labelVals,
+			labelKeys[:len],
+			labelVals[:len],
 		)
 	}
 
@@ -156,41 +155,13 @@ func validateMessage(msg *ceilometer.Message) error {
 	return nil
 }
 
-func validateMetric(m ceilometer.Metric, cNameShards []string) error {
-	if len(cNameShards) < 1 {
-		return errors.New("missing 'counter_name' in metric payload")
-	}
-
-	if m.ProjectID == "" {
-		return errors.New("metric missing 'project_id'")
-	}
-
-	if m.ResourceID == "" {
-		return errors.New("metric missing 'resource_id'")
-	}
-
-	if m.CounterName == "" {
-		return errors.New("metric missing 'counter_name'")
-	}
-
-	if m.CounterUnit == "" {
-		return errors.New("metric missing 'counter_unit'")
-	}
-
-	if m.ResourceMetadata.Host == "" {
-		return errors.New("metric missing 'resource_metadata.host'")
-	}
-
-	return nil
-}
-
 func genName(cNameShards []string) string {
 	nameParts := []string{"ceilometer"}
 	nameParts = append(nameParts, cNameShards...)
 	return strings.Join(nameParts, "_")
 }
 
-func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]string, []string) {
+func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]string, []string, int) {
 	labelKeys := make([]string, 8) //  TODO: set to persistent var
 	labelVals := make([]string, 8)
 	plugin := cNameShards[0]
@@ -206,31 +177,48 @@ func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]s
 	labelKeys[1] = "publisher"
 	labelVals[1] = publisher
 
-	labelKeys[2] = "counter"
-	labelVals[2] = m.CounterName
-
 	var ctype string
 	if len(cNameShards) > 1 {
 		ctype = cNameShards[1]
 	} else {
 		ctype = cNameShards[0]
 	}
-	labelKeys[3] = "type"
-	labelVals[3] = ctype
 
-	labelKeys[4] = "project"
-	labelVals[4] = m.ProjectID
+	labelKeys[2] = "type"
+	labelVals[2] = ctype
 
-	labelKeys[5] = "unit"
-	labelVals[5] = m.CounterUnit
+	// non - critical
+	index := 3
+	if m.CounterName != "" {
+		labelKeys[index] = "counter"
+		labelVals[index] = m.CounterName
+		index++
+	}
 
-	labelKeys[6] = "resource"
-	labelVals[6] = m.ResourceID
+	if m.ProjectID != "" {
+		labelKeys[index] = "project"
+		labelVals[index] = m.ProjectID
+		index++
+	}
 
-	labelKeys[7] = "host"
-	labelVals[7] = m.ResourceMetadata.Host
+	if m.CounterUnit != "" {
+		labelKeys[index] = "unit"
+		labelVals[index] = m.CounterUnit
+		index++
+	}
 
-	return labelKeys, labelVals
+	if m.ResourceID != "" {
+		labelKeys[index] = "resource"
+		labelVals[index] = m.ResourceID
+		index++
+	}
+
+	if m.ResourceMetadata.Host != "" {
+		labelKeys[index] = "host"
+		labelVals[index] = m.ResourceMetadata.Host
+	}
+
+	return labelKeys, labelVals, index + 1
 }
 
 func (c *ceilometerMetricHandler) Identify() string {
