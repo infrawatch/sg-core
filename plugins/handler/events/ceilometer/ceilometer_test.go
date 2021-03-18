@@ -6,6 +6,7 @@ import (
 
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type parsingTestCase struct {
@@ -279,18 +280,18 @@ func TestCeilometerEvents(t *testing.T) {
 			// test sanitizing
 			rm := rawMessage{}
 			err := jsontest.Unmarshal(testCase.EventBlob, &rm)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			rm.sanitizeMessage()
 			assert.Equal(t, testCase.RawMsg, rm)
 			// test parsing
 			ceilo := Ceilometer{}
 			err = ceilo.Parse(testCase.EventBlob)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			// test name
 			assert.Equal(t, testCase.Name, ceilo.name(0))
 			// test traits
 			traits, err := ceilo.traits(0)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, testCase.Traits, traits)
 			// test timestamp
 			assert.Equal(t, testCase.Timestamp, ceilo.getTimeAsEpoch(0))
@@ -299,7 +300,7 @@ func TestCeilometerEvents(t *testing.T) {
 			err = ceilo.PublishEvents(func(evt data.Event) {
 				assert.Equal(t, expected, evt)
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 	})
 

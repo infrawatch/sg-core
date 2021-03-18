@@ -5,6 +5,7 @@ import (
 
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type parsingTestCase struct {
@@ -277,7 +278,7 @@ func TestCeilometerEvents(t *testing.T) {
 			// test parsing
 			coll := Collectd{}
 			err := coll.Parse(testCase.EventBlob)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			// test publishing
 			expected := testCase.Event
 			coll.PublishEvents(func(evt data.Event) {
