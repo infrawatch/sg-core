@@ -30,12 +30,20 @@ type esIndex struct {
 }
 
 // used to marshal event into es usable json
-type record struct {
+type eventRecord struct {
 	EventType   string                 `json:"event_type"`
 	Generated   string                 `json:"generated"`
 	Severity    string                 `json:"severity"`
 	Labels      map[string]interface{} `json:"labels"`
+	Message     string                 `json:"message"`
 	Annotations map[string]interface{} `json:"annotations"`
+}
+
+// used to marshal a log event to es usable json
+type logRecord struct {
+	Generated string                 `json:"generated"`
+	Message   string                 `json:"message"`
+	Labels    map[string]interface{} `json:"labels"`
 }
 
 // Elasticsearch plugin saves events to Elasticsearch database
@@ -61,38 +69,45 @@ func (es *Elasticsearch) ReceiveEvent(event data.Event) {
 	switch event.Type {
 	case data.ERROR:
 		//TODO: error handling
-	case data.EVENT, data.LOG:
-		// buffer or index record
-		var recordList []string
-		record, err := formatRecord(event)
-		if err != nil {
-			es.logger.Metadata(logging.Metadata{"plugin": appname, "event": event})
-			es.logger.Error("failed formating record")
-			return
-		}
-		if es.configuration.BufferSize > 1 {
-			if _, ok := es.buffer[event.Index]; !ok {
-				es.buffer[event.Index] = make([]string, 0, es.configuration.BufferSize)
-			}
-
-			es.buffer[event.Index] = append(es.buffer[event.Index], record)
-			if len(es.buffer[event.Index]) < es.configuration.BufferSize {
-				// buffer is not full, don't send
-				es.logger.Metadata(logging.Metadata{"plugin": appname, "record": record})
-				es.logger.Debug("buffering record")
-				return
-			}
-			recordList = es.buffer[event.Index]
-			delete(es.buffer, event.Index)
-		} else {
-			recordList = []string{record}
-		}
-		es.dump <- esIndex{index: event.Index, record: recordList}
+	case data.EVENT:
+		es.dumpOrBufferRecord(event, formatEventRecord)
+	case data.LOG:
+		// ingores annotations field of event
+		es.dumpOrBufferRecord(event, formatLogRecord)
 	case data.RESULT:
 		//TODO: result
 	default:
 	}
 
+}
+
+func (es *Elasticsearch) dumpOrBufferRecord(event data.Event, recordFormatFunc func(event data.Event) (string, error)) {
+	var recordList []string
+	record, err := recordFormatFunc(event)
+	if err != nil {
+		es.logger.Metadata(logging.Metadata{"plugin": appname, "event": event})
+		es.logger.Error("failed formating record")
+		return
+	}
+	if es.configuration.BufferSize > 1 {
+		if _, ok := es.buffer[event.Index]; !ok {
+			es.buffer[event.Index] = make([]string, 0, es.configuration.BufferSize)
+		}
+
+		es.buffer[event.Index] = append(es.buffer[event.Index], record)
+		if len(es.buffer[event.Index]) < es.configuration.BufferSize {
+			// buffer is not full, don't send
+			es.logger.Metadata(logging.Metadata{"plugin": appname, "record": record})
+			es.logger.Debug("buffering record")
+			return
+		}
+		recordList = es.buffer[event.Index]
+		delete(es.buffer, event.Index)
+	} else {
+		recordList = []string{record}
+	}
+
+	es.dump <- esIndex{index: event.Index, record: recordList}
 }
 
 // Run plugin process
@@ -163,13 +178,29 @@ func (es *Elasticsearch) Config(c []byte) error {
 	return nil
 }
 
-func formatRecord(e data.Event) (string, error) {
-	record := record{
+func formatEventRecord(e data.Event) (string, error) {
+	record := eventRecord{
 		EventType:   e.Type.String(),
 		Generated:   timeFromEpoch(e.Time),
 		Severity:    e.Severity.String(),
 		Labels:      e.Labels,
+		Message:     e.Message,
 		Annotations: e.Annotations,
+	}
+
+	res, err := json.Marshal(record)
+	if err != nil {
+		return "", err
+	}
+
+	return string(res), nil
+}
+
+func formatLogRecord(e data.Event) (string, error) {
+	record := logRecord{
+		Generated: timeFromEpoch(e.Time),
+		Labels:    e.Labels,
+		Message:   e.Message,
 	}
 
 	res, err := json.Marshal(record)
