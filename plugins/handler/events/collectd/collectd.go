@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/infrawatch/apputils/misc"
 	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/infrawatch/sg-core/plugins/handler/events/pkg/lib"
@@ -105,7 +106,7 @@ func (c *Collectd) Parse(blob []byte) error {
 			Publisher: publisher,
 			Time:      float64(lib.EpochFromFormat(eMsg.StartsAt)),
 			Labels:    eMsg.Labels,
-			Annotations: lib.AssimilateMap(eMsg.Annotations, map[string]interface{}{
+			Annotations: misc.MergeMaps(eMsg.Annotations, map[string]interface{}{
 				"source_type":  source,
 				"processed_by": "sg",
 			}),

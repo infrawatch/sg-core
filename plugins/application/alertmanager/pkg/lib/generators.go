@@ -3,6 +3,8 @@ package lib
 import (
 	"time"
 
+	"github.com/infrawatch/apputils/misc"
+
 	"github.com/infrawatch/sg-core/pkg/data"
 )
 
@@ -18,8 +20,8 @@ func GenerateAlert(generatorURL string, event data.Event) PrometheusAlert {
 		Annotations:  make(map[string]string),
 		GeneratorURL: generatorURL,
 	}
-	assimilateMap(event.Labels, &alert.Labels)
-	assimilateMap(event.Annotations, &alert.Annotations)
+	misc.AssimilateMap(event.Labels, &alert.Labels)
+	misc.AssimilateMap(event.Annotations, &alert.Annotations)
 
 	alert.Labels["alertname"] = event.Index
 	alert.Labels["severity"] = event.Severity.String()

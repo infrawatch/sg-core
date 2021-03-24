@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/infrawatch/apputils/connector"
+	"github.com/infrawatch/apputils/misc"
+
 	"github.com/infrawatch/sg-core/pkg/data"
 )
 
@@ -17,7 +19,7 @@ type LokiConfig struct {
 // Creates labels used by Loki.
 func createLabels(rawLabels map[string]interface{}) (map[string]string, error) {
 	result := make(map[string]string)
-	assimilateMap(rawLabels, &result)
+	misc.AssimilateMap(rawLabels, &result)
 	if len(result) == 0 {
 		return nil, fmt.Errorf("unable to create log labels")
 	}

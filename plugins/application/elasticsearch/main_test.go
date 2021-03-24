@@ -123,7 +123,35 @@ var (
 		},
 	}
 	//TODO
-	logCases = []elasticTestCase{}
+	logCases = []elasticTestCase{
+		{
+			Event: data.Event{
+				Index:     "logs-overcloud-controller0-2021-03-24",
+				Time:      1616595773,
+				Type:      data.LOG,
+				Publisher: "overcloud-controller0",
+				Severity:  data.WARNING,
+				Labels: map[string]interface{}{
+					"host":     "overcloud-controller0",
+					"severity": 3,
+					"facility": "local0",
+					"tag":      "openstack.nova",
+					"source":   "openstack-nova-conductor",
+					"file":     "/var/log/nova/nova-conductor.log",
+					"cloud":    "overcloud",
+					"region":   "regionOne",
+				},
+				Message: "2021-03-24 14:22:53.063 16 ERROR stevedore.extension [req-58ef54fc-79a2-4fb1-9b53-f63d21cb3343 " +
+					"4d249f1635374d4b915f2f181caf9b43 81c09cd4e8f5456f9c196a53afb58c8d - default default] Could not load 'oslo_cache.etcd3gw': " +
+					"No module named 'etcd3gw': ModuleNotFoundError: No module named 'etcd3gw'",
+			},
+			Result: "{\"@timestamp\":\"2021-03-24T15:22:53+01:00\",\"labels\":{\"cloud\":\"overcloud\",\"facility\":\"local0\",\"file\":\"/var/log/nova/nova-conductor.log\"," +
+				"\"host\":\"overcloud-controller0\",\"region\":\"regionOne\",\"severity\":\"3\",\"source\":\"openstack-nova-conductor\",\"tag\":\"openstack.nova\"}," +
+				"\"message\":\"2021-03-24 14:22:53.063 16 ERROR stevedore.extension [req-58ef54fc-79a2-4fb1-9b53-f63d21cb3343 4d249f1635374d4b915f2f181caf9b43 " +
+				"81c09cd4e8f5456f9c196a53afb58c8d - default default] Could not load 'oslo_cache.etcd3gw': No module named 'etcd3gw': ModuleNotFoundError: " +
+				"No module named 'etcd3gw'\"}",
+		},
+	}
 )
 
 func TestElasticsearchApp(t *testing.T) {
@@ -160,7 +188,7 @@ func TestElasticsearchApp(t *testing.T) {
 	})
 
 	t.Run("Test log message processing", func(t *testing.T) {
-		/*results := make(chan esIndex, len(logCases))
+		results := make(chan esIndex, len(logCases))
 		app := &Elasticsearch{
 			logger: logger,
 			buffer: make(map[string][]string),
@@ -173,6 +201,6 @@ func TestElasticsearchApp(t *testing.T) {
 			app.ReceiveEvent(tstCase.Event)
 			res := <-results
 			assert.Equal(t, tstCase.Result, res.record[0])
-		}*/
+		}
 	})
 }

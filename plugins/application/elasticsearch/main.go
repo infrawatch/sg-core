@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/infrawatch/apputils/logging"
+	"github.com/infrawatch/apputils/misc"
 	"github.com/infrawatch/sg-core/pkg/application"
 	"github.com/infrawatch/sg-core/pkg/config"
 	"github.com/infrawatch/sg-core/pkg/data"
@@ -38,6 +39,13 @@ type record struct {
 	Annotations map[string]interface{} `json:"annotations"`
 }
 
+// used to marshal log into es usable json
+type log struct {
+	Timestamp string            `json:"@timestamp"`
+	Labels    map[string]string `json:"labels"`
+	Message   string            `json:"message"`
+}
+
 // Elasticsearch plugin saves events to Elasticsearch database
 type Elasticsearch struct {
 	configuration *lib.AppConfig
@@ -58,43 +66,45 @@ func New(logger *logging.Logger) application.Application {
 
 // ReceiveEvent receive event from event bus
 func (es *Elasticsearch) ReceiveEvent(event data.Event) {
+	var err error
+	var record string
 	switch event.Type {
-	case data.ERROR:
-		// TODO: error handling
 	case data.EVENT:
-		// buffer or index record
-		var recordList []string
-		record, err := formatRecord(event)
-		if err != nil {
-			es.logger.Metadata(logging.Metadata{"plugin": appname, "event": event})
-			es.logger.Error("failed formating record")
-			return
-		}
-		if es.configuration.BufferSize > 1 {
-			if _, ok := es.buffer[event.Index]; !ok {
-				es.buffer[event.Index] = make([]string, 0, es.configuration.BufferSize)
-			}
-
-			es.buffer[event.Index] = append(es.buffer[event.Index], record)
-			if len(es.buffer[event.Index]) < es.configuration.BufferSize {
-				// buffer is not full, don't send
-				es.logger.Metadata(logging.Metadata{"plugin": appname, "record": record})
-				es.logger.Debug("buffering record")
-				return
-			}
-			recordList = es.buffer[event.Index]
-			delete(es.buffer, event.Index)
-		} else {
-			recordList = []string{record}
-		}
-		es.dump <- esIndex{index: event.Index, record: recordList}
-	case data.RESULT:
-		// TODO: result
+		record, err = formatRecord(event)
 	case data.LOG:
-		// TODO: log
-	case data.TASK:
+		record, err = formatLog(event)
+	default:
+		// eg. case data.TASK: this app does not respond on task request events
+		//     case data.ERROR: TODO: save internal error
+		//     case data.RESULT: TODO: save task result
+		return
+	}
+	if err != nil {
+		es.logger.Metadata(logging.Metadata{"plugin": appname, "event": event})
+		es.logger.Error("failed formating record")
+		return
 	}
 
+	// buffer or index record
+	var recordList []string
+	if es.configuration.BufferSize > 1 {
+		if _, ok := es.buffer[event.Index]; !ok {
+			es.buffer[event.Index] = make([]string, 0, es.configuration.BufferSize)
+		}
+
+		es.buffer[event.Index] = append(es.buffer[event.Index], record)
+		if len(es.buffer[event.Index]) < es.configuration.BufferSize {
+			// buffer is not full, don't send
+			es.logger.Metadata(logging.Metadata{"plugin": appname, "record": record})
+			es.logger.Debug("buffering record")
+			return
+		}
+		recordList = es.buffer[event.Index]
+		delete(es.buffer, event.Index)
+	} else {
+		recordList = []string{record}
+	}
+	es.dump <- esIndex{index: event.Index, record: recordList}
 }
 
 // Run plugin process
@@ -172,6 +182,23 @@ func formatRecord(e data.Event) (string, error) {
 		Severity:    e.Severity.String(),
 		Labels:      e.Labels,
 		Annotations: e.Annotations,
+	}
+
+	res, err := json.Marshal(record)
+	if err != nil {
+		return "", err
+	}
+
+	return string(res), nil
+}
+
+func formatLog(e data.Event) (string, error) {
+	dest := map[string]string{}
+	misc.AssimilateMap(misc.MergeMaps(e.Annotations, e.Labels), &dest)
+	record := log{
+		Timestamp: timeFromEpoch(e.Time),
+		Labels:    dest,
+		Message:   e.Message,
 	}
 
 	res, err := json.Marshal(record)
