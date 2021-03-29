@@ -182,7 +182,7 @@ func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.Metri
 			expiry: &metricExpiry{
 				delete: func() bool {
 					mp, ok := pc.mProc.Load(cacheKey)
-					if !ok { //this should never happen
+					if !ok { // this should never happen
 						pc.logger.Error("cache miss", errors.Newf("failed to locate '%s' in metric cache", cacheKey))
 						return false
 					}
