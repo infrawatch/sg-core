@@ -6,7 +6,10 @@ ENV D=/go/src/github.com/infrawatch/sg-core
 WORKDIR $D
 COPY . $D/
 
-RUN dnf install golang git -y --setopt=tsflags=nodocs
+# dependencies for qpid-proton-c
+COPY build/repos/opstools.repo /etc/yum.repos.d/opstools.repo
+
+RUN dnf install golang git qpid-proton-c-devel -y --setopt=tsflags=nodocs
 RUN PRODUCTION_BUILD=true ./build.sh
 
 # --- end build, create smart gateway layer ---

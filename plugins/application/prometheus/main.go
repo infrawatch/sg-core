@@ -15,6 +15,7 @@ import (
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"gopkg.in/errgo.v2/fmt/errors"
 )
 
 var typeToPromType map[data.MetricType]prometheus.ValueType = map[data.MetricType]prometheus.ValueType{
@@ -164,9 +165,10 @@ func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.Metri
 		pc.cacheindexbuilder.Grow(len(v))
 		pc.cacheindexbuilder.WriteString(v)
 	}
-	mProcItf, found := pc.mProc.Load(pc.cacheindexbuilder.String())
+	cacheKey := pc.cacheindexbuilder.String()
+	mProcItf, found := pc.mProc.Load(cacheKey)
 	if !found {
-		mProcItf, _ = pc.mProc.LoadOrStore(pc.cacheindexbuilder.String(), &metricProcess{
+		mProcItf, _ = pc.mProc.LoadOrStore(cacheKey, &metricProcess{
 			metric: &data.Metric{
 				Name:      name,
 				LabelKeys: labelKeys,
@@ -179,10 +181,14 @@ func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.Metri
 			description: prometheus.NewDesc(name, "", labelKeys, nil),
 			expiry: &metricExpiry{
 				delete: func() bool {
-					mp, _ := pc.mProc.Load(name)
+					mp, ok := pc.mProc.Load(cacheKey)
+					if !ok { // this should never happen
+						pc.logger.Error("cache miss", errors.Newf("failed to locate '%s' in metric cache", cacheKey))
+						return false
+					}
 					if mp.(*metricProcess).scrapped {
-						pc.mProc.Delete(name)
-						pc.logger.Infof("metric '%s' deleted after %.1fs of stale time", name, interval.Seconds())
+						pc.mProc.Delete(cacheKey)
+						pc.logger.Infof("metric '%s' expired after %.1fs of stale time", name, interval.Seconds())
 						return true
 					}
 					return false
