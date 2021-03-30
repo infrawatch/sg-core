@@ -188,7 +188,7 @@ func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.Metri
 					}
 					if mp.(*metricProcess).scrapped {
 						pc.mProc.Delete(cacheKey)
-						pc.logger.Infof("metric '%s' expired after %.1fs of stale time", name, interval.Seconds())
+						pc.logger.Infof("metric '%s' expired after %.1fs of stale time", cacheKey, interval.Seconds())
 						return true
 					}
 					return false
