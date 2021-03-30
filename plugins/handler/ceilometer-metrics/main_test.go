@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/infrawatch/sg-core/pkg/data"
+	"github.com/infrawatch/sg-core/plugins/handler/ceilometer-metrics/pkg/ceilometer"
 	jsoniter "github.com/json-iterator/go"
 	"gopkg.in/go-playground/assert.v1"
 )
@@ -79,4 +80,65 @@ func TestCeilometerIncoming(t *testing.T) {
 		expMetric.Interval = time.Second * metricTimeout
 		assert.Equal(t, expMetric, metricsUT[index])
 	}
+}
+
+func TestGenLabelsSizes(t *testing.T) {
+	t.Run("un-exhaustive labels", func(t *testing.T) {
+		// ensure slices are correct length when the parsed message does not contain all of the noncritical label fields
+
+		metric := ceilometer.Metric{
+			Source:        "openstack",
+			CounterName:   "volume.size",
+			CounterType:   "gauge",
+			CounterUnit:   "GB",
+			CounterVolume: 2,
+			UserID:        "user_id",
+			ProjectID:     "db3fce7b7aeb4109bb2794f9337e68fa",
+			ResourceID:    "ed8102c3-923a-4f5a-9a24-d59afc174755",
+			Timestamp:     "2021-03-30T15:20:19.891893",
+		}
+
+		labelKeys, labelVals := genLabels(metric, "node-0", []string{"volume", "size"})
+
+		// must always be same size since they represent a map
+		assert.Equal(t, len(labelKeys), len(labelVals))
+
+		// cannot have empty labelKey entries
+		for _, key := range labelKeys {
+			if key == "" {
+				t.Error("zero-value key in label keys")
+			}
+		}
+
+		// should have 7 labels
+		assert.Equal(t, len(labelKeys), 7)
+	})
+
+	t.Run("exhaustive labels", func(t *testing.T) {
+		metric := ceilometer.Metric{
+			Source:        "openstack",
+			CounterName:   "volume.size",
+			CounterType:   "gauge",
+			CounterUnit:   "GB",
+			CounterVolume: 2,
+			UserID:        "user_id",
+			ProjectID:     "db3fce7b7aeb4109bb2794f9337e68fa",
+			ResourceID:    "ed8102c3-923a-4f5a-9a24-d59afc174755",
+			Timestamp:     "2021-03-30T15:20:19.891893",
+			ResourceMetadata: ceilometer.Metadata{
+				Host: "host1",
+			},
+		}
+
+		labelKeys, labelVals := genLabels(metric, "node-0", []string{"volume", "size"})
+
+		// must always be same size since they represent a map
+		assert.Equal(t, len(labelKeys), len(labelVals))
+
+		fmt.Println(labelKeys)
+		// should have 8 labels
+		assert.Equal(t, len(labelKeys), 8)
+
+	})
+
 }

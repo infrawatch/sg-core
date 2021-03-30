@@ -129,15 +129,15 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 
 		c.totalMetricsDecoded++
 		cNameShards := strings.Split(m.CounterName, ".")
-		labelKeys, labelVals, len := genLabels(m, msg.Publisher, cNameShards)
+		labelKeys, labelVals := genLabels(m, msg.Publisher, cNameShards)
 		mpf(
 			genName(cNameShards),
 			t,
 			mType,
 			time.Second*metricTimeout,
 			m.CounterVolume,
-			labelKeys[:len],
-			labelVals[:len],
+			labelKeys,
+			labelVals,
 		)
 	}
 
@@ -161,7 +161,7 @@ func genName(cNameShards []string) string {
 	return strings.Join(nameParts, "_")
 }
 
-func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]string, []string, int) {
+func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]string, []string) {
 	labelKeys := make([]string, 8) //  TODO: set to persistent var
 	labelVals := make([]string, 8)
 	plugin := cNameShards[0]
@@ -216,9 +216,10 @@ func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]s
 	if m.ResourceMetadata.Host != "" {
 		labelKeys[index] = "host"
 		labelVals[index] = m.ResourceMetadata.Host
+		index++
 	}
 
-	return labelKeys, labelVals, index + 1
+	return labelKeys[:index], labelVals[:index]
 }
 
 func (c *ceilometerMetricHandler) Identify() string {

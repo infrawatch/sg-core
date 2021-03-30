@@ -35,7 +35,6 @@ if $PRODUCTION_BUILD; then
   )
   
   OMIT_APPLICATIONS=(
-      "print"
   )
 fi
 
