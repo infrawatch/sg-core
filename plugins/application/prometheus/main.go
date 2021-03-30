@@ -92,6 +92,11 @@ func (lw *logWrapper) Infof(format string, a ...interface{}) {
 	lw.l.Info(fmt.Sprintf(format, a...))
 }
 
+func (lw *logWrapper) Debugf(format string, a ...interface{}) {
+	lw.l.Metadata(logging.Metadata{"plugin": lw.plugin})
+	lw.l.Debug(fmt.Sprintf(format, a...))
+}
+
 // container object for all metric related processes
 type metricProcess struct {
 	description *prometheus.Desc
@@ -169,6 +174,7 @@ func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.Metri
 	cacheKey := pc.cacheindexbuilder.String()
 	mProcItf, found := pc.mProc.Load(cacheKey)
 	if !found {
+		// pc.logger.Infof("creating new metric with cache key '%s'", cacheKey)
 		mProcItf, _ = pc.mProc.LoadOrStore(cacheKey, &metricProcess{
 			metric: &data.Metric{
 				Name:      name,
@@ -189,7 +195,7 @@ func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.Metri
 					}
 					if mp.(*metricProcess).scrapped {
 						pc.mProc.Delete(cacheKey)
-						pc.logger.Infof("metric '%s' expired after %.1fs of stale time", name, interval.Seconds())
+						pc.logger.Debugf("metric '%s' expired after %.1fs of stale time", name, interval.Seconds())
 						return true
 					}
 					return false
