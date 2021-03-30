@@ -15,7 +15,7 @@ var (
 )
 
 // Metedata represents metadataof a metric from ceilometer
-type metadata struct {
+type Metadata struct {
 	Host string
 }
 
@@ -30,7 +30,7 @@ type Metric struct {
 	ProjectID        string  `json:"project_id"`
 	ResourceID       string  `json:"resource_id"`
 	Timestamp        string
-	ResourceMetadata metadata `json:"resource_metadata"`
+	ResourceMetadata Metadata `json:"resource_metadata"`
 }
 
 // Message struct represents an incoming ceilometer metrics message

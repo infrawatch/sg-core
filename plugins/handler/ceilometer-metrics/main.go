@@ -216,9 +216,10 @@ func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]s
 	if m.ResourceMetadata.Host != "" {
 		labelKeys[index] = "host"
 		labelVals[index] = m.ResourceMetadata.Host
+		index++
 	}
 
-	return labelKeys[:index+1], labelVals[:index+1]
+	return labelKeys[:index], labelVals[:index]
 }
 
 func (c *ceilometerMetricHandler) Identify() string {
