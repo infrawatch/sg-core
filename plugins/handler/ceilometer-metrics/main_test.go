@@ -48,18 +48,6 @@ func MetricReceive(name string, mTime float64, mType data.MetricType, interval t
 	})
 }
 
-// type Metric struct {
-// 	Source           string
-// 	CounterName      string  `json:"counter_name"`
-// 	CounterType      string  `json:"counter_type"`
-// 	CounterUnit      string  `json:"counter_unit"`
-// 	CounterVolume    float64 `json:"counter_volume"`
-// 	UserID           string  `json:"user_id"`
-// 	ProjectID        string  `json:"project_id"`
-// 	ResourceID       string  `json:"resource_id"`
-// 	Timestamp        string
-// 	ResourceMetadata metadata `json:"resource_metadata"`
-// }
 func TestCeilometerIncoming(t *testing.T) {
 	plugin := New()
 

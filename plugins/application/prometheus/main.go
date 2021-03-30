@@ -174,7 +174,6 @@ func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.Metri
 	cacheKey := pc.cacheindexbuilder.String()
 	mProcItf, found := pc.mProc.Load(cacheKey)
 	if !found {
-		// pc.logger.Infof("creating new metric with cache key '%s'", cacheKey)
 		mProcItf, _ = pc.mProc.LoadOrStore(cacheKey, &metricProcess{
 			metric: &data.Metric{
 				Name:      name,
