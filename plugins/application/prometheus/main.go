@@ -25,9 +25,10 @@ var typeToPromType map[data.MetricType]prometheus.ValueType = map[data.MetricTyp
 }
 
 type configT struct {
-	Host          string
-	Port          int  `validate:"required"`
-	WithTimestamp bool `yaml:"withTimeStamp"`
+	Host               string
+	Port               int  `validate:"required"`
+	WithTimestamp      bool `yaml:"withTimeStamp"`
+	ExpirationMultiple int  `yaml:"expirationMultiple"` // multiple of metric interval at which that metric should be expired (seconds)
 }
 
 // used to expire stale metrics
@@ -188,7 +189,7 @@ func (pc *PromCollector) UpdateMetrics(name string, time float64, typ data.Metri
 					}
 					if mp.(*metricProcess).scrapped {
 						pc.mProc.Delete(cacheKey)
-						pc.logger.Infof("metric '%s' expired after %.1fs of stale time", cacheKey, interval.Seconds())
+						pc.logger.Infof("metric '%s' expired after %.1fs of stale time", name, interval.Seconds())
 						return true
 					}
 					return false
@@ -230,8 +231,9 @@ type Prometheus struct {
 func New(l *logging.Logger) application.Application {
 	return &Prometheus{
 		configuration: configT{
-			Host: "127.0.0.1",
-			Port: 3000,
+			Host:               "127.0.0.1",
+			Port:               3000,
+			ExpirationMultiple: 2,
 		},
 		logger: &logWrapper{
 			l:      l,
@@ -276,7 +278,7 @@ func (p *Prometheus) ReceiveMetric(name string, t float64, typ data.MetricType, 
 	var expProc *expiryProc
 	ep, found := p.metricExpiryProcs.Load(interval)
 	if !found {
-		ep, _ = p.metricExpiryProcs.LoadOrStore(interval, newExpiryProc(interval*2))
+		ep, _ = p.metricExpiryProcs.LoadOrStore(interval, newExpiryProc(interval*time.Duration(p.configuration.ExpirationMultiple)))
 		expProc = ep.(*expiryProc)
 		p.logger.Infof("registered expiry process for metrics with interval %ds", interval/time.Second)
 		go expProc.run(p.ctx)
@@ -345,7 +347,6 @@ func (p *Prometheus) Run(ctx context.Context, done chan bool) {
 
 // Config implements application.Application
 func (p *Prometheus) Config(c []byte) error {
-	p.configuration = configT{}
 	err := config.ParseConfig(bytes.NewReader(c), &p.configuration)
 	if err != nil {
 		return err

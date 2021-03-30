@@ -142,7 +142,10 @@ func TestGenLabelsSizes(t *testing.T) {
 			},
 		}
 
-		labelKeys, _ := genLabels(metric, "node-0", []string{"volume", "size"})
+		labelKeys, labelVals := genLabels(metric, "node-0", []string{"volume", "size"})
+
+		// must always be same size since they represent a map
+		assert.Equal(t, len(labelKeys), len(labelVals))
 
 		fmt.Println(labelKeys)
 		// should have 8 labels
