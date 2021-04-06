@@ -14,15 +14,9 @@ import (
 )
 
 const (
-	testESURL   = "http://elastic:9200"
-	testESIndex = "unit-test"
-	testConf    = `
-hostURL: "http://elastic:9200"
-useTLS:  false
-bufferSize: 1
-bulkIndex: false
-resetIndices:
-  - "unit-test"
+	testConf = `
+alertManagerUrl: "http://127.0.0.1/test"
+generatorUrl: "https://unit-test-sgcore.infrawatch"
 `
 )
 
@@ -79,7 +73,7 @@ var (
 				},
 				StartsAt:     "2021-04-06T14:39:45+02:00",
 				EndsAt:       "",
-				GeneratorURL: "http://sg.localhost.localdomain",
+				GeneratorURL: "https://unit-test-sgcore.infrawatch",
 			},
 		},
 		{
@@ -164,7 +158,7 @@ var (
 				},
 				StartsAt:     "2021-04-06T14:39:45+02:00",
 				EndsAt:       "",
-				GeneratorURL: "http://sg.localhost.localdomain",
+				GeneratorURL: "https://unit-test-sgcore.infrawatch",
 			},
 		},
 	}
@@ -178,7 +172,9 @@ func TestAlertmanagerApp(t *testing.T) {
 	logpath := path.Join(tmpdir, "test.log")
 	logger, err := logging.NewLogger(logging.DEBUG, logpath)
 	require.NoError(t, err)
-	defer logger.Destroy()
+	defer func() {
+		require.NoError(t, logger.Destroy())
+	}()
 
 	t.Run("Test configuration", func(t *testing.T) {
 		app := New(logger)

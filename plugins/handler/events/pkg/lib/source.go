@@ -65,7 +65,7 @@ func (src *DataSource) SetFromMessage(jsondata []byte) {
 			return
 		}
 	}
-	//TODO: right now generic event message is everything else than collectd or ceilometer event,
+	// TODO: right now generic event message is everything else than collectd or ceilometer event,
 	//      but once we come up with SG generic event format, we need to add it's recognizer
 	src.SetFromString("generic")
 }

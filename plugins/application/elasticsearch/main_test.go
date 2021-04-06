@@ -13,9 +13,7 @@ import (
 )
 
 const (
-	testESURL   = "http://elastic:9200"
-	testESIndex = "unit-test"
-	testConf    = `
+	testConf = `
 hostURL: "http://elastic:9200"
 useTLS:  false
 bufferSize: 1
@@ -122,7 +120,6 @@ var (
 				"mkdir /run/user/0/libpod: permission denied\\\"\\\\n\",\"status\":\"2\"}}}}}",
 		},
 	}
-	//TODO
 	logCases = []elasticTestCase{
 		{
 			Event: data.Event{
@@ -162,7 +159,9 @@ func TestElasticsearchApp(t *testing.T) {
 	logpath := path.Join(tmpdir, "test.log")
 	logger, err := logging.NewLogger(logging.DEBUG, logpath)
 	require.NoError(t, err)
-	defer logger.Destroy()
+	defer func() {
+		require.NoError(t, logger.Destroy())
+	}()
 
 	t.Run("Test configuration", func(t *testing.T) {
 		app := New(logger)
