@@ -1,6 +1,14 @@
 name: CI
 env:
+  PROJECT_ROOT: /root/go/src/github.com/infrawatch/sg-core
+
+  LOKI_IMAGE: grafana/loki:2.1.0
+  LOKI_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/loki:/etc/loki:ro"
+  LOKI_PORT: "-p 3100:3100"
+
+  TEST_IMAGE: centos:8
   COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+
 on: [push, pull_request]
 
 jobs:
@@ -23,32 +31,37 @@ jobs:
           skip-build-cache: true
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
           version: v1.33
-  test-framework:
+  unit-tests:
     name: Unit tests
     runs-on: ubuntu-20.04
-    container: 'quay.io/plmr/sg-core-ci'
     services:
       elastic:
         image: docker.elastic.co/elasticsearch/elasticsearch:7.5.1
         env:
           discovery.type: single-node
-      loki:
-        image: grafana/loki:2.1.0
-        volumes:
-          - ${{ github.workspace }}/ci/loki:/etc/loki:ro
+        ports:
+          - 9200:9200
+          - 9300:9300
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
-        with:
-          go-version: '1.16'
-      - name: tidy
-        run: go mod tidy
-      - name: Run unit tests and code coverage
-        run: go test -v -coverprofile=profile.cov ./...
+      - name: Checkout code
+        uses: actions/checkout@v2
+      # start services that needs additional configuration and builtin services
+      # list does not work in those cases
+      - name: Start Loki service
+        run: |
+          docker run --name=loki $LOKI_VOLUME $LOKI_PORT -d $LOKI_IMAGE
+      - name: debug
+        run: |
+          docker logs loki
+      - name: Run sg-core unit test suite
+        run: |
+          docker run --name=testsuite -uroot --network host -e COVERALLS_REPO_TOKEN \
+            --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
+            $TEST_IMAGE bash $PROJECT_ROOT/ci/unit/run_tests.sh
       - name: Send coverage
         uses: shogo82148/actions-goveralls@v1
         with:
-          path-to-profile: profile.cov
+          path-to-profile: ${{ github.workspace }}/profile.cov
   image-build:
     name: Image build
     runs-on: ubuntu-20.04

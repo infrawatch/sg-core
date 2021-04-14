@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/infrawatch/sg-core/pkg/bus"
@@ -15,44 +14,9 @@ import (
 	"github.com/infrawatch/sg-core/plugins/handler/logs/pkg/lib"
 )
 
-type SyslogSeverity int
-
-const (
-	EMERGENCY SyslogSeverity = iota
-	ALERT
-	CRITICAL
-	ERROR
-	WARNING
-	NOTICE
-	INFORMATIONAL
-	DEBUG
-	UNKNOWN
-)
-
-func (rs SyslogSeverity) toEventSeverity() data.EventSeverity {
-	return []data.EventSeverity{
-		data.CRITICAL,
-		data.CRITICAL,
-		data.CRITICAL,
-		data.CRITICAL,
-		data.WARNING,
-		data.INFO,
-		data.INFO,
-		data.INFO,
-		data.UNKNOWN,
-	}[rs]
-}
-
-type logConfig struct {
-	MessageField   string `validate:"required"`
-	TimestampField string `validate:"required"`
-	HostnameField  string `validate:"required"`
-	SeverityField  string
-}
-
 type logHandler struct {
 	totalLogsReceived uint64
-	config            logConfig
+	config            lib.LogConfig
 }
 
 func (l *logHandler) parse(log []byte) (data.Event, error) {
@@ -68,15 +32,7 @@ func (l *logHandler) parse(log []byte) (data.Event, error) {
 		return parsedLog, fmt.Errorf("unable to find a log message under field called: %s", l.config.MessageField)
 	}
 
-	severity := UNKNOWN
-	severitystring, ok := logFields[l.config.SeverityField].(string)
-	if ok {
-		s, err := strconv.Atoi(severitystring)
-		if err == nil {
-			severity = SyslogSeverity(s)
-		}
-	}
-	eventSeverity := severity.toEventSeverity()
+	slSeverity := lib.GetSeverityFromLog(logFields, l.config)
 
 	hostname, ok := logFields[l.config.HostnameField].(string)
 	if !ok {
@@ -95,22 +51,22 @@ func (l *logHandler) parse(log []byte) (data.Event, error) {
 	timestamp := float64(t.Unix())
 	year, month, day := t.Date()
 
-	index := fmt.Sprintf("logs-%s-%d-%d-%d", hostname, year, month, day)
+	index := fmt.Sprintf("logs-%s-%d-%02d-%02d", hostname, year, month, day)
 
 	// remove message and timestamp from labels (leave the rest)
 	delete(logFields, l.config.MessageField)
 	delete(logFields, l.config.TimestampField)
 
+	evtSeverity := slSeverity.ToEventSeverity()
 	parsedLog = data.Event{
 		Index:     index,
 		Time:      timestamp,
 		Type:      data.LOG,
 		Publisher: hostname,
-		Severity:  eventSeverity,
+		Severity:  evtSeverity,
 		Labels:    logFields,
 		Message:   msg,
 	}
-
 	return parsedLog, nil
 }
 
@@ -119,11 +75,8 @@ func (l *logHandler) Handle(msg []byte, reportErrors bool, mpf bus.MetricPublish
 	var err error
 	l.totalLogsReceived++
 
-	log, err := l.parse(msg)
-	if err == nil {
-		epf(
-			log,
-		)
+	if log, err := l.parse(msg); err == nil {
+		epf(log)
 	} else if reportErrors {
 		epf(data.Event{
 			Index:    l.Identify(),
@@ -175,6 +128,6 @@ func New() handler.Handler {
 }
 
 func (l *logHandler) Config(c []byte) error {
-	l.config = logConfig{}
+	l.config = lib.LogConfig{}
 	return config.ParseConfig(bytes.NewReader(c), &l.config)
 }

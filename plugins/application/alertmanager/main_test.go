@@ -82,7 +82,7 @@ var (
 				Time:      1601900769,
 				Type:      1,
 				Publisher: "unknown",
-				Severity:  3,
+				Severity:  data.CRITICAL,
 				Labels: map[string]interface{}{
 					"check":    "elastic-check",
 					"client":   "wubba.lubba.dub.dub.redhat.com",

@@ -10,12 +10,6 @@ import (
 	"github.com/infrawatch/sg-core/pkg/data"
 )
 
-type LokiConfig struct {
-	Connection  string `validate:"required"`
-	BatchSize   int
-	MaxWaitTime int
-}
-
 // Creates labels used by Loki.
 func createLabels(rawLabels map[string]interface{}) (map[string]string, error) {
 	result := make(map[string]string)
@@ -26,11 +20,15 @@ func createLabels(rawLabels map[string]interface{}) (map[string]string, error) {
 	return result, nil
 }
 
+// CreateLokiLog forms event to a structure suitable for storage in Loki
 func CreateLokiLog(log data.Event) (connector.LokiLog, error) {
 	labels, err := createLabels(log.Labels)
 	if err != nil {
 		return connector.LokiLog{}, err
 	}
+
+	// correct severity value in labels
+	labels["severity"] = log.Severity.String()
 
 	output := connector.LokiLog{
 		LogMessage: log.Message,

@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	testESURL   = "http://elastic:9200"
+	testESURL   = "http://localhost:9200"
 	testESIndex = "unit-test"
 )
 

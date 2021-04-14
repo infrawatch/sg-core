@@ -14,14 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: Uncomment, when Loki container is available
-
-// const (
-// 	testConf = `
-// connection: "http://loki:3100"
-// maxwaittime: 5s
-// `
-// )
+const (
+	testConf = `
+ connection: "http://localhost:3100"
+ maxwaittime: 5s
+ `
+)
 
 type lokiTestCase struct {
 	Log    data.Event
@@ -54,7 +52,7 @@ var (
 				Timestamp:  time.Duration(1617888342) * time.Second,
 				Labels: map[string]string{
 					"host":     "localhost",
-					"severity": "7",
+					"severity": "info",
 					"facility": "daemon",
 					"tag":      "rtkit-daemon[734691]",
 					"source":   "rtkit-daemon",
@@ -88,7 +86,7 @@ var (
 				Timestamp:  time.Duration(1620316105) * time.Second,
 				Labels: map[string]string{
 					"host":     "non-localhost",
-					"severity": "5",
+					"severity": "info",
 					"facility": "user",
 					"tag":      "python3[804440]:",
 					"source":   "python3",
@@ -122,7 +120,7 @@ var (
 				Timestamp:  time.Duration(1640361600) * time.Second,
 				Labels: map[string]string{
 					"host":     "other-host",
-					"severity": "1",
+					"severity": "critical",
 					"facility": "authpriv",
 					"tag":      "sudo[803493]:",
 					"source":   "sudo",
@@ -147,13 +145,11 @@ func TestLokiApp(t *testing.T) {
 		require.NoError(t, logger.Destroy())
 	}()
 
-	// TODO: Uncomment, when Loki container is available
-
-	//	t.Run("Test configuration", func(t *testing.T) {
-	//		app := New(logger)
-	//		err := app.Config([]byte(testConf))
-	//		require.NoError(t, err)
-	//	})
+	t.Run("Test configuration", func(t *testing.T) {
+		app := New(logger)
+		err := app.Config([]byte(testConf))
+		require.NoError(t, err)
+	})
 
 	t.Run("Test log message processing", func(t *testing.T) {
 		results := make(chan interface{}, 100)

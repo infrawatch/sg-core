@@ -1,0 +1,30 @@
+---
+
+pluginDir: /usr/lib64/sg-core
+logLevel: debug
+
+transports:
+  - name: socket
+    config:
+      path: /tmp/rsyslog-test-socket
+    handlers:
+      - name: logs
+        config:
+          messageField: message
+          timestampField: "@timestamp"
+          hostnameField: host
+          severityField: severity
+          correctSeverity: true
+applications:
+  - name: elasticsearch
+    config:
+      hostURL: http://127.0.0.1:9200
+      useTLS: false
+      useBasicAuth: false
+      bufferSize: 37
+      bulkIndex: true
+  - name: loki
+    config:
+        connection: http://127.0.0.1:3100
+        batchsize: 3
+        maxwaittime: 1

@@ -1,0 +1,74 @@
+name: Integration testing
+env:
+  PROJECT_ROOT: /root/go/src/github.com/infrawatch/sg-core
+
+  QDR_IMAGE: quay.io/interconnectedcloud/qdrouterd:1.15.0
+  QDR_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/qdr:/etc/qpid-dispatch:ro"
+  QDR_PORT: "-p 5666:5666"
+
+  LOKI_IMAGE: grafana/loki:2.1.0
+  LOKI_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/loki:/etc/loki:ro"
+  LOKI_PORT: "-p 3100:3100"
+
+  TEST_IMAGE: centos:8
+
+on: push
+
+jobs:
+  logging:
+    name: "[logging] handler: logs; application: elasticsearch, loki"
+    runs-on: ubuntu-20.04
+    services:
+      elastic:
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.5.1
+        env:
+          discovery.type: single-node
+        ports:
+          - 9200:9200
+          - 9300:9300
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      # start services that needs additional configuration and builtin services
+      # list does not work in those cases
+      - name: Start QDR service
+        run: |
+          docker run --name=qdr $QDR_VOLUME $QDR_PORT -d $QDR_IMAGE
+      - name: debug
+        run: |
+          docker logs qdr
+      - name: Start Loki service
+        run: |
+          docker run --name=loki $LOKI_VOLUME $LOKI_PORT -d $LOKI_IMAGE
+      - name: debug
+        run: |
+          docker logs loki
+      # run integration tests
+      - name: Run rsyslog to produce log messages
+        run: |
+          docker run --name=rsyslog -d -uroot --network host \
+            --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
+            --volume ${{ github.workspace }}/ci/service_configs/rsyslog/rsyslog_config.conf:/etc/rsyslog.d/integration.conf:z \
+            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_rsyslog.sh
+      - name: debug
+        run: |
+          sleep 20
+          docker logs rsyslog
+          docker exec qdr qdstat -b 127.0.0.1:5666 -c
+          docker exec qdr qdstat -b 127.0.0.1:5666 -a
+      - name: Run sg-core to process log messages
+        run: |
+          docker run --name=sgcore -d -uroot --network host \
+            --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
+            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_sg.sh
+      - name: debug
+        run: |
+          sleep 360
+          docker logs sgcore
+          docker exec qdr qdstat -b 127.0.0.1:5666 -c
+          docker exec qdr qdstat -b 127.0.0.1:5666 -a
+      - name: Validate log message processing
+        run: |
+          docker run --name=validate -uroot --network host \
+            --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
+            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_validation.sh
