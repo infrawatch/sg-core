@@ -14,14 +14,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: Not sure where to expect loki on github.
-// The URL might need to be changed
-const (
-	testConf = `
-connection: "http://loki:3100"
-maxwaittime: 5s
-`
-)
+// TODO: Uncomment, when Loki container is available
+
+// const (
+// 	testConf = `
+// connection: "http://loki:3100"
+// maxwaittime: 5s
+// `
+// )
 
 type lokiTestCase struct {
 	Log    data.Event
@@ -143,14 +143,17 @@ func TestLokiApp(t *testing.T) {
 	logpath := path.Join(tmpdir, "test.log")
 	logger, err := logging.NewLogger(logging.DEBUG, logpath)
 	require.NoError(t, err)
-	defer logger.Destroy()
+	defer func() {
+		require.NoError(t, logger.Destroy())
+	}()
 
-	// Needs loki to run
-//	t.Run("Test configuration", func(t *testing.T) {
-//		app := New(logger)
-//		err := app.Config([]byte(testConf))
-//		require.NoError(t, err)
-//	})
+	// TODO: Uncomment, when Loki container is available
+
+	//	t.Run("Test configuration", func(t *testing.T) {
+	//		app := New(logger)
+	//		err := app.Config([]byte(testConf))
+	//		require.NoError(t, err)
+	//	})
 
 	t.Run("Test log message processing", func(t *testing.T) {
 		results := make(chan interface{}, 100)

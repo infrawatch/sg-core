@@ -98,8 +98,9 @@ func TestLogs(t *testing.T) {
 			// test parsed content
 			assert.Equal(t, testCase.ParsedLog, parsed)
 			// test handling
+			expected := testCase.ParsedLog
 			err = l.Handle(testCase.LogBlob, true, nil, func(evt data.Event) {
-				assert.Equal(t, testCase.ParsedLog, evt)
+				assert.Equal(t, expected, evt)
 			})
 			require.NoError(t, err)
 		}
