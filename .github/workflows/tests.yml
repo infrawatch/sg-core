@@ -1,7 +1,7 @@
 name: CI
 env:
   COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
-on: push
+on: [push, pull_request]
 
 jobs:
   golangci:
@@ -27,6 +27,15 @@ jobs:
     name: Unit tests
     runs-on: ubuntu-20.04
     container: 'quay.io/plmr/sg-core-ci'
+    services:
+      elastic:
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.5.1
+        env:
+          discovery.type: single-node
+      loki:
+        image: grafana/loki:2.1.0
+        volumes:
+          - ${{ github.workspace }}/ci/loki:/etc/loki:ro
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2

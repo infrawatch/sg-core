@@ -14,6 +14,7 @@ import (
 )
 
 // ElasticSearch client implementation using official library from ElasticClient
+// TODO: Move this module to infrawatch/apputils
 
 // Client holds cluster connection configuration
 type Client struct {
@@ -94,16 +95,19 @@ func (esc *Client) IndicesExists(indices []string) (bool, error) {
 	if res.StatusCode == http.StatusOK {
 		return true, nil
 	}
-	return false, nil
+	if res.StatusCode == http.StatusNotFound {
+		return false, nil
+	}
+	return false, fmt.Errorf("failed to check for indices [%s]: %d", strings.Join(indices, ","), res.StatusCode)
 }
 
-// IndicesDelete ...
+// IndicesDelete deletes given indexes. Does not fail if given index does not exist.
 func (esc *Client) IndicesDelete(indices []string) error {
 	res, err := esc.conn.Indices.Delete(indices)
 	if err != nil {
 		return err
 	}
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNotFound {
 		body, _ := ioutil.ReadAll(res.Body)
 		return fmt.Errorf("failed to delete indices [%d]: %s", res.StatusCode, body)
 	}
@@ -119,7 +123,11 @@ func (esc *Client) IndicesCreate(indices []string) error {
 		}
 		if res.StatusCode != http.StatusOK {
 			body, _ := ioutil.ReadAll(res.Body)
-			return fmt.Errorf("failed to create index [%d]: %s", res.StatusCode, body)
+			msg := string(body)
+			if strings.Contains(msg, "resource_already_exists_exception") {
+				return nil
+			}
+			return fmt.Errorf("failed to create index [%d]: %s", res.StatusCode, msg)
 		}
 	}
 	return nil

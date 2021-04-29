@@ -40,11 +40,13 @@ const (
 	source        = "ceilometer"
 )
 
+type osloRequest struct {
+	OsloVersion string `json:"oslo.version"`
+	OsloMessage string `json:"oslo.message"`
+}
+
 type rawMessage struct {
-	Request struct {
-		OsloVersion string `json:"oslo.version"`
-		OsloMessage string `json:"oslo.message"`
-	}
+	Request osloRequest
 }
 
 func (rm *rawMessage) sanitizeMessage() {
@@ -127,17 +129,21 @@ func (c *Ceilometer) name(index int) string {
 	return buildName(fmt.Sprintf("%s%s", source, genericSuffix))
 }
 
+func (c *Ceilometer) traits(index int) (map[string]interface{}, error) {
+	return c.osloMessage.Payload[index].traitsFormatted()
+}
+
 // PublishEvents iterate through events in payload calling publish function on each iteration
 func (c *Ceilometer) PublishEvents(epf bus.EventPublishFunc) error {
-	for idx, event := range c.osloMessage.Payload {
-		ts, err := event.traitsFormatted()
+	for idx := range c.osloMessage.Payload {
+		ts, err := c.traits(idx)
 		if err != nil {
 			return err
 		}
 		epf(data.Event{
 
 			Index:     c.name(idx),
-			Time:      c.getTimeAsEpoch(event),
+			Time:      c.getTimeAsEpoch(idx),
 			Type:      data.EVENT,
 			Publisher: c.osloMessage.PublisherID,
 			Severity:  ceilometerAlertSeverity[c.osloMessage.Priority],
@@ -151,11 +157,11 @@ func (c *Ceilometer) PublishEvents(epf bus.EventPublishFunc) error {
 	return nil
 }
 
-func (c *Ceilometer) getTimeAsEpoch(payload osloPayload) float64 {
+func (c *Ceilometer) getTimeAsEpoch(index int) float64 {
 	// order of precedence: payload timestamp, message timestamp, zero
 
-	if payload.Generated != "" {
-		return float64(lib.EpochFromFormat(payload.Generated))
+	if c.osloMessage.Payload[index].Generated != "" {
+		return float64(lib.EpochFromFormat(c.osloMessage.Payload[index].Generated))
 	}
 
 	if c.osloMessage.Timestamp != "" {
@@ -167,9 +173,12 @@ func (c *Ceilometer) getTimeAsEpoch(payload osloPayload) float64 {
 
 func buildName(eventType string) string {
 	var output string
+
 	etParts := strings.Split(eventType, ".")
 	if len(etParts) > 1 {
 		output = strings.Join(etParts[:len(etParts)-1], "_")
+	} else {
+		output = eventType
 	}
 	output = strings.ReplaceAll(output, "-", "_")
 

@@ -14,7 +14,29 @@ type PrometheusAlert struct {
 	GeneratorURL string            `json:"generatorURL"`
 }
 
-// SetName generates unique name and description for the alert and creates new key/value pair for it in Labels
+type surrogates []string
+
+var (
+	agentSurrogates = surrogates{"source_type"}
+	eventSurrogates = surrogates{
+		"eventSourceType",
+		"type",
+		"domain",
+		"service",
+	}
+	entitySurrogates = surrogates{
+		"name",
+		"DataSource",
+		"check",
+		"connectivity",
+		"procevent",
+		"interface",
+	}
+	statusSurrogates = surrogates{"severity"}
+)
+
+// SetName generates unique name for the alert and creates new key/value pair for it in Labels
+// Note: since this is not used, shouldn't it be deleted?
 func (alert *PrometheusAlert) SetName() {
 	if _, ok := alert.Labels["name"]; !ok {
 		keys := make([]string, 0, len(alert.Labels))
@@ -24,15 +46,12 @@ func (alert *PrometheusAlert) SetName() {
 		sort.Strings(keys)
 
 		values := make([]string, 0, len(alert.Labels)-1)
-		desc := make([]string, 0, len(alert.Labels))
 		for _, k := range keys {
 			if k != "severity" {
 				values = append(values, alert.Labels[k])
 			}
-			desc = append(desc, alert.Labels[k])
 		}
 		alert.Labels["name"] = strings.Join(values, "_")
-		alert.Annotations["description"] = strings.Join(desc, " ")
 	}
 }
 
@@ -52,9 +71,15 @@ func (alert *PrometheusAlert) SetSummary() {
 			alert.Annotations["summary"] = val
 		} else {
 			values := make([]string, 0, 3)
-			for _, key := range []string{"sourceName", "type", "eventName"} {
-				if val, ok := alert.Labels[key]; ok {
-					values = append(values, val)
+			for _, surr := range []surrogates{agentSurrogates, eventSurrogates, entitySurrogates, statusSurrogates} {
+				for _, key := range surr {
+					if val, ok := alert.Labels[key]; ok {
+						values = append(values, val)
+						break
+					} else if val, ok := alert.Annotations[key]; ok {
+						values = append(values, val)
+						break
+					}
 				}
 			}
 			alert.Annotations["summary"] = strings.Join(values, " ")
