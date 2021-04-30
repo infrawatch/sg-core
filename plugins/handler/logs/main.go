@@ -30,7 +30,8 @@ const (
 )
 
 func (rs SyslogSeverity) toEventSeverity() data.EventSeverity {
-	return []data.EventSeverity{data.CRITICAL,
+	return []data.EventSeverity{
+		data.CRITICAL,
 		data.CRITICAL,
 		data.CRITICAL,
 		data.CRITICAL,
