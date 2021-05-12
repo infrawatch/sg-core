@@ -17,8 +17,10 @@ SOCKET=/tmp/rsyslog-test-socket
 BRIDGE_LOG=/var/log/sg-bridge.log
 
 # install and start sg-bridge
+BRANCH="$(echo ${GITHUB_REF#refs/heads/})"
 git clone https://github.com/infrawatch/sg-bridge.git
 pushd sg-bridge
+git checkout $BRANCH || true
 make
 
 touch $SOCKET
@@ -29,6 +31,7 @@ cat $BRIDGE_LOG
 popd
 
 # install sg-core and start sg-core
+go mod tidy
 mkdir -p /usr/lib64/sg-core
 PLUGIN_DIR=/usr/lib64/sg-core/ ./build.sh
 

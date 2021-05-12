@@ -58,7 +58,7 @@ jobs:
           docker exec qdr qdstat -b 127.0.0.1:5666 -a
       - name: Run sg-core to process log messages
         run: |
-          docker run --name=sgcore -d -uroot --network host \
+          docker run --name=sgcore -d -uroot --network host -e GITHUB_REF\
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_sg.sh
       - name: debug
@@ -69,6 +69,7 @@ jobs:
           docker exec qdr qdstat -b 127.0.0.1:5666 -a
       - name: Validate log message processing
         run: |
+          sleep 120
           docker run --name=validate -uroot --network host \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_validation.sh
