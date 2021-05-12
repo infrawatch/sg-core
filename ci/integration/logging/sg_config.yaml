@@ -21,7 +21,7 @@ applications:
       hostURL: http://127.0.0.1:9200
       useTLS: false
       useBasicAuth: false
-      bufferSize: 37
+      bufferSize: 3
       bulkIndex: true
   - name: loki
     config:

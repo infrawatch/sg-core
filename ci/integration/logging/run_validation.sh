@@ -5,7 +5,9 @@
 
 set -ex
 
-TS=$(date +'%Y-%m-%d')
+yum install -y jq hostname
+
+TS=$(date +'%Y.%m.%d')
 HOST=$(hostname)
 
 ELASTIC_URL=http://127.0.0.1:9200
@@ -17,10 +19,11 @@ yum install -y jq
 # debug output of cluster status
 curl -sX GET "$ELASTIC_URL/_cluster/health?pretty"
 # verify expected index
-expected_index="logs-$HOST-$TS"
-curl -sX GET "$ELASTIC_URL/_cat/indices?h=index"
-found_index=$(curl -sX GET "$ELASTIC_URL/_cat/indices?h=index")
-[ "${expected_index}" = "${found_index}" ] || exit 1
+#TODO(mmagr): adapt elasticseatch plugin to create index templates avoinding unnecessary prefix and suffix
+expected_index="sglogs-$(echo $HOST | tr - _).$TS"
+curl -sX GET "$ELASTIC_URL/_cat/indices/sglogs-*?h=index"
+found_index=$(curl -sX GET "$ELASTIC_URL/_cat/indices/sglogs-*?h=index")
+[[ "${found_index}" =~ "${expected_index}" ]] || exit 1
 # debug output of index content
 curl -sX GET "$ELASTIC_URL/${expected_index}/_search?pretty" -H 'Content-Type: application/json' -d'
 {

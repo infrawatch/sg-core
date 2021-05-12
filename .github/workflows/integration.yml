@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-20.04
     services:
       elastic:
-        image: docker.elastic.co/elasticsearch/elasticsearch:7.5.1
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
         env:
           discovery.type: single-node
         ports:
@@ -63,7 +63,7 @@ jobs:
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_sg.sh
       - name: debug
         run: |
-          sleep 360
+          sleep 240
           docker logs sgcore
           docker exec qdr qdstat -b 127.0.0.1:5666 -c
           docker exec qdr qdstat -b 127.0.0.1:5666 -a

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/infrawatch/sg-core/pkg/bus"
@@ -51,7 +52,7 @@ func (l *logHandler) parse(log []byte) (data.Event, error) {
 	timestamp := float64(t.Unix())
 	year, month, day := t.Date()
 
-	index := fmt.Sprintf("logs-%s-%d-%02d-%02d", hostname, year, month, day)
+	index := fmt.Sprintf("%s-%s.%d.%02d.%02d", l.config.IndexPrefix, strings.ReplaceAll(hostname, "-", "_"), year, month, day)
 
 	// remove message and timestamp from labels (leave the rest)
 	delete(logFields, l.config.MessageField)
@@ -124,10 +125,19 @@ func (l *logHandler) Identify() string {
 
 // New create new logHandler object
 func New() handler.Handler {
-	return &logHandler{}
+	return &logHandler{
+		totalLogsReceived: 0,
+		config: lib.LogConfig{
+			CorrectSeverity: false,
+			IndexPrefix:     "sglogs",
+		},
+	}
 }
 
 func (l *logHandler) Config(c []byte) error {
-	l.config = lib.LogConfig{}
+	l.config = lib.LogConfig{
+		CorrectSeverity: false,
+		IndexPrefix:     "sglogs",
+	}
 	return config.ParseConfig(bytes.NewReader(c), &l.config)
 }
