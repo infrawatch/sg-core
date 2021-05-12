@@ -13,8 +13,6 @@ HOST=$(hostname)
 ELASTIC_URL=http://127.0.0.1:9200
 LOKI_URL=http://127.0.0.1:3100
 
-yum install -y jq
-
 ######################### validate elasticsearch data #########################
 # debug output of cluster status
 curl -sX GET "$ELASTIC_URL/_cluster/health?pretty"

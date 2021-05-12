@@ -10,7 +10,7 @@ env:
   LOKI_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/loki:/etc/loki:ro"
   LOKI_PORT: "-p 3100:3100"
 
-  TEST_IMAGE: centos:8
+  TEST_IMAGE: quay.io/centos/centos:stream8
 
 on: push
 
