@@ -1,11 +1,11 @@
 #!/bin/env bash
-# CI script for CentOS8 job
+# CI script for UBI8 job
 # purpose: verify the expected logging data is saved in supported storage types
 
 
 set -ex
 
-yum install -y jq hostname
+dnf install -y jq hostname
 
 TS=$(date +'%Y.%m.%d')
 HOST=$(hostname)
@@ -31,49 +31,49 @@ curl -sX GET "$ELASTIC_URL/${expected_index}/_search?pretty" -H 'Content-Type: a
 }
 '
 # verify expected documents
-res=$(curl -sX GET "$ELASTIC_URL/${expected_index}/_search" -H 'Content-Type: application/json' -d"
+res=$(curl -sX GET "$ELASTIC_URL/${expected_index}/_search" -H 'Content-Type: application/json' -d'
 {
-  \"query\": {
-    \"match_phrase\": {
-      \"message\": {
-        \"query\": \"WARNING Something bad might happen\"
+  "query": {
+    "match_phrase": {
+      "message": {
+        "query": "WARNING Something bad might happen"
       }
     }
   }
 }
-")
+')
 [ "$(echo $res | jq -r .hits.hits[0]._source.labels.severity)" = "warning" ] || exit 1
 [ "$(echo $res | jq -r .hits.hits[0]._source.labels.file)" = "/tmp/test.log" ] || exit 1
 [ "$(echo $res | jq -r .hits.hits[0]._source.labels.host)" = "$HOST" ] || exit 1
 [ "$(echo $res | jq -r .hits.hits[0]._source.labels.tag)" = "ci.integration.test" ] || exit 1
 
-res=$(curl -sX GET "$ELASTIC_URL/${expected_index}/_search" -H 'Content-Type: application/json' -d"
+res=$(curl -sX GET "$ELASTIC_URL/${expected_index}/_search" -H 'Content-Type: application/json' -d'
 {
-  \"query\": {
-    \"match_phrase\": {
-      \"message\": {
-        \"query\": \":ERROR: Something bad happened\"
+  "query": {
+    "match_phrase": {
+      "message": {
+        "query": ":ERROR: Something bad happened"
       }
     }
   }
 }
-")
+')
 [ "$(echo $res | jq -r .hits.hits[0]._source.labels.severity)" = "critical" ] || exit 1
 [ "$(echo $res | jq -r .hits.hits[0]._source.labels.file)" = "/tmp/test.log" ] || exit 1
 [ "$(echo $res | jq -r .hits.hits[0]._source.labels.host)" = "$HOST" ] || exit 1
 [ "$(echo $res | jq -r .hits.hits[0]._source.labels.tag)" = "ci.integration.test" ] || exit 1
 
-res=$(curl -sX GET "$ELASTIC_URL/${expected_index}/_search" -H 'Content-Type: application/json' -d"
+res=$(curl -sX GET "$ELASTIC_URL/${expected_index}/_search" -H 'Content-Type: application/json' -d'
 {
-  \"query\": {
-    \"match_phrase\": {
-      \"message\": {
-        \"query\": \"[DEBUG] Wubba lubba dub dub\"
+  "query": {
+    "match_phrase": {
+      "message": {
+        "query": "[DEBUG] Wubba lubba dub dub"
       }
     }
   }
 }
-")
+')
 [ "$(echo $res | jq -r .hits.hits[0]._source.labels.severity)" = "debug" ] || exit 1
 [ "$(echo $res | jq -r .hits.hits[0]._source.labels.file)" = "/tmp/test.log" ] || exit 1
 [ "$(echo $res | jq -r .hits.hits[0]._source.labels.host)" = "$HOST" ] || exit 1

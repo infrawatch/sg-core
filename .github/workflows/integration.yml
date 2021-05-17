@@ -10,7 +10,17 @@ env:
   LOKI_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/loki:/etc/loki:ro"
   LOKI_PORT: "-p 3100:3100"
 
-  TEST_IMAGE: quay.io/centos/centos:stream8
+  ELASTIC_IMAGE: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+  ELASTIC_PORT: "-p 9200:9200 -p 9300:9300"
+
+  RSYSLOG_IMAGE: quay.io/centos/centos:stream8
+  RSYSLOG_VOLUME: "--volume ${{ github.workspace }}/ci/service_configs/rsyslog/rsyslog_config.conf:/etc/rsyslog.d/integration.conf:z"
+
+  BRIDGE_IMAGE: quay.io/infrawatch/sg-bridge:latest
+  BRIDGE_VOLUME: "--volume=${{ github.workspace }}/tmp:/tmp/sg-bridge:z"
+  BRIDGE_SOCKET: /tmp/sg-bridge/test-socket
+
+  TEST_IMAGE: registry.access.redhat.com/ubi8
 
 on: push
 
@@ -18,58 +28,82 @@ jobs:
   logging:
     name: "[logging] handler: logs; application: elasticsearch, loki"
     runs-on: ubuntu-20.04
-    services:
-      elastic:
-        image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
-        env:
-          discovery.type: single-node
-        ports:
-          - 9200:9200
-          - 9300:9300
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      # start services that needs additional configuration and builtin services
-      # list does not work in those cases
-      - name: Start QDR service
+      # start data store services
+      - name: Start Elasticsearch service
         run: |
-          docker run --name=qdr $QDR_VOLUME $QDR_PORT -d $QDR_IMAGE
-      - name: debug
-        run: |
-          docker logs qdr
+          docker run --name elastic -e "discovery.type=single-node" $ELASTIC_PORT -d $ELASTIC_IMAGE
       - name: Start Loki service
         run: |
           docker run --name=loki $LOKI_VOLUME $LOKI_PORT -d $LOKI_IMAGE
-      - name: debug
+      # start message bus services
+      - name: Start QDR service
         run: |
+          docker run --name=qdr $QDR_VOLUME $QDR_PORT -d $QDR_IMAGE
+      - name: Check if sg-bridge repository has same topic branch
+        id: bridge_branch
+        continue-on-error: true
+        run: |
+          echo "${GITHUB_REF#refs/heads/}"
+          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo ${GITHUB_REF#refs/heads/})"
+      - name: Start sg-bridge from container image
+        if: steps.bridge_branch.outcome != 'success'
+        run: |
+          docker run --name=sgbridge --network host $BRIDGE_VOLUME -d \
+            $BRIDGE_IMAGE --amqp_url amqp://localhost:5666/rsyslog/logs --gw_unix=$BRIDGE_SOCKET
+      - name: Start sg-bridge with same branch
+        if: steps.bridge_branch.outcome == 'success'
+        run: |
+          docker run --name=sgbridge $BRIDGE_VOLUME -d -uroot --network host \
+            -e GITHUB_REF -e BRIDGE_SOCKET --workdir=$(dirname $BRIDGE_SOCKET) \
+            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_bridge.sh
+      - name: Wait for services to start successfuly and print logs
+        run: |
+          echo "===================== elasticsearch ====================="
+          while ! curl -sX GET "http://127.0.0.1:9200/_cluster/health"
+          do
+            sleep 1
+          done
+          docker logs elastic
+          echo "========================== loki ========================="
+          while ! curl -sX GET "http://127.0.0.1:3100/loki/api/v1/ready"
+          do
+            sleep 1
+          done
           docker logs loki
-      # run integration tests
+          echo "========================== qdr =========================="
+          docker logs qdr
+          echo "======================= sg-bridge ======================="
+          docker logs sgbridge
+      # produce logs
       - name: Run rsyslog to produce log messages
         run: |
-          docker run --name=rsyslog -d -uroot --network host \
+          docker run --name=rsyslog -d -uroot --network host $RSYSLOG_VOLUME \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
-            --volume ${{ github.workspace }}/ci/service_configs/rsyslog/rsyslog_config.conf:/etc/rsyslog.d/integration.conf:z \
-            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_rsyslog.sh
+            $RSYSLOG_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_rsyslog.sh
       - name: debug
         run: |
           sleep 20
           docker logs rsyslog
           docker exec qdr qdstat -b 127.0.0.1:5666 -c
           docker exec qdr qdstat -b 127.0.0.1:5666 -a
+      # run integration tests
       - name: Run sg-core to process log messages
         run: |
-          docker run --name=sgcore -d -uroot --network host -e GITHUB_REF\
+          docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_sg.sh
       - name: debug
         run: |
-          sleep 240
+          sleep 60
           docker logs sgcore
           docker exec qdr qdstat -b 127.0.0.1:5666 -c
           docker exec qdr qdstat -b 127.0.0.1:5666 -a
       - name: Validate log message processing
         run: |
-          sleep 120
+          sleep 60
           docker run --name=validate -uroot --network host \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_validation.sh

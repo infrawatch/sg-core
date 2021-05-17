@@ -6,7 +6,10 @@ env:
   LOKI_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/loki:/etc/loki:ro"
   LOKI_PORT: "-p 3100:3100"
 
-  TEST_IMAGE: quay.io/centos/centos:stream8
+  ELASTIC_IMAGE: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+  ELASTIC_PORT: "-p 9200:9200 -p 9300:9300"
+
+  TEST_IMAGE: registry.access.redhat.com/ubi8
   COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
 
 on: [push, pull_request]
@@ -34,24 +37,30 @@ jobs:
   unit-tests:
     name: Unit tests
     runs-on: ubuntu-20.04
-    services:
-      elastic:
-        image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
-        env:
-          discovery.type: single-node
-        ports:
-          - 9200:9200
-          - 9300:9300
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      # start services that needs additional configuration and builtin services
-      # list does not work in those cases
+      # start services
+      - name: Start Elasticsearch service
+        run: |
+          docker run --name elastic -e "discovery.type=single-node" $ELASTIC_PORT -d $ELASTIC_IMAGE
       - name: Start Loki service
         run: |
           docker run --name=loki $LOKI_VOLUME $LOKI_PORT -d $LOKI_IMAGE
-      - name: debug
+      # run unit tests
+      - name: Wait for services to start successfuly and print logs
         run: |
+          echo "===================== elasticsearch ====================="
+          while ! curl -sX GET "http://127.0.0.1:9200/_cluster/health"
+          do
+            sleep 1
+          done
+          docker logs elastic
+          echo "========================== loki ========================="
+          while ! curl -sX GET "http://127.0.0.1:3100/loki/api/v1/ready"
+          do
+            sleep 1
+          done
           docker logs loki
       - name: Run sg-core unit test suite
         run: |

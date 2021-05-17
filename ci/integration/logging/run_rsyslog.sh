@@ -1,5 +1,5 @@
 #!/bin/env bash
-# CI script for CentOS8 job
+# CI script for UBI8 job
 # purpose: spawn rsyslog with omamqp1 plugin and simulate log records creation
 
 set -ex
@@ -18,7 +18,7 @@ skip_if_unavailable=False
 EOF
 
 # Locale setting in CentOS8 is broken
-yum install -y glibc-langpack-en rsyslog-omamqp1
+dnf install -y glibc-langpack-en rsyslog-omamqp1
 
 # Generate log records for verification
 touch /tmp/test.log

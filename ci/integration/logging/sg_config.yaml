@@ -6,7 +6,7 @@ logLevel: debug
 transports:
   - name: socket
     config:
-      path: /tmp/rsyslog-test-socket
+      path: /tmp/sg-bridge/test-socket
     handlers:
       - name: logs
         config:
