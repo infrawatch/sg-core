@@ -15,7 +15,7 @@ import (
 
 const (
 	testConf = `
-hostURL: "http://elastic:9200"
+hostURL: "http://localhost:9200"
 useTLS:  false
 bufferSize: 1
 bulkIndex: false
@@ -80,7 +80,7 @@ var (
 				Time:      1601900769,
 				Type:      1,
 				Publisher: "unknown",
-				Severity:  3,
+				Severity:  data.CRITICAL,
 				Labels: map[string]interface{}{
 					"check":    "elastic-check",
 					"client":   "wubba.lubba.dub.dub.redhat.com",
@@ -176,10 +176,10 @@ var (
 				Time:      1616595773,
 				Type:      data.LOG,
 				Publisher: "overcloud-controller0",
-				Severity:  data.WARNING,
+				Severity:  data.CRITICAL,
 				Labels: map[string]interface{}{
 					"host":     "overcloud-controller0",
-					"severity": 3,
+					"severity": "critical",
 					"facility": "local0",
 					"tag":      "openstack.nova",
 					"source":   "openstack-nova-conductor",
@@ -198,7 +198,7 @@ var (
 					"file":     "/var/log/nova/nova-conductor.log",
 					"host":     "overcloud-controller0",
 					"region":   "regionOne",
-					"severity": "3",
+					"severity": "critical",
 					"source":   "openstack-nova-conductor",
 					"tag":      "openstack.nova",
 				},

@@ -34,7 +34,7 @@ var parsingCases = []parsingTestCase{
 			Time:      1518790014,
 			Type:      1,
 			Publisher: "d60b3c68f23e",
-			Severity:  3,
+			Severity:  4,
 			Labels: map[string]interface{}{
 				"alertname":    "collectd_connectivity_gauge",
 				"connectivity": "eno2",
@@ -91,7 +91,7 @@ var parsingCases = []parsingTestCase{
 			Time:      1518791119,
 			Type:      1,
 			Publisher: "d60b3c68f23e",
-			Severity:  3,
+			Severity:  4,
 			Labels: map[string]interface{}{
 				"alertname": "collectd_procevent_gauge",
 				"instance":  "d60b3c68f23e",
@@ -145,7 +145,7 @@ var parsingCases = []parsingTestCase{
 			Time:      1.568841079e+09,
 			Type:      1,
 			Publisher: "localhost.localdomain",
-			Severity:  3,
+			Severity:  4,
 			Labels: map[string]interface{}{
 				"alertname": "collectd_interface_if_octets",
 				"instance":  "localhost.localdomain",
@@ -180,7 +180,7 @@ var parsingCases = []parsingTestCase{
 			Time:      1519330339,
 			Type:      1,
 			Publisher: "nfvha-comp-03",
-			Severity:  1,
+			Severity:  2,
 			Labels: map[string]interface{}{
 				"alertname":  "collectd_ovs_events_gauge",
 				"instance":   "nfvha-comp-03",
@@ -224,7 +224,7 @@ var parsingCases = []parsingTestCase{
 			Time:      1601900769,
 			Type:      1,
 			Publisher: "unknown",
-			Severity:  3,
+			Severity:  4,
 			Labels: map[string]interface{}{
 				"check":    "elastic-check",
 				"client":   "wubba.lubba.dub.dub.redhat.com",

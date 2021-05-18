@@ -36,19 +36,17 @@ func (et EventType) String() string {
 // EventSeverity indicates severity of an event
 type EventSeverity int
 
+// Event severity shortcuts
 const (
-	// UNKNOWN ... default
 	UNKNOWN EventSeverity = iota
-	// INFO ...
+	DEBUG
 	INFO
-	// WARNING ...
 	WARNING
-	// CRITICAL ...
 	CRITICAL
 )
 
 func (es EventSeverity) String() string {
-	return []string{"unknown", "info", "warning", "critical"}[es]
+	return []string{"unknown", "debug", "info", "warning", "critical"}[es]
 }
 
 // Event convenience type that contains all elements of an event on the bus. This type is good to use for caching and testing

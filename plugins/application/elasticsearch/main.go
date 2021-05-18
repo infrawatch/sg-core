@@ -110,7 +110,7 @@ func (es *Elasticsearch) ReceiveEvent(event data.Event) {
 // Run plugin process
 func (es *Elasticsearch) Run(ctx context.Context, done chan bool) {
 	es.logger.Metadata(logging.Metadata{"plugin": appname, "url": es.configuration.HostURL})
-	es.logger.Info("storing events to Elasticsearch.")
+	es.logger.Info("storing events and(or) logs to Elasticsearch.")
 
 	if es.configuration.ResetIndices != nil {
 		err := es.client.IndicesDelete(es.configuration.ResetIndices)
@@ -200,6 +200,9 @@ func formatLog(e data.Event) (string, error) {
 		Labels:    dest,
 		Message:   e.Message,
 	}
+
+	// correct severity value in labels
+	record.Labels["severity"] = e.Severity.String()
 
 	res, err := json.Marshal(record)
 	if err != nil {
