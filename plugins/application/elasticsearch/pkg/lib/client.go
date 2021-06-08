@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -82,7 +83,9 @@ func (esc *Client) Connect(cfg *AppConfig) error {
 		return fmt.Errorf("failed to initialize connection: %s", err.Error())
 	}
 
-	_, err = esc.conn.Info()
+	res, err := esc.conn.Info()
+	defer res.Body.Close()
+	io.Copy(ioutil.Discard, res.Body)
 	return err
 }
 
@@ -92,6 +95,9 @@ func (esc *Client) IndicesExists(indices []string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer res.Body.Close()
+	io.Copy(ioutil.Discard, res.Body)
+
 	if res.StatusCode == http.StatusOK {
 		return true, nil
 	}
@@ -107,9 +113,12 @@ func (esc *Client) IndicesDelete(indices []string) error {
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNotFound {
 		body, _ := ioutil.ReadAll(res.Body)
 		return fmt.Errorf("failed to delete indices [%d]: %s", res.StatusCode, body)
+	}else{
+		io.Copy(ioutil.Discard, res.Body)
 	}
 	return nil
 }
@@ -121,6 +130,8 @@ func (esc *Client) IndicesCreate(indices []string) error {
 		if err != nil {
 			return err
 		}
+		defer res.Body.Close()
+
 		if res.StatusCode != http.StatusOK {
 			body, _ := ioutil.ReadAll(res.Body)
 			msg := string(body)
@@ -128,6 +139,8 @@ func (esc *Client) IndicesCreate(indices []string) error {
 				return nil
 			}
 			return fmt.Errorf("failed to create index [%d]: %s", res.StatusCode, msg)
+		}else{
+			io.Copy(ioutil.Discard, res.Body)
 		}
 	}
 	return nil
@@ -141,9 +154,12 @@ func (esc *Client) Index(index string, documents []string, bulk bool) error {
 			if err != nil {
 				return err
 			}
+			defer res.Body.Close()
 			if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
 				body, _ := ioutil.ReadAll(res.Body)
 				return fmt.Errorf("failed to index document[%d]: %s", res.StatusCode, body)
+			}else{
+				io.Copy(ioutil.Discard, res.Body)
 			}
 		}
 	} else {
@@ -151,9 +167,12 @@ func (esc *Client) Index(index string, documents []string, bulk bool) error {
 		if err != nil {
 			return err
 		}
+		defer res.Body.Close()
 		if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
 			body, _ := ioutil.ReadAll(res.Body)
 			return fmt.Errorf("failed to index document(s)[%d]: %s", res.StatusCode, body)
+		}else{
+			io.Copy(ioutil.Discard, res.Body)
 		}
 	}
 	return nil
