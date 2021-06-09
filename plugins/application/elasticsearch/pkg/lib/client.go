@@ -84,8 +84,14 @@ func (esc *Client) Connect(cfg *AppConfig) error {
 	}
 
 	res, err := esc.conn.Info()
+	if err != nil {
+		return fmt.Errorf("failed to get info from connection: %s", err.Error())
+	}
 	defer res.Body.Close()
-	io.Copy(ioutil.Discard, res.Body)
+	_, err = io.Copy(ioutil.Discard, res.Body)
+	if err != nil {
+		return fmt.Errorf("failed to discard response body: %s", err.Error())
+	}
 	return err
 }
 
@@ -96,8 +102,10 @@ func (esc *Client) IndicesExists(indices []string) (bool, error) {
 		return false, err
 	}
 	defer res.Body.Close()
-	io.Copy(ioutil.Discard, res.Body)
-
+	_, err = io.Copy(ioutil.Discard, res.Body)
+	if err != nil {
+		return false, fmt.Errorf("failed to discard response body: %s", err.Error())
+	}
 	if res.StatusCode == http.StatusOK {
 		return true, nil
 	}
@@ -117,8 +125,10 @@ func (esc *Client) IndicesDelete(indices []string) error {
 	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNotFound {
 		body, _ := ioutil.ReadAll(res.Body)
 		return fmt.Errorf("failed to delete indices [%d]: %s", res.StatusCode, body)
-	}else{
-		io.Copy(ioutil.Discard, res.Body)
+	}
+	_, err = io.Copy(ioutil.Discard, res.Body)
+	if err != nil {
+		return fmt.Errorf("failed to discard response body: %s", err.Error())
 	}
 	return nil
 }
@@ -139,8 +149,10 @@ func (esc *Client) IndicesCreate(indices []string) error {
 				return nil
 			}
 			return fmt.Errorf("failed to create index [%d]: %s", res.StatusCode, msg)
-		}else{
-			io.Copy(ioutil.Discard, res.Body)
+		}
+		_, err = io.Copy(ioutil.Discard, res.Body)
+		if err != nil {
+			return fmt.Errorf("failed to discard response body: %s", err.Error())
 		}
 	}
 	return nil
@@ -158,8 +170,10 @@ func (esc *Client) Index(index string, documents []string, bulk bool) error {
 			if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
 				body, _ := ioutil.ReadAll(res.Body)
 				return fmt.Errorf("failed to index document[%d]: %s", res.StatusCode, body)
-			}else{
-				io.Copy(ioutil.Discard, res.Body)
+			}
+			_, err = io.Copy(ioutil.Discard, res.Body)
+			if err != nil {
+				return fmt.Errorf("failed to discard response body: %s", err.Error())
 			}
 		}
 	} else {
@@ -171,8 +185,10 @@ func (esc *Client) Index(index string, documents []string, bulk bool) error {
 		if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
 			body, _ := ioutil.ReadAll(res.Body)
 			return fmt.Errorf("failed to index document(s)[%d]: %s", res.StatusCode, body)
-		}else{
-			io.Copy(ioutil.Discard, res.Body)
+		}
+		_, err = io.Copy(ioutil.Discard, res.Body)
+		if err != nil {
+			return fmt.Errorf("failed to discard response body: %s", err.Error())
 		}
 	}
 	return nil
