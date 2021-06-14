@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"sync"
 	"time"
 
 	"github.com/infrawatch/apputils/logging"
@@ -52,6 +53,7 @@ type Elasticsearch struct {
 	logger        *logging.Logger
 	client        *lib.Client
 	buffer        map[string][]string
+	bufferMutex   sync.RWMutex
 	dump          chan esIndex
 }
 
@@ -88,12 +90,14 @@ func (es *Elasticsearch) ReceiveEvent(event data.Event) {
 	// buffer or index record
 	var recordList []string
 	if es.configuration.BufferSize > 1 {
+		es.bufferMutex.Lock()
 		if _, ok := es.buffer[event.Index]; !ok {
 			es.buffer[event.Index] = make([]string, 0, es.configuration.BufferSize)
 		}
 
 		es.buffer[event.Index] = append(es.buffer[event.Index], record)
 		if len(es.buffer[event.Index]) < es.configuration.BufferSize {
+			es.bufferMutex.Unlock()
 			// buffer is not full, don't send
 			es.logger.Metadata(logging.Metadata{"plugin": appname, "record": record})
 			es.logger.Debug("buffering record")
@@ -101,6 +105,8 @@ func (es *Elasticsearch) ReceiveEvent(event data.Event) {
 		}
 		recordList = es.buffer[event.Index]
 		delete(es.buffer, event.Index)
+		es.bufferMutex.Unlock()
+
 	} else {
 		recordList = []string{record}
 	}
