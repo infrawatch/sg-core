@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/infrawatch/apputils/connector"
+	"github.com/infrawatch/apputils/connector/loki"
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +23,7 @@ const (
 
 type lokiTestCase struct {
 	Log    data.Event
-	Result connector.LokiLog
+	Result loki.LokiLog
 }
 
 var (
@@ -47,7 +47,7 @@ var (
 				},
 				Message: "Supervising 0 threads of 0 processes of 0 users.",
 			},
-			Result: connector.LokiLog{
+			Result: loki.LokiLog{
 				LogMessage: "Supervising 0 threads of 0 processes of 0 users.",
 				Timestamp:  time.Duration(1617888342) * time.Second,
 				Labels: map[string]string{
@@ -81,7 +81,7 @@ var (
 				},
 				Message: "detected unhandled Python exception in 'interactive mode (python -c ...)'",
 			},
-			Result: connector.LokiLog{
+			Result: loki.LokiLog{
 				LogMessage: "detected unhandled Python exception in 'interactive mode (python -c ...)'",
 				Timestamp:  time.Duration(1620316105) * time.Second,
 				Labels: map[string]string{
@@ -115,7 +115,7 @@ var (
 				},
 				Message: "Christmas!",
 			},
-			Result: connector.LokiLog{
+			Result: loki.LokiLog{
 				LogMessage: "Christmas!",
 				Timestamp:  time.Duration(1640361600) * time.Second,
 				Labels: map[string]string{
