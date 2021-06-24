@@ -1,0 +1,28 @@
+pluginDir: /tmp/plugins
+logLevel: debug
+transports:
+    - name: socket
+      config:
+          path: "/tmp/smartgateway"
+      handlers:
+      - name: logs
+        config:
+            timestampField: "@timestamp"
+            messageField: "message"
+            severityField: "severity"
+            hostnameField: "host"
+    - name: socket
+      config:
+          path: "/tmp/logs"
+      handlers:
+      - name: logs
+        config:
+            timestampField: "@timestamp"
+            messageField: "message"
+            severityField: "severity"
+            hostnameField: "host"
+applications: 
+  - name: loki
+    config:
+        connection: "http://localhost:3100"
+        maxwaittime: 5s

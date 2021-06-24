@@ -7,6 +7,8 @@ import (
 	"plugin"
 	"strings"
 	"sync"
+	"strconv"
+	"math/rand"
 
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/application"
@@ -50,29 +52,30 @@ func SetLogger(l *logging.Logger) {
 }
 
 // InitTransport load tranpsort binary and initialize with config
-func InitTransport(name string, config interface{}) error {
+func InitTransport(name string, config interface{}) (string, error) {
 	n, err := initPlugin(name)
 	if err != nil {
-		return errors.Wrap(err, "failed initializing transport")
+		return "", errors.Wrap(err, "failed initializing transport")
 	}
 
 	new, ok := n.(func(*logging.Logger) transport.Transport)
 	if !ok {
-		return fmt.Errorf("plugin %s constructor 'New' did not return type 'transport.Transport'", name)
+		return "", fmt.Errorf("plugin %s constructor 'New' did not return type 'transport.Transport'", name)
 	}
 
-	transports[name] = new(logger)
+	nam := strconv.Itoa(rand.Intn(10000))
+	transports[nam] = new(logger)
 
 	c, err := yaml.Marshal(config)
 	if err != nil {
-		return errors.Wrapf(err, "failed parsing transport config for '%s'", name)
+		return "", errors.Wrapf(err, "failed parsing transport config for '%s'", name)
 	}
 
-	err = transports[name].Config(c)
+	err = transports[nam].Config(c)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return nam, nil
 }
 
 // InitApplication initialize application plugin with configuration

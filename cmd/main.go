@@ -73,19 +73,19 @@ func main() {
 	manager.SetPluginDir(configuration.PluginDir)
 
 	for _, tConfig := range configuration.Transports {
-		err = manager.InitTransport(tConfig.Name, tConfig.Config)
+		tName, err := manager.InitTransport(tConfig.Name, tConfig.Config)
 		if err != nil {
 			logger.Metadata(logging.Metadata{"transport": tConfig.Name, "error": err})
 			logger.Error("failed configuring transport")
 			continue
 		}
-		err = manager.SetTransportHandlers(tConfig.Name, tConfig.Handlers)
+		err = manager.SetTransportHandlers(tName, tConfig.Handlers)
 		if err != nil {
-			logger.Metadata(logging.Metadata{"transport": tConfig.Name, "error": err})
+			logger.Metadata(logging.Metadata{"transport": tName, "error": err})
 			logger.Error("transport handlers failed to load")
 			continue
 		}
-		logger.Metadata(logging.Metadata{"transport": tConfig.Name})
+		logger.Metadata(logging.Metadata{"transport": tName})
 		logger.Info("loaded transport")
 	}
 
