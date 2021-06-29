@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 	"strconv"
-	"math/rand"
 
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/application"
@@ -63,19 +62,21 @@ func InitTransport(name string, config interface{}) (string, error) {
 		return "", fmt.Errorf("plugin %s constructor 'New' did not return type 'transport.Transport'", name)
 	}
 
-	nam := strconv.Itoa(rand.Intn(10000))
-	transports[nam] = new(logger)
+	// Append the current length of transports
+	// to make each name unique
+	uniqueName := name + strconv.Itoa(len(transports))
+	transports[uniqueName] = new(logger)
 
 	c, err := yaml.Marshal(config)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed parsing transport config for '%s'", name)
 	}
 
-	err = transports[nam].Config(c)
+	err = transports[uniqueName].Config(c)
 	if err != nil {
 		return "", err
 	}
-	return nam, nil
+	return uniqueName, nil
 }
 
 // InitApplication initialize application plugin with configuration
