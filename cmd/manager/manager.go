@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"path/filepath"
 	"plugin"
+	"strconv"
 	"strings"
 	"sync"
-	"strconv"
 
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/application"
