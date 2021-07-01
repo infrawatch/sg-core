@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -67,22 +68,22 @@ func TestSensuMetricHandling(t *testing.T) {
 		StartsAt: "2021-06-29T18:49:13Z",
 	}
 
-	t.Run("correct metric generation", func(t *testing.T) {
+	t.Run("full metric generation", func(t *testing.T) {
 		correctResults := []data.Metric{
 			{
-				Name:      "check_container_health",
-				Time:      1625006953.0,
+				Name:      "container_health_status",
+				Time:      1624992553.0,
 				Type:      data.GAUGE,
-				Interval:  10,
+				Interval:  time.Second * 10,
 				Value:     1,
 				LabelKeys: []string{"service", "host"},
 				LabelVals: []string{"glance", "controller-0.osp-cloudops-0"},
 			},
 			{
-				Name:      "check_container_health",
-				Time:      1625006953.0,
+				Name:      "container_health_status",
+				Time:      1624992553.0,
 				Type:      data.GAUGE,
-				Interval:  10,
+				Interval:  time.Second * 10,
 				Value:     0,
 				LabelKeys: []string{"service", "host"},
 				LabelVals: []string{"nova", "controller-0.osp-cloudops-0"},
@@ -112,81 +113,33 @@ func TestSensuMetricHandling(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+		if !(numPubCalls > 0) {
+			t.Error("publish function never called")
+		}
 	})
 
-	t.Run("metric name generation", func(t *testing.T) {
-		t.Run("missing name elements", func(t *testing.T) {
-			input.Labels.Check = ""
-			blob, err := json.Marshal(input)
-			if err != nil {
-				t.Error(err)
-			}
+	t.Run("metric name data model", func(t *testing.T) {
+		pubWrapper := mpFuncWrapper{
+			mFunc: func(m data.Metric) {
+				assert.Equal(t, "container_health_status", m.Name)
+			},
+		}
 
-			pubWrapper := mpFuncWrapper{
-				mFunc: func(data.Metric) {
-					t.Error("publish func should not have been called")
-				},
-			}
-			err = plug.Handle(
-				blob,
-				false,
-				pubWrapper.MPFunc,
-				nilEPFunc,
-			)
-			assert.NotEqual(t, err, nil)
-		})
+		blob, err := json.Marshal(input)
+		if err != nil {
+			t.Error(err)
+		}
 
-		t.Run("from check field", func(t *testing.T) {
-			input.Labels.Check = "check"
-
-			blob, err := json.Marshal(input)
-			if err != nil {
-				t.Error(err)
-			}
-
-			pubWrapper := mpFuncWrapper{
-				mFunc: func(m data.Metric) {
-					assert.Equal(t, "check", m.Name)
-				},
-			}
-
-			err = plug.Handle(
-				blob,
-				false,
-				pubWrapper.MPFunc,
-				nilEPFunc,
-			)
-			if err != nil {
-				t.Error(err)
-			}
-		})
-
-		t.Run("sanitized name", func(t *testing.T) {
-			input.Labels.Check = "check.container?#$!-health"
-
-			pubWrapper := mpFuncWrapper{
-				mFunc: func(m data.Metric) {
-					assert.Equal(t, "check_container_health", m.Name)
-				},
-			}
-
-			blob, err := json.Marshal(input)
-			if err != nil {
-				t.Error(err)
-			}
-
-			err = plug.Handle(
-				blob,
-				false,
-				pubWrapper.MPFunc,
-				nilEPFunc,
-			)
-			if err != nil {
-				t.Error(err)
-			}
-		})
+		err = plug.Handle(
+			blob,
+			false,
+			pubWrapper.MPFunc,
+			nilEPFunc,
+		)
+		if err != nil {
+			t.Error(err)
+		}
 	})
-
 	t.Run("error handling", func(t *testing.T) {
 		t.Run("corrupted JSON", func(t *testing.T) {
 			plug := sensubilityMetrics{}
@@ -219,12 +172,11 @@ func TestSensuMetricHandling(t *testing.T) {
 				pubWrapper.MPFunc,
 				nilEPFunc,
 			)
-			eE, ok := err.(*ErrMissingFields)
+			eE, ok := err.(*sensu.ErrMissingFields)
 			assert.Equal(t, ok, true)
-			assert.Equal(t, eE.fields, []string{
+			assert.Equal(t, eE.Fields, []string{
 				"startsAt",
-				"labels.check",
-				"client",
+				"labels.client",
 			})
 		})
 	})
@@ -293,33 +245,30 @@ func TestSensuMetricHandling(t *testing.T) {
 				pubWrapper.MPFunc,
 				nilEPFunc,
 			)
-			eE, ok := err.(*ErrMissingFields)
+			eE, ok := err.(*sensu.ErrMissingFields)
 			assert.Equal(t, ok, true)
-			assert.Equal(t, eE.fields, []string{
-				"annotations.output.service",
-				"annotations.output.healthy",
+			assert.Equal(t, eE.Fields, []string{
+				"annotations.output[0].service",
+			})
+
+			input.Annotations.Output = "[{},{}]"
+			blob, err = json.Marshal(input)
+			if err != nil {
+				t.Error(err)
+			}
+			err = plug.Handle(
+				blob,
+				false,
+				pubWrapper.MPFunc,
+				nilEPFunc,
+			)
+			eE, ok = err.(*sensu.ErrMissingFields)
+			assert.Equal(t, ok, true)
+			fmt.Println(eE)
+			assert.Equal(t, eE.Fields, []string{
+				"annotations.output[0].service",
+				"annotations.output[1].service",
 			})
 		})
 	})
 }
-
-// test incorrect format in output field
-// test time field generation
-
-// Name      string
-// Time      float64
-// Type      MetricType
-// Interval  time.Duration
-// Value     float64
-// LabelKeys []string
-// LabelVals []string
-
-// Name:  labels.check (replace '-' with '_'), removing
-// Time: StartsAt
-// Type: data.GAUGE
-// Interval: ??
-// Value: annotations.status
-// LabelKeys: []string{'service', 'host'}
-// LabelVals: []string{'annotations.output.service','client'}
-
-// correct parsing
