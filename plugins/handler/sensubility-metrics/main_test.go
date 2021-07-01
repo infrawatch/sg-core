@@ -39,13 +39,13 @@ func TestSensuMetricHandling(t *testing.T) {
 	healthCheckRes := sensu.HealthCheckOutput{
 		{
 			Service:   "glance",
-			Container: 1235,
+			Container: "1235",
 			Status:    "healthy",
 			Healthy:   1,
 		},
 		{
 			Service:   "nova",
-			Container: 1235,
+			Container: "1235",
 			Status:    "healthy",
 			Healthy:   0,
 		},
@@ -104,6 +104,7 @@ func TestSensuMetricHandling(t *testing.T) {
 			t.Error(err)
 		}
 
+		fmt.Println(string(inputBlob))
 		err = plug.Handle(
 			inputBlob,
 			false,
@@ -233,7 +234,8 @@ func TestSensuMetricHandling(t *testing.T) {
 				},
 			}
 
-			input.Annotations.Output = "[{}]"
+			input.Annotations.Output = "[]"
+			input.StartsAt = "2021-06-29T18:49:13Z"
 			blob, err := json.Marshal(input)
 			if err != nil {
 				t.Error(err)
@@ -245,11 +247,9 @@ func TestSensuMetricHandling(t *testing.T) {
 				pubWrapper.MPFunc,
 				nilEPFunc,
 			)
-			eE, ok := err.(*sensu.ErrMissingFields)
-			assert.Equal(t, ok, true)
-			assert.Equal(t, eE.Fields, []string{
-				"annotations.output[0].service",
-			})
+			if err != nil {
+				t.Error(err)
+			}
 
 			input.Annotations.Output = "[{},{}]"
 			blob, err = json.Marshal(input)
@@ -262,9 +262,8 @@ func TestSensuMetricHandling(t *testing.T) {
 				pubWrapper.MPFunc,
 				nilEPFunc,
 			)
-			eE, ok = err.(*sensu.ErrMissingFields)
+			eE, ok := err.(*sensu.ErrMissingFields)
 			assert.Equal(t, ok, true)
-			fmt.Println(eE)
 			assert.Equal(t, eE.Fields, []string{
 				"annotations.output[0].service",
 				"annotations.output[1].service",

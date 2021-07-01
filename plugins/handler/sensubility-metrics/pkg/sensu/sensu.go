@@ -6,33 +6,32 @@ import (
 )
 
 type Message struct {
-	Labels      Labels
-	Annotations Annotations
-	StartsAt    string
+	Labels      Labels      `json:"labels"`
+	Annotations Annotations `json:"annotations"`
+	StartsAt    string      `json:"startsAt"`
 }
 
 type Labels struct {
-	Client   string
-	Check    string
-	Severity string
+	Client   string `json:"client"`
+	Check    string `json:"check"`
+	Severity string `json:"severity"`
 }
 
 type Annotations struct {
-	Command  string
-	Issued   int64
-	Executed int64
-	Duration float64
-	Output   string
-	Status   int
-	Ves      string
-	StartsAt string
+	Command  string  `json:"command"`
+	Issued   int64   `json:"issued"`
+	Executed int64   `json:"executed"`
+	Duration float64 `json:"duration"`
+	Output   string  `json:"output"`
+	Status   int     `json:"status"`
+	StartsAt string  `json:"startsAt"`
 }
 
 type HealthCheckOutput []struct {
-	Service   string
-	Container int64
-	Status    string
-	Healthy   float64
+	Service   string  `json:"service"`
+	Container string  `json:"container"`
+	Status    string  `json:"status"`
+	Healthy   float64 `json:"healthy"`
 }
 
 type ErrMissingFields struct {
