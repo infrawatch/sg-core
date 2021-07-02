@@ -15,7 +15,7 @@ import (
 
 var (
 	json       = jsoniter.ConfigCompatibleWithStandardLibrary
-	metricName = "container_health_status"
+	metricName = "sensubility_container_health_status"
 )
 
 type sensubilityMetrics struct {
