@@ -35,16 +35,30 @@ func nilEPFunc(data.Event) {
 
 func TestConfiguration(t *testing.T) {
 	plug := sensubilityMetrics{}
-	configuration := "metricInterval: 50"
 
-	err := plug.Config([]byte(configuration))
-	if err != nil {
-		t.Error(err)
-	}
+	t.Run("default config", func(t *testing.T) {
+		err := plug.Config([]byte(""))
+		if err != nil {
+			t.Error(err)
+		}
 
-	if plug.configuration.MetricInterval != 50 {
-		t.Errorf("loading configuration failed - expected metricInterval: 50, got %d", plug.configuration.MetricInterval)
-	}
+		if plug.configuration.MetricInterval != 10 {
+			t.Errorf("default metricInterval should be 10, got %d", plug.configuration.MetricInterval)
+		}
+	})
+
+	t.Run("adjusted", func(t *testing.T) {
+		configuration := "metricInterval: 50"
+
+		err := plug.Config([]byte(configuration))
+		if err != nil {
+			t.Error(err)
+		}
+
+		if plug.configuration.MetricInterval != 50 {
+			t.Errorf("loading configuration failed - expected metricInterval: 50, got %d", plug.configuration.MetricInterval)
+		}
+	})
 }
 
 func TestSensuMetricHandling(t *testing.T) {
