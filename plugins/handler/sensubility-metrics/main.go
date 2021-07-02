@@ -107,7 +107,7 @@ func (sm *sensubilityMetrics) Handle(blob []byte, reportErrors bool, mpf bus.Met
 			data.GAUGE,
 			time.Second*10, // TODO: figure out what a good interval is, or make configure-able
 			output.Healthy,
-			[]string{"service", "host"},
+			[]string{"container", "host"},
 			[]string{output.Service, sensuMsg.Labels.Client},
 		)
 	}
