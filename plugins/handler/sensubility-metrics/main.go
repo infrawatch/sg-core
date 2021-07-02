@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"time"
 
 	"github.com/infrawatch/sg-core/pkg/bus"
+	"github.com/infrawatch/sg-core/pkg/config"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/infrawatch/sg-core/pkg/handler"
 	"github.com/infrawatch/sg-core/plugins/handler/events/pkg/lib"
@@ -18,10 +20,15 @@ var (
 	metricName = "sensubility_container_health_status"
 )
 
+type configT struct {
+	MetricInterval int `yaml:"metricInterval"` // interval at which metrics are expected to arrive. Default 10s
+}
+
 type sensubilityMetrics struct {
 	totalMetricsDecoded   int64
 	totalDecodeErrors     int64
 	totalMessagesReceived int64
+	configuration         *configT
 }
 
 func (sm *sensubilityMetrics) Run(ctx context.Context, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) {
@@ -105,7 +112,7 @@ func (sm *sensubilityMetrics) Handle(blob []byte, reportErrors bool, mpf bus.Met
 			metricName,
 			float64(epoc),
 			data.GAUGE,
-			time.Second*10, // TODO: figure out what a good interval is, or make configure-able
+			time.Second*time.Duration(sm.configuration.MetricInterval),
 			output.Healthy,
 			[]string{"container", "host"},
 			[]string{output.Service, sensuMsg.Labels.Client},
@@ -119,7 +126,10 @@ func (sm *sensubilityMetrics) Identify() string {
 }
 
 func (sm *sensubilityMetrics) Config(blob []byte) error {
-	return nil
+	sm.configuration = &configT{
+		MetricInterval: 10,
+	}
+	return config.ParseConfig(bytes.NewReader(blob), sm.configuration)
 }
 
 func New() handler.Handler {
