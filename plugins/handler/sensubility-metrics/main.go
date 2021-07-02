@@ -114,7 +114,7 @@ func (sm *sensubilityMetrics) Handle(blob []byte, reportErrors bool, mpf bus.Met
 			data.GAUGE,
 			time.Second*time.Duration(sm.configuration.MetricInterval),
 			output.Healthy,
-			[]string{"container", "host"},
+			[]string{"process", "host"},
 			[]string{output.Service, sensuMsg.Labels.Client},
 		)
 	}
