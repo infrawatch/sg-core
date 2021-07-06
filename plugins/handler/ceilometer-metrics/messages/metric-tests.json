@@ -19,7 +19,7 @@
             "project",
             "unit",
             "resource",
-            "host"
+            "vm_instance"
           ],
           "LabelVals": [
             "size",
@@ -46,7 +46,7 @@
             "project",
             "unit",
             "resource",
-            "host"
+            "vm_instance"
           ],
           "LabelVals": [
             "size",
@@ -73,7 +73,7 @@
             "project",
             "unit",
             "resource",
-            "host"
+            "vm_instance"
           ],
           "LabelVals": [
             "booting",
@@ -100,7 +100,7 @@
             "project",
             "unit",
             "resource",
-            "host"
+            "vm_instance"
           ],
           "LabelVals": [
             "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
@@ -127,7 +127,7 @@
             "project",
             "unit",
             "resource",
-            "host"
+            "vm_instance"
           ],
           "LabelVals": [
             "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
