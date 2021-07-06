@@ -1,10 +1,10 @@
 module github.com/infrawatch/sg-core
 
-go 1.13
+go 1.15
 
 require (
 	collectd.org v0.5.0
-	github.com/elastic/go-elasticsearch/v7 v7.13.1
+	github.com/elastic/go-elasticsearch/v7 v7.10.0
 	github.com/go-openapi/errors v0.20.0
 	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
