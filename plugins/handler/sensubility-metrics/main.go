@@ -76,6 +76,7 @@ func (sm *sensubilityMetrics) Handle(blob []byte, reportErrors bool, mpf bus.Met
 		return err
 	}
 
+	// validate top level fields in sensu message
 	if !sensu.IsMsgValid(sensuMsg) {
 		sm.totalDecodeErrors++
 		err := sensu.BuildMsgErr(sensuMsg)
@@ -85,12 +86,15 @@ func (sm *sensubilityMetrics) Handle(blob []byte, reportErrors bool, mpf bus.Met
 		return err
 	}
 
+	// grab healthcheck outputs - sensubility sends all healthcheck outputs
+	// from a node as a list
 	outputs := sensu.HealthCheckOutput{}
 	err = json.Unmarshal([]byte(sensuMsg.Annotations.Output), &outputs)
 	if err != nil {
 		return err
 	}
 
+	// validate healthcheck messages
 	if !sensu.IsOutputValid(outputs) {
 		sm.totalDecodeErrors++
 		err := sensu.BuildOutputsErr(outputs)
@@ -101,11 +105,13 @@ func (sm *sensubilityMetrics) Handle(blob []byte, reportErrors bool, mpf bus.Met
 		return err
 	}
 
+	// convert time field to epoch time
 	epoc := lib.EpochFromFormat(sensuMsg.StartsAt)
 	if epoc == 0 {
 		return fmt.Errorf("failed determining epoch time from timestamp '%s'", sensuMsg.StartsAt)
 	}
 
+	// send each healthcheck result as a new metric to the internal metric bus
 	for _, output := range outputs {
 		sm.totalMetricsDecoded++
 		mpf(
