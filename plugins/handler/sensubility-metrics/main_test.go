@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -63,6 +62,10 @@ func TestConfiguration(t *testing.T) {
 
 func TestSensuMetricHandling(t *testing.T) {
 	plug := sensubilityMetrics{}
+	err := plug.Config(nil)
+	if err != nil {
+		t.Error(err)
+	}
 
 	healthCheckRes := sensu.HealthCheckOutput{
 		{
@@ -99,21 +102,21 @@ func TestSensuMetricHandling(t *testing.T) {
 	t.Run("full metric generation", func(t *testing.T) {
 		correctResults := []data.Metric{
 			{
-				Name:      "container_health_status",
+				Name:      "sensubility_container_health_status",
 				Time:      1624992553.0,
 				Type:      data.GAUGE,
 				Interval:  time.Second * 10,
 				Value:     1,
-				LabelKeys: []string{"service", "host"},
+				LabelKeys: []string{"process", "host"},
 				LabelVals: []string{"glance", "controller-0.osp-cloudops-0"},
 			},
 			{
-				Name:      "container_health_status",
+				Name:      "sensubility_container_health_status",
 				Time:      1624992553.0,
 				Type:      data.GAUGE,
 				Interval:  time.Second * 10,
 				Value:     0,
-				LabelKeys: []string{"service", "host"},
+				LabelKeys: []string{"process", "host"},
 				LabelVals: []string{"nova", "controller-0.osp-cloudops-0"},
 			},
 		}
@@ -132,7 +135,6 @@ func TestSensuMetricHandling(t *testing.T) {
 			t.Error(err)
 		}
 
-		fmt.Println(string(inputBlob))
 		err = plug.Handle(
 			inputBlob,
 			false,
@@ -150,7 +152,7 @@ func TestSensuMetricHandling(t *testing.T) {
 	t.Run("metric name data model", func(t *testing.T) {
 		pubWrapper := mpFuncWrapper{
 			mFunc: func(m data.Metric) {
-				assert.Equal(t, "container_health_status", m.Name)
+				assert.Equal(t, "sensubility_container_health_status", m.Name)
 			},
 		}
 
