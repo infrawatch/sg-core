@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/infrawatch/apputils/logging"
-	"github.com/infrawatch/sg-core/pkg/concurrent"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -249,7 +248,7 @@ func TestElasticsearchApp(t *testing.T) {
 		results := make(chan esIndex, len(eventCases))
 		app := &Elasticsearch{
 			logger: logger,
-			buffer: concurrent.NewMap(),
+			buffer: make(map[string][]string),
 			dump:   results,
 		}
 		err := app.Config([]byte(testConf))
@@ -271,7 +270,7 @@ func TestElasticsearchApp(t *testing.T) {
 		results := make(chan esIndex, len(logCases))
 		app := &Elasticsearch{
 			logger: logger,
-			buffer: concurrent.NewMap(),
+			buffer: make(map[string][]string),
 			dump:   results,
 		}
 		err := app.Config([]byte(testConf))

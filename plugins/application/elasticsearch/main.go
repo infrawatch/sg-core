@@ -13,7 +13,6 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
-	"github.com/infrawatch/sg-core/pkg/concurrent"
 	"github.com/infrawatch/sg-core/plugins/application/elasticsearch/pkg/lib"
 )
 
@@ -52,7 +51,7 @@ type Elasticsearch struct {
 	configuration *lib.AppConfig
 	logger        *logging.Logger
 	client        *lib.Client
-	buffer        *concurrent.Map
+	buffer        map[string][]string
 	dump          chan esIndex
 }
 
@@ -60,7 +59,7 @@ type Elasticsearch struct {
 func New(logger *logging.Logger) application.Application {
 	return &Elasticsearch{
 		logger: logger,
-		buffer: concurrent.NewMap(),
+		buffer: make(map[string][]string),
 		dump:   make(chan esIndex, 100),
 	}
 }
@@ -89,20 +88,19 @@ func (es *Elasticsearch) ReceiveEvent(event data.Event) {
 	// buffer or index record
 	var recordList []string
 	if es.configuration.BufferSize > 1 {
-		if !es.buffer.Contains(event.Index) {
-			es.buffer.Set(event.Index, make([]string, 0, es.configuration.BufferSize))
+		if _, ok := es.buffer[event.Index]; !ok {
+			es.buffer[event.Index] = make([]string, 0, es.configuration.BufferSize)
 		}
 
-		recordList = (es.buffer.Get(event.Index)).([]string)
-		recordList = append(recordList, record)
-		if len(recordList) < es.configuration.BufferSize {
+		es.buffer[event.Index] = append(es.buffer[event.Index], record)
+		if len(es.buffer[event.Index]) < es.configuration.BufferSize {
 			// buffer is not full, don't send
 			es.logger.Metadata(logging.Metadata{"plugin": appname, "record": record})
 			es.logger.Debug("buffering record")
-			es.buffer.Set(event.Index, recordList)
 			return
 		}
-		es.buffer.Delete(event.Index)
+		recordList = es.buffer[event.Index]
+		delete(es.buffer, event.Index)
 	} else {
 		recordList = []string{record}
 	}
