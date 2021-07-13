@@ -5,7 +5,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/infrawatch/apputils/connector"
+	"github.com/infrawatch/apputils/connector/loki"
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/application"
 	"github.com/infrawatch/sg-core/pkg/config"
@@ -25,7 +25,7 @@ type LokiConfig struct {
 // Loki plugin for forwarding logs to loki
 type Loki struct {
 	config     *LokiConfig
-	client     *connector.LokiConnector
+	client     *loki.LokiConnector
 	logger     *logging.Logger
 	logChannel chan interface{}
 }
@@ -80,7 +80,7 @@ func (l *Loki) Config(c []byte) error {
 		return err
 	}
 
-	l.client, err = connector.CreateLokiConnector(l.logger,
+	l.client, err = loki.CreateLokiConnector(l.logger,
 		l.config.Connection,
 		l.config.MaxWaitTime,
 		l.config.BatchSize)
