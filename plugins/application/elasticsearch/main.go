@@ -135,7 +135,8 @@ func (es *Elasticsearch) Run(ctx context.Context, done chan bool) {
 		es.logger.Metadata(logging.Metadata{"plugin": appname, "worker-id": i})
 		es.logger.Debug("spawning ES API worker")
 		wg.Add(1)
-		go func(es *Elasticsearch, ctx context.Context, wg sync.WaitGroup) {
+
+		go func(es *Elasticsearch, ctx context.Context, wg *sync.WaitGroup, i int) {
 			defer wg.Done()
 			for {
 				select {
@@ -152,7 +153,8 @@ func (es *Elasticsearch) Run(ctx context.Context, done chan bool) {
 					}
 				}
 			}
-		}(es, ctx, wg)
+		}(es, ctx, &wg, i)
+
 	}
 
 	wg.Wait()
