@@ -110,7 +110,14 @@ func (es *Elasticsearch) ReceiveEvent(event data.Event) {
 	} else {
 		recordList = []string{record}
 	}
-	es.dump <- esIndex{index: event.Index, record: recordList}
+
+	dumped := esIndex{index: event.Index, record: recordList}
+	if err := es.client.Index(dumped.index, dumped.record, es.configuration.BulkIndex); err != nil {
+		es.logger.Metadata(logging.Metadata{"plugin": appname, "event": dumped.record, "error": err})
+		es.logger.Error("failed to index event - disregarding")
+	} else {
+		es.logger.Debug("successfully indexed document(s)")
+	}
 }
 
 // Run plugin process
@@ -130,34 +137,7 @@ func (es *Elasticsearch) Run(ctx context.Context, done chan bool) {
 		es.logger.Info("removed indices")
 	}
 
-	wg := sync.WaitGroup{}
-	for i := 0; i < es.configuration.IndexWorkers; i++ {
-		es.logger.Metadata(logging.Metadata{"plugin": appname, "worker-id": i})
-		es.logger.Debug("spawning ES API worker")
-		wg.Add(1)
-
-		go func(es *Elasticsearch, ctx context.Context, wg *sync.WaitGroup, i int) {
-			defer wg.Done()
-			for {
-				select {
-				case <-ctx.Done():
-					es.logger.Metadata(logging.Metadata{"plugin": appname, "worker-id": i})
-					es.logger.Debug("shutting down ES API worker")
-					return
-				case dumped := <-es.dump:
-					if err := es.client.Index(dumped.index, dumped.record, es.configuration.BulkIndex); err != nil {
-						es.logger.Metadata(logging.Metadata{"plugin": appname, "event": dumped.record, "error": err})
-						es.logger.Error("failed to index event - disregarding")
-					} else {
-						es.logger.Debug("successfully indexed document(s)")
-					}
-				}
-			}
-		}(es, ctx, &wg, i)
-
-	}
-
-	wg.Wait()
+	<-ctx.Done()
 	es.logger.Metadata(logging.Metadata{"plugin": appname})
 	es.logger.Info("exited")
 }
