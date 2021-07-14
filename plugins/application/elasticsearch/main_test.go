@@ -245,21 +245,20 @@ func TestElasticsearchApp(t *testing.T) {
 	})
 
 	t.Run("Test event message processing", func(t *testing.T) {
-		results := make(chan esIndex, len(eventCases))
+		results := make(map[string][]string)
 		app := &Elasticsearch{
 			logger: logger,
-			buffer: make(map[string][]string),
-			dump:   results,
+			buffer: results,
+			dump:   make(chan esIndex, len(eventCases)),
 		}
 		err := app.Config([]byte(testConf))
 		require.NoError(t, err)
 
 		for _, tstCase := range eventCases {
 			app.ReceiveEvent(tstCase.Event)
-			res := <-results
 
 			var result map[string]interface{}
-			require.NoError(t, stdjson.Unmarshal([]byte(res.record[0]), &result))
+			require.NoError(t, stdjson.Unmarshal([]byte((results[tstCase.Event.Index]).record), &result))
 			assert.EqualValues(t, tstCase.Result["labels"], result["labels"])
 			assert.EqualValues(t, tstCase.Result["annotations"], result["annotations"])
 			assert.EqualValues(t, tstCase.Result["severity"], result["severity"])
