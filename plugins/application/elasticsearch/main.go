@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"sync"
 	"time"
 
 	"github.com/infrawatch/apputils/logging"
@@ -13,7 +14,6 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 
-	"github.com/infrawatch/sg-core/pkg/concurrent"
 	"github.com/infrawatch/sg-core/plugins/application/elasticsearch/pkg/lib"
 )
 
@@ -52,7 +52,8 @@ type Elasticsearch struct {
 	configuration *lib.AppConfig
 	logger        *logging.Logger
 	client        *lib.Client
-	buffer        *concurrent.Map
+	buffer        map[string][]string
+	bufferMutex   sync.RWMutex
 	dump          chan esIndex
 }
 
@@ -60,7 +61,7 @@ type Elasticsearch struct {
 func New(logger *logging.Logger) application.Application {
 	return &Elasticsearch{
 		logger: logger,
-		buffer: concurrent.NewMap(),
+		buffer: make(map[string][]string),
 		dump:   make(chan esIndex, 100),
 	}
 }
@@ -89,24 +90,34 @@ func (es *Elasticsearch) ReceiveEvent(event data.Event) {
 	// buffer or index record
 	var recordList []string
 	if es.configuration.BufferSize > 1 {
-		if !es.buffer.Contains(event.Index) {
-			es.buffer.Set(event.Index, make([]string, 0, es.configuration.BufferSize))
+		es.bufferMutex.Lock()
+		if _, ok := es.buffer[event.Index]; !ok {
+			es.buffer[event.Index] = make([]string, 0, es.configuration.BufferSize)
 		}
 
-		recordList = (es.buffer.Get(event.Index)).([]string)
-		recordList = append(recordList, record)
-		if len(recordList) < es.configuration.BufferSize {
+		es.buffer[event.Index] = append(es.buffer[event.Index], record)
+		if len(es.buffer[event.Index]) < es.configuration.BufferSize {
+			es.bufferMutex.Unlock()
 			// buffer is not full, don't send
 			es.logger.Metadata(logging.Metadata{"plugin": appname, "record": record})
 			es.logger.Debug("buffering record")
-			es.buffer.Set(event.Index, recordList)
 			return
 		}
-		es.buffer.Delete(event.Index)
+		recordList = es.buffer[event.Index]
+		delete(es.buffer, event.Index)
+		es.bufferMutex.Unlock()
+
 	} else {
 		recordList = []string{record}
 	}
-	es.dump <- esIndex{index: event.Index, record: recordList}
+
+	dumped := esIndex{index: event.Index, record: recordList}
+	if err := es.client.Index(dumped.index, dumped.record, es.configuration.BulkIndex); err != nil {
+		es.logger.Metadata(logging.Metadata{"plugin": appname, "event": dumped.record, "error": err})
+		es.logger.Error("failed to index event - disregarding")
+	} else {
+		es.logger.Debug("successfully indexed document(s)")
+	}
 }
 
 // Run plugin process
@@ -126,21 +137,7 @@ func (es *Elasticsearch) Run(ctx context.Context, done chan bool) {
 		es.logger.Info("removed indices")
 	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			goto done
-		case dumped := <-es.dump:
-			if err := es.client.Index(dumped.index, dumped.record, es.configuration.BulkIndex); err != nil {
-				es.logger.Metadata(logging.Metadata{"plugin": appname, "event": dumped.record, "error": err})
-				es.logger.Error("failed to index event - disregarding")
-			} else {
-				es.logger.Debug("successfully indexed document(s)")
-			}
-		}
-	}
-
-done:
+	<-ctx.Done()
 	es.logger.Metadata(logging.Metadata{"plugin": appname})
 	es.logger.Info("exited")
 }
@@ -159,6 +156,7 @@ func (es *Elasticsearch) Config(c []byte) error {
 		Password:      "",
 		BufferSize:    1,
 		BulkIndex:     false,
+		IndexWorkers:  3,
 	}
 	err := config.ParseConfig(bytes.NewReader(c), es.configuration)
 	if err != nil {
