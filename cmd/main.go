@@ -105,6 +105,7 @@ func main() {
 		logger.Info("loaded application plugin")
 	}
 
+	//NOTE(mmagr): so if err will be just the warning from above, do we still need to end execution?
 	if err != nil {
 		return
 	}

@@ -49,7 +49,7 @@ func SetLogger(l *logging.Logger) {
 	logger = l
 }
 
-// InitTransport load tranpsort binary and initialize with config
+// InitTransport load transport binary and initialize with config
 func InitTransport(name string, config interface{}) error {
 	n, err := initPlugin(name)
 	if err != nil {
