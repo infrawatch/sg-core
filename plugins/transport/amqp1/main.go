@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	amqp "github.com/Azure/go-amqp"
@@ -100,32 +101,25 @@ func (at *Amqp1) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 		"connection": fmt.Sprintf("%s/%s", at.conf.URI, at.receiver.Address()),
 	})
 	at.logger.Info("listening")
-	go func(at *Amqp1) {
-		for {
-			// Receive next message
-			msg, err := at.receiver.Receive(ctx)
-			if err != nil {
-				at.logger.Metadata(logging.Metadata{"plugin": appname, "error": err})
-				at.logger.Error("failed to receive message")
-			}
 
-			// Accept message
+	for {
+		at.logger.Debug(fmt.Sprintf("receiving %d msg/s", rate()))
+		err := at.receiver.HandleMessage(ctx, func(msg *amqp.Message) error {
+			// accept message
 			msg.Accept(context.Background())
-
+			// dump message
 			if at.conf.DumpMessages.Enabled {
-				_, err := at.dumpBuf.Write(msg.GetData())
-				if err != nil {
-					at.logger.Metadata(logging.Metadata{"plugin": appname, "error": err})
-					at.logger.Error("failed to write to dump buffer")
+				_, errr := at.dumpBuf.Write(msg.GetData())
+				if errr != nil {
+					return errr
 				}
-				_, err = at.dumpBuf.WriteString("\n")
-				if err != nil {
-					at.logger.Metadata(logging.Metadata{"plugin": appname, "error": err})
-					at.logger.Error("failed write to dump buffer")
+				_, errr = at.dumpBuf.WriteString("\n")
+				if errr != nil {
+					return errr
 				}
 				at.dumpBuf.Flush()
 			}
-
+			// send message
 			switch val := msg.Value.(type) {
 			case []interface{}:
 				for _, itm := range val {
@@ -133,20 +127,20 @@ func (at *Amqp1) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 				}
 			case interface{}:
 				sendMessage(val, w, at.logger)
+			default:
+				at.logger.Metadata(logging.Metadata{"plugin": appname, "type": val})
+				at.logger.Error("unknown message format")
 			}
-		}
-	}(at)
+			return nil
+		})
 
-	for {
-		select {
-		case <-ctx.Done():
-			goto Done
-		default:
-			time.Sleep(time.Second)
-			at.logger.Debug(fmt.Sprintf("receiving %d msg/s", rate()))
+		if err != nil && !strings.Contains(err.Error(), "context canceled") {
+			at.logger.Metadata(logging.Metadata{"plugin": appname, "error": err})
+			at.logger.Error("failed to handle message")
+			break
 		}
 	}
-Done:
+
 	at.dumpFile.Close()
 	at.logger.Metadata(logging.Metadata{"plugin": appname})
 	at.logger.Info("exited")
@@ -155,7 +149,7 @@ Done:
 // Listen ...
 func (at *Amqp1) Listen(e data.Event) {
 	at.logger.Metadata(logging.Metadata{"plugin": appname, "event": e})
-	at.logger.Debug("Received event")
+	at.logger.Debug("received event")
 }
 
 // Config load configurations
