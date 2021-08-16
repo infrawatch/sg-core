@@ -54,7 +54,7 @@ type Elasticsearch struct {
 	client        *lib.Client
 	buffer        map[string][]string
 	bufferMutex   sync.RWMutex
-	dump          chan esIndex
+	dump          chan *esIndex
 }
 
 // New constructor
@@ -62,7 +62,7 @@ func New(logger *logging.Logger) application.Application {
 	return &Elasticsearch{
 		logger: logger,
 		buffer: make(map[string][]string),
-		dump:   make(chan esIndex, 100),
+		dump:   make(chan *esIndex, 512),
 	}
 }
 
@@ -79,6 +79,8 @@ func (es *Elasticsearch) ReceiveEvent(event data.Event) {
 		// eg. case data.TASK: this app does not respond on task request events
 		//     case data.ERROR: TODO: save internal error
 		//     case data.RESULT: TODO: save task result
+		es.logger.Metadata(logging.Metadata{"plugin": appname, "event": event})
+		es.logger.Debug("received unknown event")
 		return
 	}
 	if err != nil {
@@ -110,7 +112,7 @@ func (es *Elasticsearch) ReceiveEvent(event data.Event) {
 	} else {
 		recordList = []string{record}
 	}
-	es.dump <- esIndex{index: event.Index, record: recordList}
+	es.dump <- &esIndex{index: event.Index, record: recordList}
 }
 
 // Run plugin process
@@ -131,9 +133,38 @@ func (es *Elasticsearch) Run(ctx context.Context, done chan bool) {
 	}
 
 	wg := sync.WaitGroup{}
+
+	// spawn buffer flusher
+	go func(es *Elasticsearch, ctx context.Context, wg *sync.WaitGroup) {
+		defer wg.Done()
+		timer := time.NewTimer(time.Duration(es.configuration.BufferTimeout) * time.Second)
+
+		for {
+			select {
+			case <-ctx.Done():
+				es.logger.Metadata(logging.Metadata{"plugin": appname})
+				es.logger.Debug("shutting down buffer flusher")
+				return
+			case <-timer.C:
+				es.bufferMutex.Lock()
+				for index, record := range es.buffer {
+					if err := es.client.Index(index, record, es.configuration.BulkIndex); err != nil {
+						es.logger.Metadata(logging.Metadata{"plugin": appname, "event": record, "error": err})
+						es.logger.Error("failed to flush buffer - disregarding")
+					} else {
+						es.logger.Metadata(logging.Metadata{"plugin": appname, "event": len(record), "index": index})
+						es.logger.Debug("successfully flushed buffer")
+					}
+					delete(es.buffer, index)
+				}
+			}
+		}
+	}(es, ctx, &wg)
+
+	// spawn index workers
 	for i := 0; i < es.configuration.IndexWorkers; i++ {
 		es.logger.Metadata(logging.Metadata{"plugin": appname, "worker-id": i})
-		es.logger.Debug("spawning ES API worker")
+		es.logger.Debug("spawning index worker")
 		wg.Add(1)
 
 		go func(es *Elasticsearch, ctx context.Context, wg *sync.WaitGroup, i int) {
@@ -142,13 +173,14 @@ func (es *Elasticsearch) Run(ctx context.Context, done chan bool) {
 				select {
 				case <-ctx.Done():
 					es.logger.Metadata(logging.Metadata{"plugin": appname, "worker-id": i})
-					es.logger.Debug("shutting down ES API worker")
+					es.logger.Debug("shutting down index worker")
 					return
 				case dumped := <-es.dump:
 					if err := es.client.Index(dumped.index, dumped.record, es.configuration.BulkIndex); err != nil {
 						es.logger.Metadata(logging.Metadata{"plugin": appname, "event": dumped.record, "error": err})
 						es.logger.Error("failed to index event - disregarding")
 					} else {
+						es.logger.Metadata(logging.Metadata{"plugin": appname, "event": len(dumped.record), "error": err})
 						es.logger.Debug("successfully indexed document(s)")
 					}
 				}
@@ -177,6 +209,7 @@ func (es *Elasticsearch) Config(c []byte) error {
 		BufferSize:    1,
 		BulkIndex:     false,
 		IndexWorkers:  3,
+		BufferTimeout: 5,
 	}
 	err := config.ParseConfig(bytes.NewReader(c), es.configuration)
 	if err != nil {
