@@ -39,8 +39,8 @@ type configT struct {
 	} `yaml:"dumpMessages"` // only use for debug as this is very slow
 }
 
-// Amqp1 basic struct
-type Amqp1 struct {
+// AMQP1 basic struct
+type AMQP1 struct {
 	conn     *amqp.Client
 	sess     *amqp.Session
 	receiver *amqp.Receiver
@@ -61,7 +61,7 @@ func sendMessage(msg interface{}, w transport.WriteFn, logger *logging.Logger) {
 }
 
 // Run implements type Transport
-func (at *Amqp1) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
+func (at *AMQP1) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	var err error
 	// connect
 	at.conn, err = amqp.Dial(at.conf.URI)
@@ -106,7 +106,9 @@ func (at *Amqp1) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 		at.logger.Debug(fmt.Sprintf("receiving %d msg/s", rate()))
 		err := at.receiver.HandleMessage(ctx, func(msg *amqp.Message) error {
 			// accept message
-			msg.Accept(context.Background())
+			if errr := msg.Accept(context.Background()); err != nil {
+				return errr
+			}
 			// dump message
 			if at.conf.DumpMessages.Enabled {
 				_, errr := at.dumpBuf.Write(msg.GetData())
@@ -129,7 +131,7 @@ func (at *Amqp1) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 				sendMessage(val, w, at.logger)
 			default:
 				at.logger.Metadata(logging.Metadata{"plugin": appname, "type": val})
-				at.logger.Error("unknown message format")
+				at.logger.Warn("unknown message format - skipping")
 			}
 			return nil
 		})
@@ -147,13 +149,13 @@ func (at *Amqp1) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 }
 
 // Listen ...
-func (at *Amqp1) Listen(e data.Event) {
+func (at *AMQP1) Listen(e data.Event) {
 	at.logger.Metadata(logging.Metadata{"plugin": appname, "event": e})
 	at.logger.Debug("received event")
 }
 
 // Config load configurations
-func (at *Amqp1) Config(c []byte) error {
+func (at *AMQP1) Config(c []byte) error {
 	at.conf = configT{
 		DumpMessages: struct {
 			Enabled bool
@@ -186,7 +188,7 @@ func (at *Amqp1) Config(c []byte) error {
 
 // New create new amqp1 transport
 func New(l *logging.Logger) transport.Transport {
-	return &Amqp1{
+	return &AMQP1{
 		logger: l,
 	}
 }

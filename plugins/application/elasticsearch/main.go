@@ -133,30 +133,32 @@ func (es *Elasticsearch) Run(ctx context.Context, done chan bool) {
 	}
 
 	wg := sync.WaitGroup{}
-
+	wg.Add(1)
 	// spawn buffer flusher
 	go func(es *Elasticsearch, ctx context.Context, wg *sync.WaitGroup) {
 		defer wg.Done()
-		timer := time.NewTimer(time.Duration(es.configuration.BufferTimeout) * time.Second)
+		tick := time.NewTicker(time.Duration(es.configuration.BufferTimeout) * time.Second)
 
 		for {
 			select {
 			case <-ctx.Done():
+				tick.Stop()
 				es.logger.Metadata(logging.Metadata{"plugin": appname})
 				es.logger.Debug("shutting down buffer flusher")
 				return
-			case <-timer.C:
+			case <-tick.C:
 				es.bufferMutex.Lock()
 				for index, record := range es.buffer {
 					if err := es.client.Index(index, record, es.configuration.BulkIndex); err != nil {
-						es.logger.Metadata(logging.Metadata{"plugin": appname, "event": record, "error": err})
+						es.logger.Metadata(logging.Metadata{"plugin": appname, "records": len(record), "index": index, "error": err})
 						es.logger.Error("failed to flush buffer - disregarding")
 					} else {
-						es.logger.Metadata(logging.Metadata{"plugin": appname, "event": len(record), "index": index})
+						es.logger.Metadata(logging.Metadata{"plugin": appname, "records": len(record), "index": index})
 						es.logger.Debug("successfully flushed buffer")
 					}
 					delete(es.buffer, index)
 				}
+				es.bufferMutex.Unlock()
 			}
 		}
 	}(es, ctx, &wg)
@@ -180,7 +182,7 @@ func (es *Elasticsearch) Run(ctx context.Context, done chan bool) {
 						es.logger.Metadata(logging.Metadata{"plugin": appname, "event": dumped.record, "error": err})
 						es.logger.Error("failed to index event - disregarding")
 					} else {
-						es.logger.Metadata(logging.Metadata{"plugin": appname, "event": len(dumped.record), "error": err})
+						es.logger.Metadata(logging.Metadata{"plugin": appname, "records": len(dumped.record)})
 						es.logger.Debug("successfully indexed document(s)")
 					}
 				}

@@ -267,7 +267,7 @@ func TestElasticsearchApp(t *testing.T) {
 	})
 
 	t.Run("Test log message processing", func(t *testing.T) {
-		results := make(chan esIndex, len(logCases))
+		results := make(chan *esIndex, len(logCases))
 		app := &Elasticsearch{
 			logger: logger,
 			buffer: make(map[string][]string),
