@@ -32,6 +32,20 @@ func (eb *EventBus) Publish(e data.Event) {
 	eb.rw.RLock()
 
 	for _, rf := range eb.subscribers {
+		go func(rf EventReceiveFunc) {
+			rf(e)
+		}(rf)
+	}
+	eb.rw.RUnlock()
+}
+
+// PublishBlocking publish to bus, but block
+// until all application plugins process the data
+// before publishing more events.
+func (eb *EventBus) PublishBlocking(e data.Event) {
+	eb.rw.RLock()
+
+	for _, rf := range eb.subscribers {
 		eb.wg.Add(1)
 		go func(rf EventReceiveFunc, wg *sync.WaitGroup) {
 			defer wg.Done()
