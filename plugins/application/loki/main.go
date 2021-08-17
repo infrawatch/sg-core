@@ -83,7 +83,8 @@ func (l *Loki) Config(c []byte) error {
 	l.client, err = loki.CreateLokiConnector(l.logger,
 		l.config.Connection,
 		l.config.MaxWaitTime,
-		l.config.BatchSize)
+		l.config.BatchSize,
+		"fake")
 	if err != nil {
 		return errors.Wrap(err, "failed to connect to Loki host")
 	}
