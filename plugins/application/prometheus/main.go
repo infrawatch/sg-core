@@ -11,6 +11,7 @@ import (
 
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/application"
+	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/config"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/prometheus/client_golang/prometheus"
@@ -233,7 +234,7 @@ type Prometheus struct {
 }
 
 // New constructor
-func New(l *logging.Logger) application.Application {
+func New(l *logging.Logger, sendMetric bus.MetricPublishFunc, sendEvent bus.EventPublishFunc) application.Application {
 	return &Prometheus{
 		configuration: configT{
 			Host:               "127.0.0.1",

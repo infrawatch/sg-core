@@ -99,12 +99,12 @@ func InitApplication(name string, config interface{}) error {
 		return errors.Wrap(err, "failed initializing application plugin")
 	}
 
-	new, ok := n.(func(*logging.Logger) application.Application)
+	new, ok := n.(func(*logging.Logger, bus.MetricPublishFunc, bus.EventPublishFunc) application.Application)
 	if !ok {
 		return fmt.Errorf("plugin %s constructor 'New' did not return type 'application.Application'", name)
 	}
 
-	applications[name] = new(logger)
+	applications[name] = new(logger, metricBus.Publish, eventBus.Publish)
 
 	c, err := yaml.Marshal(config)
 	if err != nil {

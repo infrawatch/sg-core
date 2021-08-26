@@ -10,6 +10,7 @@ import (
 
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/application"
+	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/config"
 	"github.com/infrawatch/sg-core/pkg/data"
 
@@ -28,7 +29,7 @@ type AlertManager struct {
 }
 
 // New constructor
-func New(logger *logging.Logger) application.Application {
+func New(logger *logging.Logger, sendMetric bus.MetricPublishFunc, sendEvent bus.EventPublishFunc) application.Application {
 	return &AlertManager{
 		configuration: lib.AppConfig{
 			AlertManagerURL: "http://localhost",
