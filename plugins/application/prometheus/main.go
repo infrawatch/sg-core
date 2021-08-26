@@ -234,7 +234,7 @@ type Prometheus struct {
 }
 
 // New constructor
-func New(l *logging.Logger, sendMetric bus.MetricPublishFunc, sendEvent bus.EventPublishFunc) application.Application {
+func New(l *logging.Logger, sendEvent bus.EventPublishFunc) application.Application {
 	return &Prometheus{
 		configuration: configT{
 			Host:               "127.0.0.1",

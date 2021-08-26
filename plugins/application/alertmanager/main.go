@@ -29,7 +29,7 @@ type AlertManager struct {
 }
 
 // New constructor
-func New(logger *logging.Logger, sendMetric bus.MetricPublishFunc, sendEvent bus.EventPublishFunc) application.Application {
+func New(logger *logging.Logger, sendEvent bus.EventPublishFunc) application.Application {
 	return &AlertManager{
 		configuration: lib.AppConfig{
 			AlertManagerURL: "http://localhost",
