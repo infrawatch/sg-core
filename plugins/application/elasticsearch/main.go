@@ -58,7 +58,7 @@ type Elasticsearch struct {
 }
 
 // New constructor
-func New(logger *logging.Logger, sendMetric bus.MetricPublishFunc, sendEvent bus.EventPublishFunc) application.Application {
+func New(logger *logging.Logger, sendEvent bus.EventPublishFunc) application.Application {
 	return &Elasticsearch{
 		logger: logger,
 		buffer: concurrent.NewMap(),

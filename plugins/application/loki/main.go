@@ -32,7 +32,7 @@ type Loki struct {
 }
 
 // New constructor
-func New(logger *logging.Logger, sendMetric bus.MetricPublishFunc, sendEvent bus.EventPublishFunc) application.Application {
+func New(logger *logging.Logger, sendEvent bus.EventPublishFunc) application.Application {
 	return &Loki{
 		logger:     logger,
 		logChannel: make(chan interface{}, 100),
