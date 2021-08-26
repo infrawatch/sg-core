@@ -8,6 +8,7 @@ import (
 	"github.com/infrawatch/apputils/connector/loki"
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/application"
+	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/config"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/pkg/errors"
@@ -31,7 +32,7 @@ type Loki struct {
 }
 
 // New constructor
-func New(logger *logging.Logger) application.Application {
+func New(logger *logging.Logger, sendMetric bus.MetricPublishFunc, sendEvent bus.EventPublishFunc) application.Application {
 	return &Loki{
 		logger:     logger,
 		logChannel: make(chan interface{}, 100),

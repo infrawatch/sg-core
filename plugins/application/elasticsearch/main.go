@@ -8,6 +8,7 @@ import (
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/apputils/misc"
 	"github.com/infrawatch/sg-core/pkg/application"
+	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/config"
 	"github.com/infrawatch/sg-core/pkg/data"
 	jsoniter "github.com/json-iterator/go"
@@ -57,7 +58,7 @@ type Elasticsearch struct {
 }
 
 // New constructor
-func New(logger *logging.Logger) application.Application {
+func New(logger *logging.Logger, sendMetric bus.MetricPublishFunc, sendEvent bus.EventPublishFunc) application.Application {
 	return &Elasticsearch{
 		logger: logger,
 		buffer: concurrent.NewMap(),
