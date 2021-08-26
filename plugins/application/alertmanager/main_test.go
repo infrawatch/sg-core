@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/infrawatch/apputils/logging"
+	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/infrawatch/sg-core/plugins/application/alertmanager/pkg/lib"
 	"github.com/stretchr/testify/assert"
@@ -177,7 +178,7 @@ func TestAlertmanagerApp(t *testing.T) {
 	}()
 
 	t.Run("Test configuration", func(t *testing.T) {
-		app := New(logger)
+		app := New(logger, bus.MetricPublishFunc, bus.EventPublishFunc)
 		err := app.Config([]byte(testConf))
 		require.NoError(t, err)
 	})
