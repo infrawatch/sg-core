@@ -224,7 +224,8 @@ func TestElasticsearchApp(t *testing.T) {
 	}()
 
 	t.Run("Test configuration", func(t *testing.T) {
-		app := New(logger, bus.EventPublishFunc)
+		ebus := bus.EventBus{}
+		app := New(logger, ebus.Publish)
 		err := app.Config([]byte(testConf))
 		require.NoError(t, err)
 
