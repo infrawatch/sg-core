@@ -52,7 +52,8 @@ linters:
     - typecheck
     # - unused
     - unconvert
-    - unparam
+    # NOTE: not all application plugins use ability to emit internal events through
+    #       passed bus function in it's constructor.
+    #- unparam
     - varcheck
     # - whitespace
-   
