@@ -71,6 +71,7 @@ func main() {
 
 	manager.SetLogger(logger)
 	manager.SetPluginDir(configuration.PluginDir)
+	manager.SetEventBusBlocking(configuration.BlockEventBus)
 
 	for _, tConfig := range configuration.Transports {
 		tName, err := manager.InitTransport(tConfig.Name, tConfig.Config)

@@ -24,13 +24,15 @@ var (
 	ErrAppNotReceiver = errors.New("application plugin does not implement either application.MetricReceiver or application.EventReceiver")
 )
 var (
-	transports   map[string]transport.Transport
-	handlers     map[string][]handler.Handler
-	applications map[string]application.Application
-	eventBus     bus.EventBus
-	metricBus    bus.MetricBus
-	pluginPath   string
-	logger       *logging.Logger
+	transports        map[string]transport.Transport
+	handlers          map[string][]handler.Handler
+	applications      map[string]application.Application
+	eventBus          bus.EventBus
+	metricBus         bus.MetricBus
+	pluginPath        string
+	logger            *logging.Logger
+	eventPublishFunc  bus.EventPublishFunc
+	metricPublishFunc bus.MetricPublishFunc
 )
 
 func init() {
@@ -38,6 +40,8 @@ func init() {
 	handlers = map[string][]handler.Handler{}
 	applications = map[string]application.Application{}
 	pluginPath = "/usr/lib64/sg-core"
+	eventPublishFunc = eventBus.Publish
+	metricPublishFunc = metricBus.Publish
 }
 
 // SetPluginDir set directory path containing plugin binaries
@@ -48,6 +52,15 @@ func SetPluginDir(path string) {
 // SetLogger set logger
 func SetLogger(l *logging.Logger) {
 	logger = l
+}
+
+// SetBlockingEventBus set the correct event bus publish function
+func SetEventBusBlocking(block bool) {
+	if block {
+		eventPublishFunc = eventBus.PublishBlocking
+	} else {
+		eventPublishFunc = eventBus.Publish
+	}
 }
 
 // InitTransport load tranpsort binary and initialize with config
@@ -167,7 +180,7 @@ func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool, repo
 			wg.Add(1)
 			go func(wg *sync.WaitGroup, h handler.Handler) {
 				defer wg.Done()
-				h.Run(ctx, metricBus.Publish, eventBus.Publish)
+				h.Run(ctx, metricPublishFunc, eventPublishFunc)
 			}(wg, h)
 		}
 
@@ -176,7 +189,7 @@ func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool, repo
 			defer wg.Done()
 			t.Run(ctx, func(blob []byte) {
 				for _, h := range handlers[name] {
-					err := h.Handle(blob, report, metricBus.Publish, eventBus.Publish)
+					err := h.Handle(blob, report, metricPublishFunc, eventPublishFunc)
 					if err != nil {
 						logger.Metadata(logging.Metadata{"error": err, "handler": fmt.Sprintf("%s[%s]", h.Identify(), name)})
 						logger.Debug("failed handling message")

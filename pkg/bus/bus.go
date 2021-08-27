@@ -17,6 +17,7 @@ type EventPublishFunc func(data.Event)
 type EventBus struct {
 	subscribers []EventReceiveFunc
 	rw          sync.RWMutex
+	wg          sync.WaitGroup
 }
 
 // Subscribe subscribe to bus
@@ -35,6 +36,23 @@ func (eb *EventBus) Publish(e data.Event) {
 			rf(e)
 		}(rf)
 	}
+	eb.rw.RUnlock()
+}
+
+// PublishBlocking publish to bus, but block
+// until all application plugins process the data
+// before publishing more events.
+func (eb *EventBus) PublishBlocking(e data.Event) {
+	eb.rw.RLock()
+
+	for _, rf := range eb.subscribers {
+		eb.wg.Add(1)
+		go func(rf EventReceiveFunc, wg *sync.WaitGroup) {
+			defer wg.Done()
+			rf(e)
+		}(rf, &eb.wg)
+	}
+	eb.wg.Wait()
 	eb.rw.RUnlock()
 }
 
