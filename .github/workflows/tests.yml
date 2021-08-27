@@ -34,8 +34,6 @@ jobs:
           skip-build-cache: true
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
           version: v1.33
-          # golangci-lint command line arguments. https://staticcheck.io/docs/checks#SA4008 (The variable in the loop condition never changes, are you incrementing the wrong variable?)
-          args: --exclude=SA4008
   unit-tests:
     name: Unit tests
     runs-on: ubuntu-20.04
