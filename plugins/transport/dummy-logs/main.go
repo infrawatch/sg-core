@@ -45,7 +45,6 @@ func (dl *DummyLogs) Run(ctx context.Context, wrFn transport.WriteFn, done chan 
 			case <-time.After(time.Second * 1):
 				time.Sleep(time.Second * 1)
 				msgBuffer = []byte(log)
-				msgBuffer = append(msgBuffer, 0)
 				wrFn(msgBuffer)
 			}
 		}

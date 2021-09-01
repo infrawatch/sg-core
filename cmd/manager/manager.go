@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"plugin"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -23,13 +24,15 @@ var (
 	ErrAppNotReceiver = errors.New("application plugin does not implement either application.MetricReceiver or application.EventReceiver")
 )
 var (
-	transports   map[string]transport.Transport
-	handlers     map[string][]handler.Handler
-	applications map[string]application.Application
-	eventBus     bus.EventBus
-	metricBus    bus.MetricBus
-	pluginPath   string
-	logger       *logging.Logger
+	transports        map[string]transport.Transport
+	handlers          map[string][]handler.Handler
+	applications      map[string]application.Application
+	eventBus          bus.EventBus
+	metricBus         bus.MetricBus
+	pluginPath        string
+	logger            *logging.Logger
+	eventPublishFunc  bus.EventPublishFunc
+	metricPublishFunc bus.MetricPublishFunc
 )
 
 func init() {
@@ -37,6 +40,8 @@ func init() {
 	handlers = map[string][]handler.Handler{}
 	applications = map[string]application.Application{}
 	pluginPath = "/usr/lib64/sg-core"
+	eventPublishFunc = eventBus.Publish
+	metricPublishFunc = metricBus.Publish
 }
 
 // SetPluginDir set directory path containing plugin binaries
@@ -49,30 +54,42 @@ func SetLogger(l *logging.Logger) {
 	logger = l
 }
 
-// InitTransport load transport binary and initialize with config
-func InitTransport(name string, config interface{}) error {
+// SetBlockingEventBus set the correct event bus publish function
+func SetEventBusBlocking(block bool) {
+	if block {
+		eventPublishFunc = eventBus.PublishBlocking
+	} else {
+		eventPublishFunc = eventBus.Publish
+	}
+}
+
+// InitTransport load tranpsort binary and initialize with config
+func InitTransport(name string, config interface{}) (string, error) {
 	n, err := initPlugin(name)
 	if err != nil {
-		return errors.Wrap(err, "failed initializing transport")
+		return "", errors.Wrap(err, "failed initializing transport")
 	}
 
 	new, ok := n.(func(*logging.Logger) transport.Transport)
 	if !ok {
-		return fmt.Errorf("plugin %s constructor 'New' did not return type 'transport.Transport'", name)
+		return "", fmt.Errorf("plugin %s constructor 'New' did not return type 'transport.Transport'", name)
 	}
 
-	transports[name] = new(logger)
+	// Append the current length of transports
+	// to make each name unique
+	uniqueName := name + strconv.Itoa(len(transports))
+	transports[uniqueName] = new(logger)
 
 	c, err := yaml.Marshal(config)
 	if err != nil {
-		return errors.Wrapf(err, "failed parsing transport config for '%s'", name)
+		return "", errors.Wrapf(err, "failed parsing transport config for '%s'", name)
 	}
 
-	err = transports[name].Config(c)
+	err = transports[uniqueName].Config(c)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return uniqueName, nil
 }
 
 // InitApplication initialize application plugin with configuration
@@ -163,7 +180,7 @@ func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool, repo
 			wg.Add(1)
 			go func(wg *sync.WaitGroup, h handler.Handler) {
 				defer wg.Done()
-				h.Run(ctx, metricBus.Publish, eventBus.Publish)
+				h.Run(ctx, metricPublishFunc, eventPublishFunc)
 			}(wg, h)
 		}
 
@@ -172,7 +189,7 @@ func RunTransports(ctx context.Context, wg *sync.WaitGroup, done chan bool, repo
 			defer wg.Done()
 			t.Run(ctx, func(blob []byte) {
 				for _, h := range handlers[name] {
-					err := h.Handle(blob, report, metricBus.Publish, eventBus.Publish)
+					err := h.Handle(blob, report, metricPublishFunc, eventPublishFunc)
 					if err != nil {
 						logger.Metadata(logging.Metadata{"error": err, "handler": fmt.Sprintf("%s[%s]", h.Identify(), name)})
 						logger.Debug("failed handling message")
