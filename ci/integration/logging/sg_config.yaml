@@ -28,3 +28,7 @@ applications:
         connection: http://127.0.0.1:3100
         batchsize: 3
         maxwaittime: 1
+  - name: prometheus
+    config:
+        host: 0.0.0.0
+        port: 3000

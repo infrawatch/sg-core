@@ -14,4 +14,6 @@ type AppConfig struct {
 	BufferSize    int      `yaml:"bufferSize"`
 	BulkIndex     bool     `yaml:"bulkIndex"`
 	ResetIndices  []string `yaml:"resetIndices"`
+	IndexWorkers  int      `yaml:"indexWorkers"`
+	BufferTimeout int      `yaml:"bufferTimeout"`
 }

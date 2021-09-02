@@ -92,8 +92,8 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 
 	s.logger.Infof("socket listening on %s", laddr.Name)
 	go func(maxBuffSize int64) {
-		msgBuffer := make([]byte, maxBuffSize)
 		for {
+			msgBuffer := make([]byte, maxBuffSize)
 			n, err := pc.Read(msgBuffer)
 			if err != nil || n < 1 {
 				if err != nil {
