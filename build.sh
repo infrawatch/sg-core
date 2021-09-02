@@ -7,7 +7,7 @@
 # CONTAINER_BUILD=true ./build.sh
 #
 # Production build (omits test plugin binaries to minimize image size and builds for container)
-# PRODUCTION_BUILD=true ./build.sh 
+# PRODUCTION_BUILD=true ./build.sh
 
 base=$(pwd)
 
@@ -23,7 +23,6 @@ fi
 # to keep the image size as small as possible
 if $PRODUCTION_BUILD; then
   OMIT_TRANSPORTS=(
-      "amqp1"
       "dummy-alertmanager"
       "dummy-events"
       "dummy-metrics"
@@ -31,9 +30,9 @@ if $PRODUCTION_BUILD; then
   )
 
   OMIT_HANDLERS=(
-  
+
   )
-  
+
   OMIT_APPLICATIONS=(
   )
 fi
@@ -55,7 +54,7 @@ search_list() {
 build_plugins() {
   # build transports
   cd "$base"
-  for i in plugins/transport/*; do 
+  for i in plugins/transport/*; do
     cd "$base/$i"
     search_list "$(basename $i)" OMIT_TRANSPORTS
     if [ $? -ne 1 ]; then
@@ -63,10 +62,10 @@ build_plugins() {
       go build -o "$PLUGIN_DIR$(basename $i).so" -buildmode=plugin
     fi
   done
-  
+
   # build handlers
   cd "$base"
-  for i in plugins/handler/*; do 
+  for i in plugins/handler/*; do
     cd "$base/$i"
     search_list "$(basename $i)" OMIT_HANDLERS
     if [ $? -ne 1 ]; then
@@ -74,7 +73,7 @@ build_plugins() {
       go build -o "$PLUGIN_DIR$(basename $i).so" -buildmode=plugin
     fi
   done
-  
+
   # build applications
   cd "$base"
   for i in plugins/application/*; do
@@ -93,7 +92,7 @@ build_core() {
   if $CONTAINER_BUILD; then
       echo "building sg-core for container"
       go build -o /tmp/sg-core cmd/*.go
-  else 
+  else
       go build -o sg-core cmd/*.go
   fi
 }

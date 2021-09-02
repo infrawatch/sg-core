@@ -17,6 +17,10 @@ issues:
     - text: New
       linters:
         - deadcode
+    - linters:
+        - staticcheck
+      # https://staticcheck.io/docs/checks#SA4008 (The variable in the loop condition never changes, are you incrementing the wrong variable?)
+      text: "SA4008:"
 
 linters:
   disable-all: true
@@ -55,4 +59,3 @@ linters:
     - unparam
     - varcheck
     # - whitespace
-   

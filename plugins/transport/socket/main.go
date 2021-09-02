@@ -70,7 +70,6 @@ type Socket struct {
 // Run implements type Transport
 func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 
-	msgBuffer := make([]byte, maxBufferSize)
 	var laddr net.UnixAddr
 
 	laddr.Name = s.conf.Path
@@ -85,8 +84,9 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	}
 
 	s.logger.Infof("socket listening on %s", laddr.Name)
-	go func() {
+	go func(buffSize int64) {
 		for {
+			msgBuffer := make([]byte, buffSize)
 			n, err := pc.Read(msgBuffer)
 			if err != nil || n < 1 {
 				if err != nil {
@@ -110,7 +110,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 			w(msgBuffer[:n])
 			msgCount++
 		}
-	}()
+	}(maxBufferSize)
 
 	for {
 		select {
