@@ -104,14 +104,14 @@ func InitApplication(name string, config interface{}) error {
 		return fmt.Errorf("plugin %s constructor 'New' did not return type 'application.Application'", name)
 	}
 
-	applications[name] = new(logger, eventBus.Publish)
+	app := new(logger, eventBus.Publish)
 
 	c, err := yaml.Marshal(config)
 	if err != nil {
 		return errors.Wrapf(err, "failed parsing application plugin config for '%s'", name)
 	}
 
-	err = applications[name].Config(c)
+	err = app.Config(c)
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func InitApplication(name string, config interface{}) error {
 	// does it implement EventReceiver?
 	var mReceiver bool
 	var eReceiver bool
-	var itf interface{} = applications[name]
+	var itf interface{} = app
 	if r, ok := itf.(application.MetricReceiver); ok {
 		mReceiver = true
 		metricBus.Subscribe(r.ReceiveMetric)
@@ -135,6 +135,7 @@ func InitApplication(name string, config interface{}) error {
 		return ErrAppNotReceiver
 	}
 
+	applications[name] = app
 	return nil
 }
 
