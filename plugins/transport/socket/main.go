@@ -91,7 +91,12 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	go func() {
 		for {
 			var buff bytes.Buffer
-			io.Copy(&buff, pc)
+			n, err := io.Copy(&buff, pc)
+			if err != nil {
+				s.logger.Errorf(err, "failed reading message")
+			} else {
+				s.logger.Debugf("read message of size %d bytes", n)
+			}
 			msg := buff.Bytes()
 
 			if s.conf.DumpMessages.Enabled {
