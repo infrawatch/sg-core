@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"time"
@@ -14,8 +15,6 @@ import (
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/infrawatch/sg-core/pkg/transport"
 )
-
-const maxBufferSize = 16384
 
 var (
 	msgCount int64
@@ -71,33 +70,32 @@ type Socket struct {
 func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 
 	var laddr net.UnixAddr
-
 	laddr.Name = s.conf.Path
 	laddr.Net = "unixgram"
 
 	os.Remove(s.conf.Path)
-
 	pc, err := net.ListenUnixgram("unixgram", &laddr)
 	if err != nil {
-		s.logger.Errorf(err, "failed to listen on unix socket %s", laddr.Name)
+		s.logger.Errorf(err, "failed to bind unix socket %s", laddr.Name)
 		return
 	}
+	// create socket file if it does not exist
+	skt, err := pc.File()
+	if err != nil {
+		s.logger.Errorf(err, "failed to retrieve file handle for %s", laddr.Name)
+		return
+	}
+	skt.Close()
 
-	s.logger.Infof("socket listening on %s", laddr.Name)
-	go func(buffSize int64) {
+	s.logger.Infof("socket %s bind successful", laddr.Name)
+	go func() {
 		for {
-			msgBuffer := make([]byte, buffSize)
-			n, err := pc.Read(msgBuffer)
-			if err != nil || n < 1 {
-				if err != nil {
-					s.logger.Errorf(err, "reading from socket failed")
-				}
-				done <- true
-				return
-			}
+			var buff bytes.Buffer
+			io.Copy(&buff, pc)
+			msg := buff.Bytes()
 
 			if s.conf.DumpMessages.Enabled {
-				_, err := s.dumpBuf.Write(msgBuffer[:n])
+				_, err := s.dumpBuf.Write(msg)
 				if err != nil {
 					s.logger.Errorf(err, "writing to dump buffer")
 				}
@@ -107,10 +105,12 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 				}
 				s.dumpBuf.Flush()
 			}
-			w(msgBuffer[:n])
+
+			w(msg)
+			buff.Reset()
 			msgCount++
 		}
-	}(maxBufferSize)
+	}()
 
 	for {
 		select {
