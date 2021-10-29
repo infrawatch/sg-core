@@ -103,7 +103,6 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 				done <- true
 				return
 			}
-			msg := buff.Bytes()
 
 			// whole buffer was used, so we are potentially handling larger message
 			// and have to increase buffer size
@@ -116,10 +115,11 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 				} else {
 					s.logger.Warnf("reading buffer insufficient, but cannot increase size anymore")
 				}
+				continue
 			}
 
 			if s.conf.DumpMessages.Enabled {
-				_, err := s.dumpBuf.Write(msg)
+				_, err := s.dumpBuf.Write(msgBuffer[:n])
 				if err != nil {
 					s.logger.Errorf(err, "writing to dump buffer")
 				}
@@ -130,8 +130,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 				s.dumpBuf.Flush()
 			}
 
-			w(msg)
-			buff.Reset()
+			w(msgBuffer[:n])
 			msgCount++
 		}
 	}(initBufferSize, maxBufferSize)

@@ -50,10 +50,10 @@ func TestSocketTransport(t *testing.T) {
 		// verify transport
 		ctx, cancel := context.WithCancel(context.Background())
 		wg := sync.WaitGroup{}
-		go trans.Run(ctx, func([]byte) {
+		go trans.Run(ctx, func(mess []byte) {
 			wg.Add(1)
-			strmsg := string(msg)
-			assert.Equal(t, initBufferSize+len(addition), len(msg))       // we received whole message
+			strmsg := string(mess)
+			assert.Equal(t, initBufferSize+len(addition), len(strmsg))    // we received whole message
 			assert.Equal(t, addition, strmsg[len(strmsg)-len(addition):]) // and the out-of-band part is correct
 			wg.Done()
 		}, make(chan bool))
