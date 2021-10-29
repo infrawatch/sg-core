@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"time"
@@ -14,6 +13,11 @@ import (
 	"github.com/infrawatch/sg-core/pkg/config"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/infrawatch/sg-core/pkg/transport"
+)
+
+const (
+	initBufferSize = 65535
+	maxBufferSize  = 16384
 )
 
 var (
@@ -87,17 +91,32 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	}
 	skt.Close()
 
-	s.logger.Infof("socket %s bind successful", laddr.Name)
-	go func() {
+	s.logger.Infof("socket listening on %s", laddr.Name)
+	go func(initBuffSize, maxBuffSize int64) {
+		msgBuffer := make([]byte, initBuffSize)
 		for {
-			var buff bytes.Buffer
-			n, err := io.Copy(&buff, pc)
-			if err != nil {
-				s.logger.Errorf(err, "failed reading message")
-			} else {
-				s.logger.Debugf("read message of size %d bytes", n)
+			n, err := pc.Read(msgBuffer)
+			if err != nil || n < 1 {
+				if err != nil {
+					s.logger.Errorf(err, "reading from socket failed")
+				}
+				done <- true
+				return
 			}
 			msg := buff.Bytes()
+
+			// whole buffer was used, so we are potentially handling larger message
+			// and have to increase buffer size
+			if n == len(msgBuffer) {
+				s.logger.Warnf("insufficient buffer size: %dB", len(msgBuffer))
+				newSize := int64(len(msgBuffer)) + initBuffSize
+				if newSize <= maxBuffSize {
+					msgBuffer = make([]byte, newSize)
+					s.logger.Infof("increased buffer size: %dB", newSize)
+				} else {
+					s.logger.Warnf("reading buffer insufficient, but cannot increase size anymore")
+				}
+			}
 
 			if s.conf.DumpMessages.Enabled {
 				_, err := s.dumpBuf.Write(msg)
@@ -115,7 +134,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 			buff.Reset()
 			msgCount++
 		}
-	}()
+	}(initBufferSize, maxBufferSize)
 
 	for {
 		select {

@@ -15,8 +15,6 @@ import (
 	"gopkg.in/go-playground/assert.v1"
 )
 
-const oldMaxBufferSize = 16384
-
 func TestSocketTransport(t *testing.T) {
 	tmpdir, err := ioutil.TempDir(".", "socket_test_tmp")
 	require.NoError(t, err)
@@ -41,12 +39,12 @@ func TestSocketTransport(t *testing.T) {
 	}
 
 	t.Run("test large message transport", func(t *testing.T) {
-		msg := make([]byte, oldMaxBufferSize)
+		msg := make([]byte, initBufferSize)
 		addition := "wubba lubba dub dub"
-		for i := 0; i < oldMaxBufferSize; i++ {
+		for i := 0; i < initBufferSize; i++ {
 			msg[i] = byte('X')
 		}
-		msg[oldMaxBufferSize-1] = byte('$')
+		msg[initBufferSize-1] = byte('$')
 		msg = append(msg, []byte(addition)...)
 
 		// verify transport
@@ -55,7 +53,7 @@ func TestSocketTransport(t *testing.T) {
 		go trans.Run(ctx, func([]byte) {
 			wg.Add(1)
 			strmsg := string(msg)
-			assert.Equal(t, oldMaxBufferSize+len(addition), len(msg))     // we received whole message
+			assert.Equal(t, initBufferSize+len(addition), len(msg))       // we received whole message
 			assert.Equal(t, addition, strmsg[len(strmsg)-len(addition):]) // and the out-of-band part is correct
 			wg.Done()
 		}, make(chan bool))
