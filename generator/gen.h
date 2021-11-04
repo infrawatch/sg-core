@@ -27,6 +27,7 @@ typedef struct  {
     int num_hosts;
     int num_metrics;
     int metrics_per_second;
+    int logs;
     
     pthread_t amqp_snd_th;
 

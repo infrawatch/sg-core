@@ -66,33 +66,77 @@ char *CD_MSG3 = ", \"interval\": 1,\"host\": \"";
 char *CD_MSG4 = "\", \"plugin\": \"";
 char *CD_MSG5 = "\", \"plugin_instance\": \"pluginInst0\",\"type\": \"type0\",\"type_instance\": \"typInst0\"}";
 
-static char *build_mesg(app_data_t *app, char *time_buf) {
-    int msg_buf_size = sizeof(app->MSG_BUFFER);
+char *RSYSLOG_MSG1 = "{\"@timestamp\":\"";
+char *RSYSLOG_MSG2 = "\", \"host\":\"";
+char *RSYSLOG_MSG3 = "\", \"severity\":\"5\", \"facility\":\"user\", \"tag\":\"tag1\", \"source\":\"some-source\", \"message\":\"a log message from generator'\", \"file\":\"\", \"cloud\": \"cloud1\", \"region\": \"some-region\"}";
+
+inline static char *msg_cpy(char *p, char *end, char *msg, int msg_len) {
+	long remain = end - p + 1;
+	if ( (p+msg_len) > end) { 
+		p = '\0';
+		return (char *)NULL; 
+	} 
+	p = memccpy(p, msg, '\0', remain); 
+	return --p;
+}
+
+static char *build_log_mesg(app_data_t *app, char *time_buf) {
+	char *end = &app->MSG_BUFFER[sizeof(app->MSG_BUFFER) - 1];
+    char *p = app->MSG_BUFFER;
+
+    for (int i = 0; i < app->num_cd_per_mesg;) {
+		char *hostname = app->host_list[app->curr_host].hostname;
+        if ( ( p = msg_cpy(p, end, RSYSLOG_MSG1, sizeof(RSYSLOG_MSG1) ) ) == NULL )
+			return NULL;
+        if ( ( p = msg_cpy(p, end, time_buf, sizeof(time_buf) ) ) == NULL )
+			return NULL;
+        if ( ( p = msg_cpy(p, end, RSYSLOG_MSG2, sizeof(RSYSLOG_MSG2) ) ) == NULL )
+			return NULL;
+        if ( ( p = msg_cpy(p, end, hostname, strlen(hostname) ) ) == NULL )
+			return NULL;
+        if ( ( p = msg_cpy(p, end, RSYSLOG_MSG3, sizeof(RSYSLOG_MSG3) ) ) == NULL )
+			return NULL;
+        app->curr_host++;
+        if (app->curr_host == (app->host_list_len - 1))
+            app->curr_host = 0;
+        i++;
+    }
+    *p = '\0';
+
+    return app->MSG_BUFFER;
+}
+
+
+static char *build_metric_mesg(app_data_t *app, char *time_buf) {
+	char *end = &app->MSG_BUFFER[sizeof(app->MSG_BUFFER) - 1];
     char *p = app->MSG_BUFFER;
     char val_buff[20];
 
     *p++ = '[';
 
     for (int i = 0; i < app->num_cd_per_mesg;) {
-        p = memccpy(p, CD_MSG1, '\0', msg_buf_size);
-        p--;
         sprintf(val_buff, "%ld", app->host_list[app->curr_host].count++);
-        p = memccpy(p, val_buff, '\0', msg_buf_size);
-        p--;
-        p = memccpy(p, CD_MSG2, '\0', msg_buf_size);
-        p--;
-        p = memccpy(p, time_buf, '\0', msg_buf_size);
-        p--;
-        p = memccpy(p, CD_MSG3, '\0', msg_buf_size);
-        p--;
-        p = memccpy(p, app->host_list[app->curr_host].hostname, '\0', msg_buf_size);
-        p--;
-        p = memccpy(p, CD_MSG4, '\0', msg_buf_size);
-        p--;
-        p = memccpy(p, app->host_list[app->curr_host].metric, '\0', msg_buf_size);
-        p--;
-        p = memccpy(p, CD_MSG5, '\0', msg_buf_size);
-        p--;
+		char *hostname = app->host_list[app->curr_host].hostname;
+		char *metric = app->host_list[app->curr_host].metric;
+
+        if ( ( p = msg_cpy(p, end, CD_MSG1, sizeof(CD_MSG1) ) ) == NULL )
+			return NULL;
+        if ( ( p = msg_cpy(p, end, val_buff, sizeof(val_buff) ) ) == NULL )
+			return NULL;
+        if ( ( p = msg_cpy(p, end, CD_MSG2, sizeof(CD_MSG2) ) ) == NULL )
+			return NULL;
+        if ( ( p = msg_cpy(p, end, time_buf, sizeof(time_buf) ) ) == NULL )
+			return NULL;
+        if ( ( p = msg_cpy(p, end, CD_MSG3, sizeof(CD_MSG3) ) ) == NULL )
+			return NULL;
+        if ( ( p = msg_cpy(p, end, hostname, strlen(hostname) ) ) == NULL )
+			return NULL;
+        if ( ( p = msg_cpy(p, end, CD_MSG4, sizeof(CD_MSG4) ) ) == NULL )
+			return NULL;
+        if ( ( p = msg_cpy(p, end, metric, strlen(metric) ) ) == NULL )
+			return NULL;
+        if ( ( p = msg_cpy(p, end, CD_MSG5, sizeof(CD_MSG5) ) ) == NULL )
+			return NULL;
 
         if (++i < app->num_cd_per_mesg) {
             *p++ = ',';
@@ -110,9 +154,16 @@ static char *build_mesg(app_data_t *app, char *time_buf) {
 }
 
 static void gen_mesg(pn_rwbytes_t *buf, app_data_t *app, char *time_buf) {
-    buf->start = build_mesg(app, time_buf);
+    if (app->logs) {
+        buf->start = build_log_mesg(app, time_buf);
+    } else {
+        buf->start = build_metric_mesg(app, time_buf);
+    }
 
-    buf->size = strlen(buf->start);
+	if (buf->start != NULL)
+		buf->size = strlen(buf->start);
+	else
+		buf->size = 0;
 }
 
 /* Create a message with a map { "sequence" : number } encode it and return the
@@ -166,10 +217,20 @@ static bool send_burst(app_data_t *app, pn_event_t *event) {
     /* The peer has given us some credit, now we can send messages */
     int burst = 0;
 
-    struct timespec now;
+    if (app->logs) {
+        time_t current_time;
+        struct tm * time_info;
 
-    clock_gettime(CLOCK_REALTIME, &now);
-    time_sprintf(app->now_buf, now);
+        time(&current_time);
+        time_info = localtime(&current_time);
+
+        strftime(app->now_buf, 26, "%Y-%m-%dT%H:%M:%S+02:00", time_info);
+    } else {
+        struct timespec now;
+
+        clock_gettime(CLOCK_REALTIME, &now);
+        time_sprintf(app->now_buf, now);
+    }
 
     app->total_bursts++;
     app->burst_credit += credits;
