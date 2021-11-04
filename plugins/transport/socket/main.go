@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	initBufferSize = 65535
-	maxBufferSize  = 16384
+	initBufferSize = 16384
+	maxBufferSize  = 65535
 )
 
 var (
