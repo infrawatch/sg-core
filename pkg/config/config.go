@@ -12,9 +12,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var (
+	// Validate holds config validator
+	Validate = validator.New()
+)
+
 // ParseConfig parses and validates input into config object
 func ParseConfig(r io.Reader, config interface{}) error {
-	validate := validator.New()
 	configBytes, err := ioutil.ReadAll(r)
 	if err != nil {
 		return errors.Wrap(err, "while reading configuration")
@@ -27,7 +31,7 @@ func ParseConfig(r io.Reader, config interface{}) error {
 		return errors.Wrap(err, "unmarshalling config yaml")
 	}
 
-	err = validate.Struct(config)
+	err = Validate.Struct(config)
 	if err != nil {
 		if e, ok := err.(validator.ValidationErrors); ok {
 			missingFields := []string{}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/infrawatch/apputils/connector/loki"
 	"github.com/infrawatch/apputils/logging"
+	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -146,7 +147,8 @@ func TestLokiApp(t *testing.T) {
 	}()
 
 	t.Run("Test configuration", func(t *testing.T) {
-		app := New(logger)
+		ebus := bus.EventBus{}
+		app := New(logger, ebus.Publish)
 		err := app.Config([]byte(testConf))
 		require.NoError(t, err)
 	})
