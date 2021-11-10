@@ -24,8 +24,8 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '1.15'
-      - name: tidy
-        run: go mod tidy
+      - name: download libraries
+        run: go mod download
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
