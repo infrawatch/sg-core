@@ -3,7 +3,7 @@ module github.com/infrawatch/sg-core
 go 1.15
 
 require (
-	collectd.org v0.5.0
+	github.com/collectd/go-collectd v0.5.0
 	github.com/Azure/go-amqp v0.13.9
 	github.com/elastic/go-elasticsearch/v7 v7.10.0
 	github.com/go-openapi/errors v0.20.0
