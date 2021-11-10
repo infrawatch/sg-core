@@ -1,6 +1,7 @@
 *.prof
 client
 server
+go.sum
 launch.json
 .vscode
 vendor/
