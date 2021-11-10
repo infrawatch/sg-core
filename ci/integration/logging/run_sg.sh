@@ -19,9 +19,12 @@ dnf install -y git golang gcc make qpid-proton-c-devel
 export GOBIN=$GOPATH/bin
 export PATH=$PATH:$GOBIN
 
+go install golang.org/dl/go1.15@latest
+go1.15 download
+
+go1.15 mod tidy
 # install sg-core and start sg-core
-go mod tidy
 mkdir -p /usr/lib64/sg-core
-PLUGIN_DIR=/usr/lib64/sg-core/ ./build.sh
+PLUGIN_DIR=/usr/lib64/sg-core/ GOCMD=go1.15 ./build.sh
 
 ./sg-core -config ./ci/integration/logging/sg_config.yaml
