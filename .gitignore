@@ -2,6 +2,7 @@
 client
 server
 *.sum
+!go.sum
 launch.json
 .vscode
 vendor/
