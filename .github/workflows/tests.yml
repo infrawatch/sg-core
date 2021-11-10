@@ -24,8 +24,10 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '1.15'
-      #- name: tidy
-      #  run: go mod tidy
+      - name: tidy
+        run: |
+          go clean -cache -modcache -i -r
+          go mod tidy
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
