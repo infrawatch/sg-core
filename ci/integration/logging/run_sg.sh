@@ -22,7 +22,6 @@ export PATH=$PATH:$GOBIN
 go install golang.org/dl/go1.15@latest
 go1.15 download
 
-go1.15 mod tidy
 # install sg-core and start sg-core
 mkdir -p /usr/lib64/sg-core
 PLUGIN_DIR=/usr/lib64/sg-core/ GOCMD=go1.15 ./build.sh
