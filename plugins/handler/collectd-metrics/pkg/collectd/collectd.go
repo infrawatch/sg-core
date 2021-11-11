@@ -1,7 +1,7 @@
 package collectd
 
 import (
-	"github.com/collectd/go-collectd/cdtime"
+	"collectd.org/cdtime"
 	jsoniter "github.com/json-iterator/go"
 )
 
