@@ -23,5 +23,5 @@ export PATH=$PATH:$GOBIN
 go install golang.org/dl/go1.15@latest
 go1.15 download
 
-go1.15 mod tidy
+
 go1.15 test -v -coverprofile=profile.cov ./...
