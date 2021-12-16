@@ -11,6 +11,7 @@
 
 base=$(pwd)
 
+GOCMD=${GOCMD:-"go"}
 PLUGIN_DIR=${PLUGIN_DIR:-"/tmp/plugins/"}
 CONTAINER_BUILD=${CONTAINER_BUILD:-false}
 
@@ -60,7 +61,7 @@ build_plugins() {
     search_list "$(basename $i)" OMIT_TRANSPORTS
     if [ $? -ne 1 ]; then
       echo "building $(basename $i).so"
-      go build -o "$PLUGIN_DIR$(basename $i).so" -buildmode=plugin
+      $GOCMD build -o "$PLUGIN_DIR$(basename $i).so" -buildmode=plugin
     fi
   done
   
@@ -71,7 +72,7 @@ build_plugins() {
     search_list "$(basename $i)" OMIT_HANDLERS
     if [ $? -ne 1 ]; then
       echo "building $(basename $i).so"
-      go build -o "$PLUGIN_DIR$(basename $i).so" -buildmode=plugin
+      $GOCMD build -o "$PLUGIN_DIR$(basename $i).so" -buildmode=plugin
     fi
   done
   
@@ -82,7 +83,7 @@ build_plugins() {
     search_list "$(basename $i)" OMIT_APPLICATIONS
     if [ $? -ne 1 ]; then
       echo "building $(basename $i).so"
-      go build -o "$PLUGIN_DIR$(basename $i).so" -buildmode=plugin
+      $GOCMD build -o "$PLUGIN_DIR$(basename $i).so" -buildmode=plugin
     fi
   done
 }
@@ -92,9 +93,9 @@ build_core() {
   cd "$base"
   if $CONTAINER_BUILD; then
       echo "building sg-core for container"
-      go build -o /tmp/sg-core cmd/*.go
-  else 
-      go build -o sg-core cmd/*.go
+      $GOCMD build -o /tmp/sg-core cmd/*.go
+  else
+      $GOCMD build -o sg-core cmd/*.go
   fi
 }
 
