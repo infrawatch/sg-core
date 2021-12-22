@@ -2,23 +2,12 @@ name: Integration testing
 env:
   PROJECT_ROOT: /root/go/src/github.com/infrawatch/sg-core
 
-  QDR_IMAGE: quay.io/interconnectedcloud/qdrouterd:1.15.0
+  QDR_IMAGE: quay.io/interconnectedcloud/qdrouterd:1.17.0
   QDR_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/qdr:/etc/qpid-dispatch:ro"
   QDR_PORT: "-p 5666:5666"
 
-  LOKI_IMAGE: grafana/loki:2.1.0
-  LOKI_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/loki:/etc/loki:ro"
-  LOKI_PORT: "-p 3100:3100"
-
-  ELASTIC_IMAGE: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
-  ELASTIC_PORT: "-p 9200:9200 -p 9300:9300"
-
-  RSYSLOG_IMAGE: quay.io/centos/centos:stream8
-  RSYSLOG_VOLUME: "--volume ${{ github.workspace }}/ci/service_configs/rsyslog/rsyslog_config.conf:/etc/rsyslog.d/integration.conf:z"
-
   BRIDGE_IMAGE: quay.io/infrawatch/sg-bridge:latest
   BRIDGE_VOLUME: "--volume=${{ github.workspace }}/tmp:/tmp/sg-bridge:z"
-  BRIDGE_SOCKET: /tmp/sg-bridge/test-socket
 
   TEST_IMAGE: registry.access.redhat.com/ubi8
   TEST_PORT: "-p 3000:3000"
@@ -26,9 +15,123 @@ env:
 on: push
 
 jobs:
+  metrics:
+    name: "[metrics] handler: ceilometer-metrics, collectd-metrics; application: prometheus"
+    runs-on: ubuntu-20.04
+    env:
+      QDR_CHANNEL_CEILOMTR: ceilometer/metering.sample
+      QDR_CHANNEL_COLLECTD: collectd/metrics
+      BRIDGE_SOCKET: /tmp/sg-bridge/test-socket
+      PROMETHEUS_IMAGE: prom/prometheus:latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Prepare environment
+        run: |
+          mkdir -p /opt/stack/
+          sudo setfacl -Rdm u::7,g::0,o:0 /opt/stack
+      - name: Prepare environment for mysql-server installation # https://stackoverflow.com/a/66026366
+        run: |
+          sudo apt-get -f install -o Dpkg::Options::="--force-overwrite"
+          sudo apt-get purge mysql\*
+          sudo rm -rf /var/lib/mysql
+          sudo rm -rf /etc/mysql
+          sudo dpkg -l | grep -i mysql
+          sudo apt-get clean
+      - name: Install devstack
+        run: |
+          SOURCE=$(pwd)
+          git clone http://github.com/openstack/devstack /opt/stack/devstack
+          pushd /opt/stack/devstack
+          cp $SOURCE/ci/integration/metrics/local.conf .
+          sudo apt-get update
+          ./stack.sh
+          popd
+      # start message bus services
+      - name: Start QDR service
+        run: |
+          docker run --name=qdr $QDR_VOLUME $QDR_PORT -d $QDR_IMAGE
+      - name: Check if sg-bridge repository has same topic branch
+        id: bridge_branch
+        continue-on-error: true
+        run: |
+          echo "${GITHUB_REF#refs/heads/}"
+          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo ${GITHUB_REF#refs/heads/})"
+      - name: Start sg-bridge for collectd from container image
+        if: steps.bridge_branch.outcome != 'success'
+        run: |
+          docker run --name=sgbridge --network host $BRIDGE_VOLUME -d \
+            $BRIDGE_IMAGE --amqp_url amqp://localhost:5666/$QDR_CHANNEL_COLLECTD \
+            --gw_unix=$BRIDGE_SOCKET
+      - name: Start sg-bridge for collectd with same branch
+        if: steps.bridge_branch.outcome == 'success'
+        run: |
+          docker run --name=sgbridge --network host $BRIDGE_VOLUME -d -uroot \
+            -e GITHUB_REF -e BRIDGE_SOCKET -e QDR_CHANNEL_COLLECTD \
+            --workdir=$(dirname $BRIDGE_SOCKET) \
+            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/run_bridge.sh
+      - name: Set Ceilometer pipelines to QDR output and restart notification agent
+        run: |
+          sudo apt-get install -y crudini
+          echo addressing_mode="dynamic" | crudini --merge /etc/ceilometer/ceilometer.conf oslo_messaging_amqp
+          echo pseudo_vhost=true | crudini --merge /etc/ceilometer/ceilometer.conf oslo_messaging_amqp
+          echo rpc_address_prefix="" | crudini --merge /etc/ceilometer/ceilometer.conf oslo_messaging_amqp
+          echo notify_address_prefix="" | crudini --merge /etc/ceilometer/ceilometer.conf oslo_messaging_amqp
+          cp ci/integration/metrics/*pipeline.yaml /etc/ceilometer/.
+          cat /etc/ceilometer/*
+          sudo pip install pyngus
+          sudo systemctl restart devstack@ceilometer-anotification.service
+      - name: Install collectd
+        run: |
+          sudo apt-get install collectd
+          sudo systemctl stop collectd && sudo systemctl disable collectd
+          sudo cp ci/integration/metrics/collectd.conf /etc/collectd/collectd.conf
+          sudo touch /var/log/collectd.log && sudo chmod a+rw /var/log/collectd.log
+          sudo collectd -C ci/integration/metrics/collectd.conf
+      - name: Run sg-core to process metrics
+        run: |
+          docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME \
+            --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
+            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/run_sg.sh
+      - name: Run Prometheus to store metrics
+        run: |
+          docker run --name=prometheus -d --network host \
+          --volume ${{ github.workspace }}/ci/integration/metrics/prometheus.yml:/etc/prometheus/prometheus.yml:ro \
+          $PROMETHEUS_IMAGE
+      - name: Debug output
+        run: |
+          sleep 360
+          echo "=========================== qdr =========================" && \
+          docker exec qdr qdstat -b 127.0.0.1:5666 -a
+          echo "========================= sg-core =======================" && \
+          docker logs sgcore
+          echo "======================== collectd =======================" && \
+          cat /var/log/collectd.log
+          echo "========================= ceilometer ====================" && \
+          sudo journalctl -xu devstack@ceilometer-anotification.service
+          echo "========================= sg-core =======================" && \
+          docker logs prometheus
+      - name: Validate metrics processing
+        run: |
+          docker run --name=validate -uroot --network host \
+            --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
+            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/run_validation.sh
+#-------------------------------------------------------------------------------
   logging:
     name: "[logging] handler: logs; application: elasticsearch, loki"
     runs-on: ubuntu-20.04
+    env:
+      BRIDGE_SOCKET: /tmp/sg-bridge/test-socket
+
+      LOKI_IMAGE: grafana/loki:2.1.0
+      LOKI_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/loki:/etc/loki:ro"
+      LOKI_PORT: "-p 3100:3100"
+
+      ELASTIC_IMAGE: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+      ELASTIC_PORT: "-p 9200:9200 -p 9300:9300"
+
+      RSYSLOG_IMAGE: quay.io/centos/centos:stream8
+      RSYSLOG_VOLUME: "--volume ${{ github.workspace }}/ci/service_configs/rsyslog/rsyslog_config.conf:/etc/rsyslog.d/integration.conf:z"
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -106,15 +209,15 @@ jobs:
           echo "INFO: loki startup took ${loki_wait}s"
       - name: Print container logs
         run: |
-          echo "======================= rsyslog ======================="
+          echo "========================= rsyslog =======================" && \
           docker logs rsyslog
-          echo "===================== elasticsearch ====================="
+          echo "===================== elasticsearch =====================" && \
           docker logs elastic
-          echo "========================== loki ========================="
+          echo "========================== loki =========================" && \
           docker logs loki
-          echo "========================== qdr =========================="
+          echo "========================== qdr ==========================" && \
           docker logs qdr
-          echo "======================= sg-bridge ======================="
+          echo "======================= sg-bridge =======================" && \
           docker logs sgbridge
       # run integration tests
       - name: Run sg-core to process log messages
