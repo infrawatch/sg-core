@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	initBufferSize = 16384
 	maxBufferSize  = 65535
 )
 
@@ -92,8 +91,8 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	skt.Close()
 
 	s.logger.Infof("socket listening on %s", laddr.Name)
-	go func(initBuffSize, maxBuffSize int64) {
-		msgBuffer := make([]byte, initBuffSize)
+	go func(maxBuffSize int64) {
+		msgBuffer := make([]byte, maxBuffSize)
 		for {
 			n, err := pc.Read(msgBuffer)
 			if err != nil || n < 1 {
@@ -105,17 +104,8 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 			}
 
 			// whole buffer was used, so we are potentially handling larger message
-			// and have to increase buffer size
 			if n == len(msgBuffer) {
-				s.logger.Warnf("insufficient buffer size: %dB", len(msgBuffer))
-				newSize := int64(len(msgBuffer)) + initBuffSize
-				if newSize <= maxBuffSize {
-					msgBuffer = make([]byte, newSize)
-					s.logger.Infof("increased buffer size: %dB", newSize)
-				} else {
-					s.logger.Warnf("reading buffer insufficient, but cannot increase size anymore")
-				}
-				continue
+				s.logger.Warnf("full read buffer used")
 			}
 
 			if s.conf.DumpMessages.Enabled {
@@ -133,7 +123,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 			w(msgBuffer[:n])
 			msgCount++
 		}
-	}(initBufferSize, maxBufferSize)
+	}(maxBufferSize)
 
 	for {
 		select {
