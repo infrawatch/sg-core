@@ -55,8 +55,8 @@ func TestSocketTransport(t *testing.T) {
 		go trans.Run(ctx, func(mess []byte) {
 			wg.Add(1)
 			strmsg := string(mess)
-			assert.Equal(t, regularBuffSize+len(addition), len(strmsg))    // we received whole message
-			assert.Equal(t, addition, strmsg[len(strmsg)-len(addition):])  // and the out-of-band part is correct
+			assert.Equal(t, regularBuffSize+len(addition), len(strmsg))   // we received whole message
+			assert.Equal(t, addition, strmsg[len(strmsg)-len(addition):]) // and the out-of-band part is correct
 			wg.Done()
 		}, make(chan bool))
 
