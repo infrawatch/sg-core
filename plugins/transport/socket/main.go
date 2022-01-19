@@ -15,7 +15,9 @@ import (
 	"github.com/infrawatch/sg-core/pkg/transport"
 )
 
-const maxBufferSize = 16384
+const (
+	maxBufferSize = 65535
+)
 
 var (
 	msgCount int64
@@ -70,22 +72,27 @@ type Socket struct {
 // Run implements type Transport
 func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 
-	msgBuffer := make([]byte, maxBufferSize)
 	var laddr net.UnixAddr
-
 	laddr.Name = s.conf.Path
 	laddr.Net = "unixgram"
 
 	os.Remove(s.conf.Path)
-
 	pc, err := net.ListenUnixgram("unixgram", &laddr)
 	if err != nil {
-		s.logger.Errorf(err, "failed to listen on unix socket %s", laddr.Name)
+		s.logger.Errorf(err, "failed to bind unix socket %s", laddr.Name)
 		return
 	}
+	// create socket file if it does not exist
+	skt, err := pc.File()
+	if err != nil {
+		s.logger.Errorf(err, "failed to retrieve file handle for %s", laddr.Name)
+		return
+	}
+	skt.Close()
 
 	s.logger.Infof("socket listening on %s", laddr.Name)
-	go func() {
+	go func(maxBuffSize int64) {
+		msgBuffer := make([]byte, maxBuffSize)
 		for {
 			n, err := pc.Read(msgBuffer)
 			if err != nil || n < 1 {
@@ -94,6 +101,11 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 				}
 				done <- true
 				return
+			}
+
+			// whole buffer was used, so we are potentially handling larger message
+			if n == len(msgBuffer) {
+				s.logger.Warnf("full read buffer used")
 			}
 
 			if s.conf.DumpMessages.Enabled {
@@ -107,10 +119,11 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 				}
 				s.dumpBuf.Flush()
 			}
+
 			w(msgBuffer[:n])
 			msgCount++
 		}
-	}()
+	}(maxBufferSize)
 
 	for {
 		select {
