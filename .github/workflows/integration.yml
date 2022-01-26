@@ -12,7 +12,7 @@ env:
   TEST_IMAGE: registry.access.redhat.com/ubi8
   TEST_PORT: "-p 3000:3000"
 
-on: push
+on: [push, pull_request]
 
 jobs:
   metrics:
