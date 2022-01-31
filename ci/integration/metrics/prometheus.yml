@@ -1,0 +1,18 @@
+# Global config
+global:
+  scrape_interval: 15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# A scrape configuration
+scrape_configs:
+  - job_name: "sg"
+    metrics_path: "/metrics"
+    scheme: "http"
+    static_configs:
+      - targets: ["127.0.0.1:3000"]
