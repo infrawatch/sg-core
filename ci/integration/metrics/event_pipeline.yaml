@@ -1,0 +1,13 @@
+---
+sources:
+    - name: event_source
+      events:
+          - "*"
+      sinks:
+          - event_sink
+sinks:
+    - name: event_sink
+      transformers:
+      triggers:
+      publishers:
+          - notifier://127.0.0.1:5666/?driver=amqp&topic=event
