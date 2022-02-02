@@ -13,7 +13,7 @@ enabled=0
 name=CentOS-OpsTools - collectd
 mirrorlist=http://mirrorlist.centos.org/?arch=$basearch&release=$releasever-stream&repo=opstools-collectd-5
 #baseurl=http://mirror.centos.org/$contentdir/$releasever-stream/opstools/$basearch/collectd-5/
-gpgcheck=1
+gpgcheck=0
 enabled=1
 skip_if_unavailable=1
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-OpsTools
