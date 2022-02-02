@@ -5,14 +5,7 @@
 set -ex
 
 # enable required repo(s)
-cat > /etc/yum.repos.d/fedora-eln.repo <<EOF
-[centos-opstools]
-name=opstools
-baseurl=http://mirror.centos.org/centos/8/opstools/\$basearch/collectd-5/
-gpgcheck=0
-enabled=1
-module_hotfixes=1
-EOF
+curl -o /etc/yum.repos.d/CentOS-OpsTools.repo $OPSTOOLS_REPO
 
 dnf install -y git golang gcc make qpid-proton-c-devel
 

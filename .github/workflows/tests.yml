@@ -1,6 +1,7 @@
 name: CI
 env:
   PROJECT_ROOT: /root/go/src/github.com/infrawatch/sg-core
+  OPSTOOLS_REPO: https://raw.githubusercontent.com/centos-opstools/centos-release-opstools/c8s-sig-opstools/SOURCES/CentOS-OpsTools.repo
 
   LOKI_IMAGE: grafana/loki:2.1.0
   LOKI_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/loki:/etc/loki:ro"
@@ -64,7 +65,7 @@ jobs:
           docker logs loki
       - name: Run sg-core unit test suite
         run: |
-          docker run --name=testsuite -uroot --network host -e COVERALLS_REPO_TOKEN \
+          docker run --name=testsuite -uroot --network host -e COVERALLS_REPO_TOKEN -e OPSTOOLS_REPO \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/unit/run_tests.sh
       - name: Send coverage

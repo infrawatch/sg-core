@@ -1,6 +1,7 @@
 name: Integration testing
 env:
   PROJECT_ROOT: /root/go/src/github.com/infrawatch/sg-core
+  OPSTOOLS_REPO: https://raw.githubusercontent.com/centos-opstools/centos-release-opstools/c8s-sig-opstools/SOURCES/CentOS-OpsTools.repo
 
   QDR_IMAGE: quay.io/interconnectedcloud/qdrouterd:1.17.0
   QDR_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/qdr:/etc/qpid-dispatch:ro"
@@ -67,7 +68,7 @@ jobs:
         if: steps.bridge_branch.outcome == 'success'
         run: |
           docker run --name=sgbridge --network host $BRIDGE_VOLUME -d -uroot \
-            -e GITHUB_REF -e BRIDGE_SOCKET -e QDR_CHANNEL_COLLECTD \
+            -e GITHUB_REF -e BRIDGE_SOCKET -e QDR_CHANNEL_COLLECTD -e OPSTOOLS_REPO \
             --workdir=$(dirname $BRIDGE_SOCKET) \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/run_bridge.sh
       - name: Set Ceilometer pipelines to QDR output and restart notification agent
@@ -90,7 +91,7 @@ jobs:
           sudo collectd -C ci/integration/metrics/collectd.conf
       - name: Run sg-core to process metrics
         run: |
-          docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME \
+          docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME -e OPSTOOLS_REPO \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/run_sg.sh
       - name: Run Prometheus to store metrics
@@ -160,7 +161,7 @@ jobs:
       - name: Start sg-bridge with same branch
         if: steps.bridge_branch.outcome == 'success'
         run: |
-          docker run --name=sgbridge $BRIDGE_VOLUME -d -uroot --network host \
+          docker run --name=sgbridge $BRIDGE_VOLUME -d -uroot --network host -e OPSTOOLS_REPO \
             -e GITHUB_REF -e BRIDGE_SOCKET --workdir=$(dirname $BRIDGE_SOCKET) \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_bridge.sh
       - name: Run rsyslog to produce log messages
@@ -222,7 +223,7 @@ jobs:
       # run integration tests
       - name: Run sg-core to process log messages
         run: |
-          docker run --name=sgcore -d -uroot --network host $TEST_PORT $BRIDGE_VOLUME \
+          docker run --name=sgcore -d -uroot --network host $TEST_PORT $BRIDGE_VOLUME -e OPSTOOLS_REPO \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_sg.sh
       - name: sg-core debug output
