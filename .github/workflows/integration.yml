@@ -1,6 +1,7 @@
 name: Integration testing
 env:
   PROJECT_ROOT: /root/go/src/github.com/infrawatch/sg-core
+  OPSTOOLS_REPO: https://git.centos.org/rpms/centos-release-opstools/raw/c8s-sig-opstools/f/SOURCES/CentOS-OpsTools.repo
 
   QDR_IMAGE: quay.io/interconnectedcloud/qdrouterd:1.15.0
   QDR_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/qdr:/etc/qpid-dispatch:ro"
@@ -56,7 +57,7 @@ jobs:
       - name: Start sg-bridge with same branch
         if: steps.bridge_branch.outcome == 'success'
         run: |
-          docker run --name=sgbridge $BRIDGE_VOLUME -d -uroot --network host \
+          docker run --name=sgbridge $BRIDGE_VOLUME -d -uroot --network host -e OPSTOOLS_REPO \
             -e GITHUB_REF -e BRIDGE_SOCKET --workdir=$(dirname $BRIDGE_SOCKET) \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_bridge.sh
       - name: Wait for services to start successfuly and print logs
@@ -92,7 +93,7 @@ jobs:
       # run integration tests
       - name: Run sg-core to process log messages
         run: |
-          docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME \
+          docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME -e OPSTOOLS_REPO \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_sg.sh
       - name: debug
