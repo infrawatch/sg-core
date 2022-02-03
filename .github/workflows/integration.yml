@@ -68,7 +68,7 @@ jobs:
         if: steps.bridge_branch.outcome == 'success'
         run: |
           docker run --name=sgbridge --network host $BRIDGE_VOLUME -d -uroot \
-            -e GITHUB_REF -e BRIDGE_SOCKET -e QDR_CHANNEL_COLLECTD \
+            -e GITHUB_REF -e BRIDGE_SOCKET -e QDR_CHANNEL_COLLECTD -e OPSTOOLS_REPO \
             --workdir=$(dirname $BRIDGE_SOCKET) \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/run_bridge.sh
       - name: Set Ceilometer pipelines to QDR output and restart notification agent
@@ -91,7 +91,7 @@ jobs:
           sudo collectd -C ci/integration/metrics/collectd.conf
       - name: Run sg-core to process metrics
         run: |
-          docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME \
+          docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME -e OPSTOOLS_REPO \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/run_sg.sh
       - name: Run Prometheus to store metrics
