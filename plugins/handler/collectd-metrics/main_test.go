@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	//"fmt"
-
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/stretchr/testify/assert"
 )
