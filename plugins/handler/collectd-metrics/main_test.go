@@ -1,13 +1,12 @@
 package main
 
 import (
-	"io/ioutil"
+	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/infrawatch/sg-core/pkg/data"
-	jsoniter "github.com/json-iterator/go"
-	"gopkg.in/go-playground/assert.v1"
+	"github.com/stretchr/testify/assert"
 )
 
 var testMsgsInvalid map[string]string = map[string]string{
@@ -24,13 +23,128 @@ var testMsgsInvalid map[string]string = map[string]string{
 }
 
 var testMsgsValid map[string]string = map[string]string{
-	"Without Instance Types":    `[{"values": [2121], "dstypes": ["derive"], "dsnames":["samples"], "host":"localhost","plugin":"metric","type":"type0"}]`,
-	"With Instance Types":       `[{"values": [2121], "dstypes": ["derive"], "dsnames":["samples"], "host":"localhost","plugin_instance":"plugin0","type_instance":"type0", "plugin":"metric","type":"type0"}]`,
-	"Multi-dimensional Metrics": `[{"values": [2121], "dstypes": ["derive"], "dsnames":["samples"], "host":"localhost","plugin":"metric","type":"type0"},{"values": [2121, 1010], "dstypes": ["derive","counter"], "dsnames":["samples","samples"], "host":"localhost","plugin":"metric","type":"type0"}]`,
+	"Without Instance Types":    `[{"values": [2121], "dstypes": ["derive"], "dsnames":["samples"], "host":"localhost", "plugin":"metric", "type":"type0"}]`,
+	"With Instance Types":       `[{"values": [2122], "dstypes": ["derive"], "dsnames":["samples"], "host":"localhost", "plugin_instance":"plugin0", "type_instance":"type0", "plugin":"metric", "type":"type666"}]`,
+	"Multi-dimensional Metrics": `[{"values": [2112, 1001], "dstypes": ["derive","counter"], "dsnames":["pamples","wamples"], "host":"localhost", "plugin":"metric", "type":"type0"}]`,
+	"Multiple Metrics":          `[{"values": [1234], "dstypes": ["derive"], "dsnames":["samples"], "host":"localhost", "plugin":"metric", "type":"type0"}, {"values": [5678], "dstypes": ["derive"], "dsnames":["samples"], "host":"localhost", "plugin":"metric", "type":"type1"}]`,
 }
 
+var expected = `
+{
+    "Without Instance Types": [
+        {
+          "Name": "collectd_metric_type0_samples_total",
+          "LabelKeys": [
+            "host",
+            "plugin_instance",
+            "type_instance"
+          ],
+          "LabelVals": [
+            "localhost",
+            "base",
+            "base"
+          ],
+          "Time": 0,
+          "Type": 1,
+          "Interval": 0,
+          "Value": 2121
+        }
+      ],
+    "With Instance Types": [
+        {
+          "Name": "collectd_metric_type666_samples_total",
+          "LabelKeys": [
+            "host",
+            "plugin_instance",
+            "type_instance"
+          ],
+          "LabelVals": [
+            "localhost",
+            "plugin0",
+            "type0"
+          ],
+          "Time": 0,
+          "Type": 1,
+          "Interval": 0,
+          "Value": 2122
+        }
+      ],
+    "Multi-dimensional Metrics": [
+        {
+          "Name": "collectd_metric_type0_pamples_total",
+          "LabelKeys": [
+            "host",
+            "plugin_instance",
+            "type_instance"
+          ],
+          "LabelVals": [
+            "localhost",
+            "base",
+            "base"
+          ],
+          "Time": 0,
+          "Type": 1,
+          "Interval": 0,
+          "Value": 2112
+        },
+        {
+          "Name": "collectd_metric_type0_wamples_total",
+          "LabelKeys": [
+            "host",
+            "plugin_instance",
+            "type_instance"
+          ],
+          "LabelVals": [
+            "localhost",
+            "base",
+            "base"
+          ],
+          "Time": 0,
+          "Type": 1,
+          "Interval": 0,
+          "Value": 1001
+        }
+      ],
+    "Multiple Metrics": [
+        {
+          "Name": "collectd_metric_type0_samples_total",
+          "LabelKeys": [
+            "host",
+            "plugin_instance",
+            "type_instance"
+          ],
+          "LabelVals": [
+            "localhost",
+            "base",
+            "base"
+          ],
+          "Time": 0,
+          "Type": 1,
+          "Interval": 0,
+          "Value": 1234
+        },
+        {
+          "Name": "collectd_metric_type1_samples_total",
+          "LabelKeys": [
+            "host",
+            "plugin_instance",
+            "type_instance"
+          ],
+          "LabelVals": [
+            "localhost",
+            "base",
+            "base"
+          ],
+          "Time": 0,
+          "Type": 1,
+          "Interval": 0,
+          "Value": 5678
+        }
+      ]
+}
+`
+
 var (
-	json      = jsoniter.ConfigCompatibleWithStandardLibrary
 	metricsUT []data.Metric
 )
 
@@ -64,13 +178,8 @@ func MetricReceive(name string, mTime float64, mType data.MetricType, interval t
 // }
 
 func TestMessageParsing(t *testing.T) {
-	expectedData, err := ioutil.ReadFile("messages/metrics-tests-expected.json")
-	if err != nil {
-		t.Error(err)
-	}
-
 	validResults := map[string][]data.Metric{}
-	err = json.Unmarshal(expectedData, &validResults)
+	err := json.Unmarshal([]byte(expected), &validResults)
 	if err != nil {
 		t.Error(err)
 	}
@@ -87,14 +196,13 @@ func TestMessageParsing(t *testing.T) {
 	metricHandler.totalDecodeErrors = 0
 	t.Run("Valid Messages", func(t *testing.T) {
 		for test, blob := range testMsgsValid {
+			metricsUT = []data.Metric{}
 			err := metricHandler.Handle([]byte(blob), false, MetricReceive, EventReceive)
 			if err != nil {
 				t.Error(err)
 			}
 			assert.Equal(t, uint64(0), metricHandler.totalDecodeErrors)
-			for index, res := range validResults[test] {
-				assert.Equal(t, res, metricsUT[index])
-			}
+			assert.ElementsMatchf(t, validResults[test], metricsUT, "Failed: %s", test)
 		}
 	})
 }
