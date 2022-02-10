@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/infrawatch/sg-core/pkg/bus"
@@ -17,6 +18,7 @@ import (
 
 type logHandler struct {
 	totalLogsReceived uint64
+	statsLock         sync.RWMutex
 	config            lib.LogConfig
 }
 
@@ -74,7 +76,9 @@ func (l *logHandler) parse(log []byte) (data.Event, error) {
 // Handle implements the data.EventsHandler interface
 func (l *logHandler) Handle(msg []byte, reportErrors bool, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) error {
 	var err error
+	l.statsLock.Lock()
 	l.totalLogsReceived++
+	l.statsLock.Unlock()
 
 	if log, err := l.parse(msg); err == nil {
 		epf(log)
@@ -105,6 +109,7 @@ func (l *logHandler) Run(ctx context.Context, mpf bus.MetricPublishFunc, epf bus
 		case <-ctx.Done():
 			goto done
 		case <-time.After(time.Second):
+			l.statsLock.RLock()
 			mpf(
 				"sg_total_logs_received",
 				0,
@@ -114,6 +119,7 @@ func (l *logHandler) Run(ctx context.Context, mpf bus.MetricPublishFunc, epf bus
 				[]string{"source"},
 				[]string{"SG"},
 			)
+			l.statsLock.RUnlock()
 		}
 	}
 done:

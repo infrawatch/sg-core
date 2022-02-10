@@ -22,6 +22,7 @@ env:
   BRIDGE_SOCKET: /tmp/sg-bridge/test-socket
 
   TEST_IMAGE: registry.access.redhat.com/ubi8
+  TEST_PORT: "-p 3000:3000"
 
 on: push
 
@@ -60,51 +61,87 @@ jobs:
           docker run --name=sgbridge $BRIDGE_VOLUME -d -uroot --network host -e OPSTOOLS_REPO \
             -e GITHUB_REF -e BRIDGE_SOCKET --workdir=$(dirname $BRIDGE_SOCKET) \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_bridge.sh
-      - name: Wait for services to start successfuly and print logs
-        run: |
-          echo "===================== elasticsearch ====================="
-          while ! curl -sX GET "http://127.0.0.1:9200/_cluster/health"
-          do
-            sleep 1
-          done
-          docker logs elastic
-          echo "========================== loki ========================="
-          while ! curl -sX GET "http://127.0.0.1:3100/loki/api/v1/ready"
-          do
-            sleep 1
-          done
-          docker logs loki
-          echo "========================== qdr =========================="
-          docker logs qdr
-          echo "======================= sg-bridge ======================="
-          docker logs sgbridge
-      # produce logs
       - name: Run rsyslog to produce log messages
         run: |
           docker run --name=rsyslog -d -uroot --network host $RSYSLOG_VOLUME \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $RSYSLOG_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_rsyslog.sh
-      - name: debug
+      - name: Wait for services to start successfuly
         run: |
-          sleep 20
+          timeout=180
+          echo "======================= rsyslog ======================="
+          rsyslog_wait=0
+          while [[ $(docker exec qdr qdstat -b 127.0.0.1:5666 -a | grep rsyslog/logs | awk '{print $8}') -le 0 ]]
+          do
+            sleep 1
+            rsyslog_wait=$(($rsyslog_wait+1))
+            if [[ $rsyslog_wait -gt $timeout ]]; then
+              echo "ERROR: timeout for rsyslog startup"
+              break
+            fi
+          done
+          echo "INFO: rsyslog startup took ${rsyslog_wait}s"
+          echo "===================== elasticsearch ====================="
+          elastic_wait=0
+          while ! curl -sX GET "http://127.0.0.1:9200/_cluster/health"
+          do
+            sleep 1
+            elastic_wait=$(($elastic_wait+1))
+            if [[ $elastic_wait -gt $timeout ]]; then
+              echo "\nERROR: timeout for elasticsearch startup"
+              break
+            fi
+          done
+          echo "INFO: elasticsearch startup took ${elastic_wait}s"
+          echo "========================== loki ========================="
+          loki_wait=0
+          while ! curl -sX GET "http://127.0.0.1:3100/ready" | grep -q "^ready$"
+          do
+            sleep 1
+            loki_wait=$(($loki_wait+1))
+            if [[ $loki_wait -gt $timeout ]]; then
+              echo "ERROR: timeout for loki startup"
+              break
+            fi
+          done
+          echo "INFO: loki startup took ${loki_wait}s"
+      - name: Print container logs
+        run: |
+          echo "======================= rsyslog ======================="
           docker logs rsyslog
-          docker exec qdr qdstat -b 127.0.0.1:5666 -c
-          docker exec qdr qdstat -b 127.0.0.1:5666 -a
+          echo "===================== elasticsearch ====================="
+          docker logs elastic
+          echo "========================== loki ========================="
+          docker logs loki
+          echo "========================== qdr =========================="
+          docker logs qdr
+          echo "======================= sg-bridge ======================="
+          docker logs sgbridge
       # run integration tests
       - name: Run sg-core to process log messages
         run: |
           docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME -e OPSTOOLS_REPO \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_sg.sh
-      - name: debug
+      - name: sg-core debug output
         run: |
-          sleep 60
+          timeout=360
+          sg_wait=0
+          while [[ $(curl -sX GET "http://127.0.0.1:3000/metrics" | grep 'sg_total_logs_received{source="SG"}' | awk '{print $2}') -le 0 ]]
+          do
+            sleep 1
+            sg_wait=$(($sg_wait+1))
+            if [[ $sg_wait -gt $timeout ]]; then
+              echo "ERROR: timeout for sg-core startup"
+              break
+            fi
+          done
+          echo "INFO: sg-core startup took ${sg_wait}s"
           docker logs sgcore
           docker exec qdr qdstat -b 127.0.0.1:5666 -c
           docker exec qdr qdstat -b 127.0.0.1:5666 -a
       - name: Validate log message processing
         run: |
-          sleep 60
           docker run --name=validate -uroot --network host \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_validation.sh

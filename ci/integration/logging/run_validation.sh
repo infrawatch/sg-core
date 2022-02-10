@@ -17,7 +17,7 @@ LOKI_URL=http://127.0.0.1:3100
 # debug output of cluster status
 curl -sX GET "$ELASTIC_URL/_cluster/health?pretty"
 # verify expected index
-#TODO(mmagr): adapt elasticseatch plugin to create index templates avoinding unnecessary prefix and suffix
+curl -sX GET "$ELASTIC_URL/_cat/indices"
 expected_index="sglogs-$(echo $HOST | tr - _).$TS"
 curl -sX GET "$ELASTIC_URL/_cat/indices/sglogs-*?h=index"
 found_index=$(curl -sX GET "$ELASTIC_URL/_cat/indices/sglogs-*?h=index")
