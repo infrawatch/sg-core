@@ -3,7 +3,7 @@ env:
   PROJECT_ROOT: /root/go/src/github.com/infrawatch/sg-core
   OPSTOOLS_REPO: https://git.centos.org/rpms/centos-release-opstools/raw/c8s-sig-opstools/f/SOURCES/CentOS-OpsTools.repo
 
-  LOKI_IMAGE: grafana/loki:2.1.0
+  LOKI_IMAGE: quay.io/infrawatch/loki:2.4.2
   LOKI_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/loki:/etc/loki:ro"
   LOKI_PORT: "-p 3100:3100"
 
