@@ -10,7 +10,7 @@ COPY . $D/
 COPY build/repos/opstools.repo /etc/yum.repos.d/opstools.repo
 
 RUN dnf install golang git qpid-proton-c-devel -y --setopt=tsflags=nodocs
-RUN go install golang.org/dl/go1.15@latest && /go/bin/go1.15 download && PRODUCTION_BUILD=true GOCMD=/go/bin/go1.15 ./build.sh
+RUN go install golang.org/dl/go1.15@latest && /go/bin/go1.15 download && PRODUCTION_BUILD=false CONTAINER_BUILD=true GOCMD=/go/bin/go1.15 ./build.sh
 
 # --- end build, create smart gateway layer ---
 FROM registry.access.redhat.com/ubi8-minimal:latest
