@@ -1,0 +1,7 @@
+# dependabot.yml file with updates
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: daily
