@@ -124,7 +124,7 @@ jobs:
     env:
       BRIDGE_SOCKET: /tmp/sg-bridge/test-socket
 
-      LOKI_IMAGE: grafana/loki:2.1.0
+      LOKI_IMAGE: quay.io/infrawatch/loki:2.4.2
       LOKI_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/loki:/etc/loki:ro"
       LOKI_PORT: "-p 3100:3100"
 
