@@ -11,14 +11,13 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.2.0
 	github.com/infrawatch/apputils v0.0.0-20210809211320-3573b2937d14
-	github.com/json-iterator/go v1.1.11
+	github.com/json-iterator/go v1.1.12
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.11.0
-	github.com/prometheus/common v0.29.0 // indirect
+	github.com/prometheus/client_golang v1.12.0
 	github.com/smartystreets/goconvey v1.7.2 // indirect
 	github.com/stretchr/testify v1.6.1
-	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
+	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/errgo.v2 v2.1.0
 	gopkg.in/go-playground/assert.v1 v1.2.1

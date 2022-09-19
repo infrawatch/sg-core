@@ -71,7 +71,8 @@ func (c *ceilometerMetricHandler) Run(ctx context.Context, mpf bus.MetricPublish
 
 func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) error {
 	c.totalMessagesReceived++
-	msg, err := c.ceilo.ParseInputJSON(blob)
+//	msg, err := c.ceilo.ParseInputJSON(blob)
+	msg, err := c.ceilo.ParseInputMsgPack(blob)
 	if err != nil {
 		return err
 	}
