@@ -117,7 +117,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	} else if s.conf.Type == "udp" {
 		pc = s.initUdpSocket()
 	} else {
-		s.logger.Errorf(nil, "Unknown socket type")
+		s.conf.Type = "unix"
 		return
 	}
 	if pc == nil {
