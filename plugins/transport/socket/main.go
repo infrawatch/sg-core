@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/infrawatch/apputils/logging"
@@ -31,7 +32,9 @@ func rate() int64 {
 }
 
 type configT struct {
-	Path         string `validate:"required"`
+	Path         string
+	Type         string
+	Url          string
 	DumpMessages struct {
 		Enabled bool
 		Path    string
@@ -69,9 +72,7 @@ type Socket struct {
 	dumpFile *os.File
 }
 
-// Run implements type Transport
-func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
-
+func (s *Socket) initUnixSocket() *net.UnixConn {
 	var laddr net.UnixAddr
 	laddr.Name = s.conf.Path
 	laddr.Net = "unixgram"
@@ -80,17 +81,48 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	pc, err := net.ListenUnixgram("unixgram", &laddr)
 	if err != nil {
 		s.logger.Errorf(err, "failed to bind unix socket %s", laddr.Name)
-		return
+		return nil
 	}
 	// create socket file if it does not exist
 	skt, err := pc.File()
 	if err != nil {
 		s.logger.Errorf(err, "failed to retrieve file handle for %s", laddr.Name)
-		return
+		return nil
 	}
 	skt.Close()
 
 	s.logger.Infof("socket listening on %s", laddr.Name)
+
+	return pc
+}
+
+func (s *Socket) initUdpSocket() *net.UDPConn {
+	addr, err := net.ResolveUDPAddr("udp", s.conf.Url)
+	pc, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		s.logger.Errorf(err, "failed to bind unix socket to url: %s", s.conf.Url)
+		return nil
+	}
+
+	s.logger.Infof("socket listening on %s", s.conf.Url)
+
+	return pc
+}
+
+// Run implements type Transport
+func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
+	var pc net.Conn
+	if s.conf.Type == "unix" {
+		pc = s.initUnixSocket()
+	} else if s.conf.Type == "udp" {
+		pc = s.initUdpSocket()
+	} else {
+		s.logger.Errorf(nil, "Unknown socket type")
+		return
+	}
+	if pc == nil {
+		s.logger.Errorf(nil, "Failed to initialize socket transport plugin")
+	}
 	go func(maxBuffSize int64) {
 		msgBuffer := make([]byte, maxBuffSize)
 		for {
@@ -136,7 +168,9 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	}
 Done:
 	pc.Close()
-	os.Remove(s.conf.Path)
+	if s.conf.Type == "unix" {
+		os.Remove(s.conf.Path)
+	}
 	s.dumpFile.Close()
 	s.logger.Infof("exited")
 }
@@ -155,6 +189,7 @@ func (s *Socket) Config(c []byte) error {
 		}{
 			Path: "/dev/stdout",
 		},
+		Type: "unix",
 	}
 
 	err := config.ParseConfig(bytes.NewReader(c), &s.conf)
@@ -169,6 +204,20 @@ func (s *Socket) Config(c []byte) error {
 		}
 
 		s.dumpBuf = bufio.NewWriter(s.dumpFile)
+	}
+
+	s.conf.Type = strings.ToLower(s.conf.Type)
+	if s.conf.Type != "unix" && s.conf.Type != "udp" {
+		return fmt.Errorf("Unable to determine socket type from configuration file. Should be either \"unix\" or \"udp\", received: %s",
+			s.conf.Type)
+	}
+
+	if s.conf.Type == "unix" && s.conf.Path == "" {
+		return fmt.Errorf("The path configuration option is required when using unix socket type")
+	}
+
+	if s.conf.Type == "udp" && s.conf.Url == "" {
+		return fmt.Errorf("The url configuration option is required when using udp socket type")
 	}
 
 	return nil
