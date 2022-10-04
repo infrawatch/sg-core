@@ -93,8 +93,8 @@ func TestUdpSocketTransport(t *testing.T) {
 
 	trans := Socket{
 		conf: configT{
-			Url:  "127.0.0.1:8642",
-			Type: "udp",
+			Socketaddr: "127.0.0.1:8642",
+			Type:       "udp",
 		},
 		logger: &logWrapper{
 			l: logger,
