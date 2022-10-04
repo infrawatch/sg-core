@@ -18,6 +18,8 @@ import (
 
 const (
 	maxBufferSize = 65535
+	udp           = "udp"
+	unix          = "unix"
 )
 
 var (
@@ -34,7 +36,7 @@ func rate() int64 {
 type configT struct {
 	Path         string
 	Type         string
-	Url          string
+	Socketaddr   string
 	DumpMessages struct {
 		Enabled bool
 		Path    string
@@ -96,15 +98,19 @@ func (s *Socket) initUnixSocket() *net.UnixConn {
 	return pc
 }
 
-func (s *Socket) initUdpSocket() *net.UDPConn {
-	addr, err := net.ResolveUDPAddr("udp", s.conf.Url)
-	pc, err := net.ListenUDP("udp", addr)
+func (s *Socket) initUDPSocket() *net.UDPConn {
+	addr, err := net.ResolveUDPAddr(udp, s.conf.Socketaddr)
 	if err != nil {
-		s.logger.Errorf(err, "failed to bind unix socket to url: %s", s.conf.Url)
+		s.logger.Errorf(err, "failed to resolve udp address: %s", s.conf.Socketaddr)
+		return nil
+	}
+	pc, err := net.ListenUDP(udp, addr)
+	if err != nil {
+		s.logger.Errorf(err, "failed to bind udp socket to addr: %s", s.conf.Socketaddr)
 		return nil
 	}
 
-	s.logger.Infof("socket listening on %s", s.conf.Url)
+	s.logger.Infof("socket listening on %s", s.conf.Socketaddr)
 
 	return pc
 }
@@ -112,12 +118,12 @@ func (s *Socket) initUdpSocket() *net.UDPConn {
 // Run implements type Transport
 func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	var pc net.Conn
-	if s.conf.Type == "unix" {
+	if s.conf.Type == unix {
 		pc = s.initUnixSocket()
-	} else if s.conf.Type == "udp" {
-		pc = s.initUdpSocket()
+	} else if s.conf.Type == udp {
+		pc = s.initUDPSocket()
 	} else {
-		s.conf.Type = "unix"
+		s.conf.Type = unix
 		return
 	}
 	if pc == nil {
@@ -168,7 +174,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	}
 Done:
 	pc.Close()
-	if s.conf.Type == "unix" {
+	if s.conf.Type == unix {
 		os.Remove(s.conf.Path)
 	}
 	s.dumpFile.Close()
@@ -177,7 +183,7 @@ Done:
 
 // Listen ...
 func (s *Socket) Listen(e data.Event) {
-	fmt.Printf("Received event: %v\n", e)
+	fmt.Printf("received event: %v\n", e)
 }
 
 // Config load configurations
@@ -189,7 +195,7 @@ func (s *Socket) Config(c []byte) error {
 		}{
 			Path: "/dev/stdout",
 		},
-		Type: "unix",
+		Type: unix,
 	}
 
 	err := config.ParseConfig(bytes.NewReader(c), &s.conf)
@@ -207,17 +213,17 @@ func (s *Socket) Config(c []byte) error {
 	}
 
 	s.conf.Type = strings.ToLower(s.conf.Type)
-	if s.conf.Type != "unix" && s.conf.Type != "udp" {
-		return fmt.Errorf("Unable to determine socket type from configuration file. Should be either \"unix\" or \"udp\", received: %s",
+	if s.conf.Type != unix && s.conf.Type != udp {
+		return fmt.Errorf("unable to determine socket type from configuration file. Should be either \"unix\" or \"udp\", received: %s",
 			s.conf.Type)
 	}
 
-	if s.conf.Type == "unix" && s.conf.Path == "" {
-		return fmt.Errorf("The path configuration option is required when using unix socket type")
+	if s.conf.Type == unix && s.conf.Path == "" {
+		return fmt.Errorf("the path configuration option is required when using unix socket type")
 	}
 
-	if s.conf.Type == "udp" && s.conf.Url == "" {
-		return fmt.Errorf("The url configuration option is required when using udp socket type")
+	if s.conf.Type == udp && s.conf.Socketaddr == "" {
+		return fmt.Errorf("the url configuration option is required when using udp socket type")
 	}
 
 	return nil
