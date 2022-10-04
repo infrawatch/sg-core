@@ -34,9 +34,9 @@ func rate() int64 {
 }
 
 type configT struct {
-	Path         string
+	Path         string `validate:"required_without=Socketaddr"`
 	Type         string
-	Socketaddr   string
+	Socketaddr   string `validate:"required_without=Path"`
 	DumpMessages struct {
 		Enabled bool
 		Path    string
@@ -118,13 +118,10 @@ func (s *Socket) initUDPSocket() *net.UDPConn {
 // Run implements type Transport
 func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	var pc net.Conn
-	if s.conf.Type == unix {
-		pc = s.initUnixSocket()
-	} else if s.conf.Type == udp {
+	if s.conf.Type == udp {
 		pc = s.initUDPSocket()
 	} else {
-		s.conf.Type = unix
-		return
+		pc = s.initUnixSocket()
 	}
 	if pc == nil {
 		s.logger.Errorf(nil, "Failed to initialize socket transport plugin")
@@ -223,7 +220,7 @@ func (s *Socket) Config(c []byte) error {
 	}
 
 	if s.conf.Type == udp && s.conf.Socketaddr == "" {
-		return fmt.Errorf("the url configuration option is required when using udp socket type")
+		return fmt.Errorf("the socketaddr configuration option is required when using udp socket type")
 	}
 
 	return nil
