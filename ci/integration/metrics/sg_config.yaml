@@ -7,6 +7,7 @@ transports:
   - name: socket
     config:
       path: /tmp/sg-bridge/test-socket
+      type: unix
     handlers:
       - name: collectd-metrics
   - name: amqp1
