@@ -17,7 +17,7 @@ import (
 
 const regularBuffSize = 16384
 
-func TestSocketTransport(t *testing.T) {
+func TestUnixSocketTransport(t *testing.T) {
 	tmpdir, err := ioutil.TempDir(".", "socket_test_tmp")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
@@ -72,6 +72,59 @@ func TestSocketTransport(t *testing.T) {
 
 		// write to socket
 		wskt, err := net.DialUnix("unixgram", nil, &net.UnixAddr{Name: sktpath, Net: "unixgram"})
+		require.NoError(t, err)
+		_, err = wskt.Write(msg)
+		require.NoError(t, err)
+
+		cancel()
+		wg.Wait()
+		wskt.Close()
+	})
+}
+
+func TestUdpSocketTransport(t *testing.T) {
+	tmpdir, err := ioutil.TempDir(".", "socket_test_tmp")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpdir)
+
+	logpath := path.Join(tmpdir, "test.log")
+	logger, err := logging.NewLogger(logging.DEBUG, logpath)
+	require.NoError(t, err)
+
+	trans := Socket{
+		conf: configT{
+			Socketaddr: "127.0.0.1:8642",
+			Type:       "udp",
+		},
+		logger: &logWrapper{
+			l: logger,
+		},
+	}
+
+	t.Run("test large message transport", func(t *testing.T) {
+		msg := make([]byte, regularBuffSize)
+		addition := "wubba lubba dub dub"
+		for i := 0; i < regularBuffSize; i++ {
+			msg[i] = byte('X')
+		}
+		msg[regularBuffSize-1] = byte('$')
+		msg = append(msg, []byte(addition)...)
+
+		// verify transport
+		ctx, cancel := context.WithCancel(context.Background())
+		wg := sync.WaitGroup{}
+		go trans.Run(ctx, func(mess []byte) {
+			wg.Add(1)
+			strmsg := string(mess)
+			assert.Equal(t, regularBuffSize+len(addition), len(strmsg))   // we received whole message
+			assert.Equal(t, addition, strmsg[len(strmsg)-len(addition):]) // and the out-of-band part is correct
+			wg.Done()
+		}, make(chan bool))
+
+		// write to socket
+		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:8642")
+		require.NoError(t, err)
+		wskt, err := net.DialUDP("udp", nil, addr)
 		require.NoError(t, err)
 		_, err = wskt.Write(msg)
 		require.NoError(t, err)
