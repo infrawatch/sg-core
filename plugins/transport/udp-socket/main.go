@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"io"
 	"time"
 	"strings"
+	"sync"
+	"encoding/binary"
 
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/config"
@@ -67,39 +70,89 @@ type Socket struct {
 	dumpBuf  *bufio.Writer
 	dumpFile *os.File
 }
+func setBuffer(c *net.TCPConn) {
+}
 
 // Run implements type Transport
 func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 
-	addr, err := net.ResolveUDPAddr("udp", s.conf.Uri)
-	pc, err := net.ListenUDP("udp", addr)
+	var m sync.Mutex
+	addr, err := net.ResolveTCPAddr("tcp", s.conf.Uri)
 	if err != nil {
-		s.logger.Errorf(err, "failed to bind unix socket %s", s.conf.Uri)
-		return
+		fmt.Println(err)
 	}
-
-	s.logger.Infof("socket listening on %s", s.conf.Uri)
-	go func(maxBuffSize int64) {
-		msgBuffer := make([]byte, maxBuffSize)
+	pcc, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		fmt.Println("smth")
+	}
+	go func(pcc *net.TCPListener) {
 		for {
-			n, err := pc.Read(msgBuffer)
-			if err != nil || n < 1 {
-				if err != nil {
-					s.logger.Errorf(err, "reading from socket failed")
-				}
-				done <- true
+			pc, err := pcc.AcceptTCP()
+			if err != nil {
+				fmt.Println(err)
+			}
+			if err != nil {
+				s.logger.Errorf(err, "failed to bind unix socket %s", s.conf.Uri)
 				return
 			}
 
-			// whole buffer was used, so we are potentially handling larger message
-			if n == len(msgBuffer) {
-				s.logger.Warnf("full read buffer used")
-			}
+			s.logger.Infof("socket listening on %s", s.conf.Uri)
+			go func(maxBuffSize int64, pc *net.TCPConn) {
+				remaining := []byte{}
+				msgBuffer := make([]byte, maxBuffSize)
+				for {
+					if err != nil {
+						fmt.Println(err)
+					}
+					n, err := pc.Read(msgBuffer)
+					remained := len(remaining)
+					msgBuffer = append(remaining, msgBuffer...)
+					n += remained
+					if err != nil {
+						if err != nil {
+							s.logger.Errorf(err, "reading from socket failed")
+						}
+						//done <- true
+						pc.Close()
+						return
+					}
 
-			w(msgBuffer[:n])
-			msgCount++
+					// whole buffer was used, so we are potentially handling larger message
+					if int64(n) == maxBuffSize {
+						s.logger.Warnf("full read buffer used")
+					}
+					var pos int64
+					pos = 0
+					var length int64
+					buffer := bytes.NewReader(msgBuffer[:n])
+					for pos < int64(n) {
+						buffer.Seek(pos, io.SeekStart)
+						err := binary.Read(buffer, binary.LittleEndian, &length)
+						if err != nil || pos + 8 + length > int64(n) || length < 0 {
+							if length > 1000 || length < 0 {
+							fmt.Println("Can't read message")
+							fmt.Println(err)
+							fmt.Printf("prev: %d\n", remained)
+							fmt.Printf("n: %d\n", n)
+							fmt.Printf("pos: %d\n", pos)
+							fmt.Printf("len: %d\n", length)
+							fmt.Printf("remaining = %d : %d\n", pos, n)
+								fmt.Println(string(msgBuffer[:n]))
+							}
+							break
+						}
+						m.Lock()
+						w(msgBuffer[pos + 8 : pos + 8 + length])
+						msgCount++
+						m.Unlock()
+						pos += 8 + length
+					}
+					remaining = []byte{}
+					remaining = append(remaining, msgBuffer[pos:n]...)
+				}
+			}(maxBufferSize, pc)
 		}
-	}(maxBufferSize)
+	}(pcc)
 
 	for {
 		select {
@@ -111,7 +164,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 		}
 	}
 Done:
-	pc.Close()
+	//pc.Close()
 	s.dumpFile.Close()
 	s.logger.Infof("exited")
 }

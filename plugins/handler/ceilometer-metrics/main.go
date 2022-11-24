@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"time"
+	"fmt"
 
 	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/data"
@@ -35,6 +36,7 @@ func (c *ceilometerMetricHandler) Run(ctx context.Context, mpf bus.MetricPublish
 	for {
 		select {
 		case <-ctx.Done():
+			fmt.Println("Ceilometer Done")
 			return
 		case <-time.After(time.Second):
 			mpf(
