@@ -18,6 +18,7 @@ require (
 	github.com/prometheus/common v0.29.0 // indirect
 	github.com/smartystreets/goconvey v1.7.2 // indirect
 	github.com/stretchr/testify v1.6.1
+	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/errgo.v2 v2.1.0

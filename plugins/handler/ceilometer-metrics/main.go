@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/infrawatch/sg-core/pkg/bus"
+	"github.com/infrawatch/sg-core/pkg/config"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/infrawatch/sg-core/pkg/handler"
 	"github.com/infrawatch/sg-core/plugins/handler/ceilometer-metrics/pkg/ceilometer"
@@ -29,6 +32,14 @@ type ceilometerMetricHandler struct {
 	totalMetricsDecoded   uint64
 	totalDecodeErrors     uint64
 	totalMessagesReceived uint64
+	config                ceilometerConfig
+}
+
+// The tcp and udp ceilometer publishers send the data in a message pack format.
+// The messaging ceilometer publisher sends the data in a JSON format.
+// That's the reason why we need to know the source.
+type ceilometerConfig struct {
+	Source string `validate:"optional" yaml:"source"`
 }
 
 func (c *ceilometerMetricHandler) Run(ctx context.Context, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) {
@@ -71,7 +82,13 @@ func (c *ceilometerMetricHandler) Run(ctx context.Context, mpf bus.MetricPublish
 
 func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) error {
 	c.totalMessagesReceived++
-	msg, err := c.ceilo.ParseInputJSON(blob)
+	var msg *ceilometer.Message
+	var err error
+	if c.config.Source == "unix" {
+		msg, err = c.ceilo.ParseInputJSON(blob)
+	} else {
+		msg, err = c.ceilo.ParseInputMsgPack(blob)
+	}
 	if err != nil {
 		return err
 	}
@@ -227,6 +244,20 @@ func (c *ceilometerMetricHandler) Identify() string {
 }
 
 func (c *ceilometerMetricHandler) Config(blob []byte) error {
+	c.config = ceilometerConfig{
+		Source: "unix",
+	}
+	err := config.ParseConfig(bytes.NewReader(blob), &c.config)
+	if err != nil {
+		return err
+	}
+
+	c.config.Source = strings.ToLower(c.config.Source)
+
+	if c.config.Source != "unix" && c.config.Source != "tcp" && c.config.Source != "udp" {
+		return fmt.Errorf("incorrect source, should be either \"unix\", \"tcp\" or \"udp\", received: %s",
+			c.config.Source)
+	}
 	return nil
 }
 
