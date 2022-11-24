@@ -4,10 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/infrawatch/apputils/logging"
@@ -20,6 +23,8 @@ const (
 	maxBufferSize = 65535
 	udp           = "udp"
 	unix          = "unix"
+	tcp           = "tcp"
+	msgLengthSize = 8
 )
 
 var (
@@ -68,10 +73,12 @@ func (lw *logWrapper) Warnf(format string, a ...interface{}) {
 
 // Socket basic struct
 type Socket struct {
-	conf     configT
-	logger   *logWrapper
-	dumpBuf  *bufio.Writer
-	dumpFile *os.File
+	conf              configT
+	logger            *logWrapper
+	dumpBuf           *bufio.Writer
+	dumpFile          *os.File
+	mutex             sync.Mutex
+	connectionsOpened int
 }
 
 func (s *Socket) initUnixSocket() *net.UnixConn {
@@ -115,50 +122,143 @@ func (s *Socket) initUDPSocket() *net.UDPConn {
 	return pc
 }
 
+func (s *Socket) initTCPSocket() *net.TCPListener {
+	addr, err := net.ResolveTCPAddr(tcp, s.conf.Socketaddr)
+	if err != nil {
+		s.logger.Errorf(err, "failed to resolve tcp address: %s", s.conf.Socketaddr)
+		return nil
+	}
+	pc, err := net.ListenTCP(tcp, addr)
+	if err != nil {
+		s.logger.Errorf(err, "failed to bind tcp socket to addr: %s", s.conf.Socketaddr)
+		return nil
+	}
+
+	s.logger.Infof("socket listening on %s", s.conf.Socketaddr)
+
+	return pc
+}
+
+// TODO: change msgLengthSize to some kind of sizeof length
+func (s *Socket) WriteTCPMsg(w transport.WriteFn, msgBuffer []byte, n int) ([]byte, error) {
+	var pos int64 = 0
+	var length int64
+	reader := bytes.NewReader(msgBuffer[:n])
+	for pos < int64(n) {
+		reader.Seek(pos, io.SeekStart)
+		err := binary.Read(reader, binary.LittleEndian, &length)
+		if err != nil {
+			return nil, err
+		}
+		if pos+msgLengthSize+length > int64(n) {
+			s.logger.Debugf("message length outside of current buffer")
+			break
+		}
+		s.mutex.Lock()
+		w(msgBuffer[pos+msgLengthSize : pos+msgLengthSize+length])
+		msgCount++
+		s.mutex.Unlock()
+		pos += msgLengthSize + length
+	}
+	// might need to copy somehow
+	return msgBuffer[pos:n], nil
+}
+
+func (s *Socket) CloseTCPSocket(pc net.Conn, done chan bool) {
+	pc.Close()
+	s.mutex.Lock()
+	s.connectionsOpened--
+	if s.connectionsOpened == 0 {
+		done <- true
+	}
+	s.mutex.Unlock()
+}
+
+func (s *Socket) ReceiveData(maxBuffSize int64, done chan bool, pc net.Conn, w transport.WriteFn) {
+	msgBuffer := make([]byte, maxBuffSize)
+	var remainingMsg []byte
+	for {
+		n, err := pc.Read(msgBuffer)
+		if err != nil || n < 1 {
+			if err != nil {
+				s.logger.Errorf(err, "reading from socket failed")
+			}
+			if s.conf.Type == tcp {
+				s.CloseTCPSocket(pc, done)
+			} else {
+				done <- true
+			}
+			return
+		}
+		msgBuffer = append(remainingMsg, msgBuffer...)
+
+		// whole buffer was used, so we are potentially handling larger message
+		if n == len(msgBuffer) {
+			s.logger.Warnf("full read buffer used")
+		}
+
+		n += len(remainingMsg)
+
+		if s.conf.DumpMessages.Enabled {
+			_, err := s.dumpBuf.Write(msgBuffer[:n])
+			if err != nil {
+				s.logger.Errorf(err, "writing to dump buffer")
+			}
+			_, err = s.dumpBuf.WriteString("\n")
+			if err != nil {
+				s.logger.Errorf(err, "writing to dump buffer")
+			}
+			s.dumpBuf.Flush()
+		}
+
+		if s.conf.Type == tcp {
+			remainingMsg, err = s.WriteTCPMsg(w, msgBuffer, n)
+			if err != nil {
+				s.CloseTCPSocket(pc, done)
+				return
+			}
+		} else {
+			w(msgBuffer[:n])
+			msgCount++
+		}
+	}
+}
+
 // Run implements type Transport
 func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	var pc net.Conn
 	if s.conf.Type == udp {
 		pc = s.initUDPSocket()
+		if pc == nil {
+			s.logger.Errorf(nil, "Failed to initialize socket transport plugin")
+			return
+		}
+		go s.ReceiveData(maxBufferSize, done, pc, w)
+	} else if s.conf.Type == tcp {
+		TCPSocket := s.initTCPSocket()
+		if TCPSocket == nil {
+			s.logger.Errorf(nil, "Failed to initialize socket transport plugin")
+			return
+		}
+		for {
+			pc, err := TCPSocket.AcceptTCP()
+			s.mutex.Lock()
+			s.connectionsOpened++
+			s.mutex.Unlock()
+			if err != nil {
+				s.logger.Errorf(err, "failed to accept TCP connection")
+				continue
+			}
+			go s.ReceiveData(maxBufferSize, done, pc, w)
+		}
 	} else {
 		pc = s.initUnixSocket()
-	}
-	if pc == nil {
-		s.logger.Errorf(nil, "Failed to initialize socket transport plugin")
-	}
-	go func(maxBuffSize int64) {
-		msgBuffer := make([]byte, maxBuffSize)
-		for {
-			n, err := pc.Read(msgBuffer)
-			if err != nil || n < 1 {
-				if err != nil {
-					s.logger.Errorf(err, "reading from socket failed")
-				}
-				done <- true
-				return
-			}
-
-			// whole buffer was used, so we are potentially handling larger message
-			if n == len(msgBuffer) {
-				s.logger.Warnf("full read buffer used")
-			}
-
-			if s.conf.DumpMessages.Enabled {
-				_, err := s.dumpBuf.Write(msgBuffer[:n])
-				if err != nil {
-					s.logger.Errorf(err, "writing to dump buffer")
-				}
-				_, err = s.dumpBuf.WriteString("\n")
-				if err != nil {
-					s.logger.Errorf(err, "writing to dump buffer")
-				}
-				s.dumpBuf.Flush()
-			}
-
-			w(msgBuffer[:n])
-			msgCount++
+		if pc == nil {
+			s.logger.Errorf(nil, "Failed to initialize socket transport plugin")
+			return
 		}
-	}(maxBufferSize)
+		go s.ReceiveData(maxBufferSize, done, pc, w)
+	}
 
 	for {
 		select {
@@ -210,8 +310,8 @@ func (s *Socket) Config(c []byte) error {
 	}
 
 	s.conf.Type = strings.ToLower(s.conf.Type)
-	if s.conf.Type != unix && s.conf.Type != udp {
-		return fmt.Errorf("unable to determine socket type from configuration file. Should be either \"unix\" or \"udp\", received: %s",
+	if s.conf.Type != unix && s.conf.Type != udp && s.conf.Type != tcp {
+		return fmt.Errorf("unable to determine socket type from configuration file. Should be either \"unix\", \"udp\" or \"tcp\", received: %s",
 			s.conf.Type)
 	}
 
@@ -219,8 +319,8 @@ func (s *Socket) Config(c []byte) error {
 		return fmt.Errorf("the path configuration option is required when using unix socket type")
 	}
 
-	if s.conf.Type == udp && s.conf.Socketaddr == "" {
-		return fmt.Errorf("the socketaddr configuration option is required when using udp socket type")
+	if (s.conf.Type == udp || s.conf.Type == tcp) && s.conf.Socketaddr == "" {
+		return fmt.Errorf("the socketaddr configuration option is required when using udp or tcp socket type")
 	}
 
 	return nil
