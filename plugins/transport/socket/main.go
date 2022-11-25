@@ -168,9 +168,6 @@ func (s *Socket) CloseTCPSocket(pc net.Conn, done chan bool) {
 	pc.Close()
 	s.mutex.Lock()
 	s.connectionsOpened--
-	if s.connectionsOpened == 0 {
-		done <- true
-	}
 	s.mutex.Unlock()
 }
 
@@ -240,17 +237,19 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 			s.logger.Errorf(nil, "Failed to initialize socket transport plugin")
 			return
 		}
-		for {
-			pc, err := TCPSocket.AcceptTCP()
-			s.mutex.Lock()
-			s.connectionsOpened++
-			s.mutex.Unlock()
-			if err != nil {
-				s.logger.Errorf(err, "failed to accept TCP connection")
-				continue
+		go func () {
+			for {
+				pc, err := TCPSocket.AcceptTCP()
+				s.mutex.Lock()
+				s.connectionsOpened++
+				s.mutex.Unlock()
+				if err != nil {
+					s.logger.Errorf(err, "failed to accept TCP connection")
+					continue
+				}
+				go s.ReceiveData(maxBufferSize, done, pc, w)
 			}
-			go s.ReceiveData(maxBufferSize, done, pc, w)
-		}
+		}()
 	} else {
 		pc = s.initUnixSocket()
 		if pc == nil {
@@ -270,7 +269,15 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 		}
 	}
 Done:
-	pc.Close()
+	if s.conf.Type == tcp {
+		s.mutex.Lock()
+		for ;s.connectionsOpened > 0; s.connectionsOpened-- {
+			pc.Close()
+		}
+		s.mutex.Unlock()
+	} else {
+		pc.Close()
+	}
 	if s.conf.Type == unix {
 		os.Remove(s.conf.Path)
 	}

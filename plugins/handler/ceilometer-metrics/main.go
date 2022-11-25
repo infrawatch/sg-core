@@ -39,7 +39,7 @@ type ceilometerMetricHandler struct {
 // The messaging ceilometer publisher sends the data in a JSON format.
 // That's the reason why we need to know the source.
 type ceilometerConfig struct {
-	Source string `validate:"optional" yaml:"source"`
+	Source string `yaml:"source"`
 }
 
 func (c *ceilometerMetricHandler) Run(ctx context.Context, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) {
