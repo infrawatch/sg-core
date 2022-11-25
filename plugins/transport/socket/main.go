@@ -145,8 +145,11 @@ func (s *Socket) WriteTCPMsg(w transport.WriteFn, msgBuffer []byte, n int) ([]by
 	var length int64
 	reader := bytes.NewReader(msgBuffer[:n])
 	for pos < int64(n) {
-		reader.Seek(pos, io.SeekStart)
-		err := binary.Read(reader, binary.LittleEndian, &length)
+		_, err := reader.Seek(pos, io.SeekStart)
+		if err != nil {
+			return nil, err
+		}
+		err = binary.Read(reader, binary.LittleEndian, &length)
 		if err != nil {
 			return nil, err
 		}
@@ -224,20 +227,22 @@ func (s *Socket) ReceiveData(maxBuffSize int64, done chan bool, pc net.Conn, w t
 // Run implements type Transport
 func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	var pc net.Conn
-	if s.conf.Type == udp {
+	switch s.conf.Type {
+	case udp:
 		pc = s.initUDPSocket()
 		if pc == nil {
 			s.logger.Errorf(nil, "Failed to initialize socket transport plugin")
 			return
 		}
 		go s.ReceiveData(maxBufferSize, done, pc, w)
-	} else if s.conf.Type == tcp {
+
+	case tcp:
 		TCPSocket := s.initTCPSocket()
 		if TCPSocket == nil {
 			s.logger.Errorf(nil, "Failed to initialize socket transport plugin")
 			return
 		}
-		go func () {
+		go func() {
 			for {
 				pc, err := TCPSocket.AcceptTCP()
 				s.mutex.Lock()
@@ -250,7 +255,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 				go s.ReceiveData(maxBufferSize, done, pc, w)
 			}
 		}()
-	} else {
+	case unix:
 		pc = s.initUnixSocket()
 		if pc == nil {
 			s.logger.Errorf(nil, "Failed to initialize socket transport plugin")
@@ -271,7 +276,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 Done:
 	if s.conf.Type == tcp {
 		s.mutex.Lock()
-		for ;s.connectionsOpened > 0; s.connectionsOpened-- {
+		for ; s.connectionsOpened > 0; s.connectionsOpened-- {
 			pc.Close()
 		}
 		s.mutex.Unlock()
