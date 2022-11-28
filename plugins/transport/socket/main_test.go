@@ -163,7 +163,7 @@ func TestTcpSocketTransport(t *testing.T) {
 		msg[regularBuffSize-1] = byte('$')
 		msg = append(msg, []byte(addition)...)
 		msgLength := new(bytes.Buffer)
-		err := binary.Write(msgLength, binary.LittleEndian, len(msg))
+		err := binary.Write(msgLength, binary.LittleEndian, uint64(len(msg)))
 		require.NoError(t, err)
 		msg = append(msgLength.Bytes(), msg...)
 
@@ -204,7 +204,7 @@ func TestTcpSocketTransport(t *testing.T) {
 		msg[regularBuffSize-1] = byte('$')
 		msg = append(msg, []byte(addition)...)
 		msg_length := new(bytes.Buffer)
-		err := binary.Write(msg_length, binary.LittleEndian, len(msg))
+		err := binary.Write(msg_length, binary.LittleEndian, uint64(len(msg)))
 		require.NoError(t, err)
 		msg = append(msg_length.Bytes(), msg...)
 
