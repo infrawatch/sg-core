@@ -167,15 +167,9 @@ func (s *Socket) WriteTCPMsg(w transport.WriteFn, msgBuffer []byte, n int) ([]by
 	return msgBuffer[pos:n], nil
 }
 
-func (s *Socket) CloseTCPSocket(pc net.Conn, done chan bool) {
-	pc.Close()
-	s.mutex.Lock()
-	s.connectionsOpened--
-	s.mutex.Unlock()
-}
-
 func (s *Socket) ReceiveData(maxBuffSize int64, done chan bool, pc net.Conn, w transport.WriteFn) {
 	msgBuffer := make([]byte, maxBuffSize)
+	defer pc.Close()
 	var remainingMsg []byte
 	for {
 		n, err := pc.Read(msgBuffer)
@@ -183,9 +177,7 @@ func (s *Socket) ReceiveData(maxBuffSize int64, done chan bool, pc net.Conn, w t
 			if err != nil {
 				s.logger.Errorf(err, "reading from socket failed")
 			}
-			if s.conf.Type == tcp {
-				s.CloseTCPSocket(pc, done)
-			} else {
+			if s.conf.Type != tcp {
 				done <- true
 			}
 			return
@@ -214,7 +206,6 @@ func (s *Socket) ReceiveData(maxBuffSize int64, done chan bool, pc net.Conn, w t
 		if s.conf.Type == tcp {
 			remainingMsg, err = s.WriteTCPMsg(w, msgBuffer, n)
 			if err != nil {
-				s.CloseTCPSocket(pc, done)
 				return
 			}
 		} else {
@@ -242,12 +233,10 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 			s.logger.Errorf(nil, "Failed to initialize socket transport plugin")
 			return
 		}
+		defer TCPSocket.Close()
 		go func() {
 			for {
 				pc, err := TCPSocket.AcceptTCP()
-				s.mutex.Lock()
-				s.connectionsOpened++
-				s.mutex.Unlock()
 				if err != nil {
 					s.logger.Errorf(err, "failed to accept TCP connection")
 					continue
@@ -276,15 +265,6 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 		}
 	}
 Done:
-	if s.conf.Type == tcp {
-		s.mutex.Lock()
-		for ; s.connectionsOpened > 0; s.connectionsOpened-- {
-			pc.Close()
-		}
-		s.mutex.Unlock()
-	} else {
-		pc.Close()
-	}
 	if s.conf.Type == unix {
 		os.Remove(s.conf.Path)
 	}
