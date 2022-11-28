@@ -50,7 +50,10 @@ func MetricReceive(name string, mTime float64, mType data.MetricType, interval t
 
 func TestCeilometerIncoming(t *testing.T) {
 	plugin := New()
-	plugin.Config([]byte{})
+	err := plugin.Config([]byte{})
+	if err != nil {
+		t.Errorf("failed configuring ceilometer handler plugin: %s", err.Error())
+	}
 
 	testData, err := ioutil.ReadFile("messages/metric-tests.json")
 	if err != nil {
