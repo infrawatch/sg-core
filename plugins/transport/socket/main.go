@@ -138,7 +138,6 @@ func (s *Socket) initTCPSocket() *net.TCPListener {
 	return pc
 }
 
-// TODO: change msgLengthSize to some kind of sizeof length
 func (s *Socket) WriteTCPMsg(w transport.WriteFn, msgBuffer []byte, n int) ([]byte, error) {
 	var pos int64 = 0
 	var length int64
@@ -162,7 +161,6 @@ func (s *Socket) WriteTCPMsg(w transport.WriteFn, msgBuffer []byte, n int) ([]by
 		s.mutex.Unlock()
 		pos += msgLengthSize + length
 	}
-	// might need to copy somehow
 	return msgBuffer[pos:n], nil
 }
 
