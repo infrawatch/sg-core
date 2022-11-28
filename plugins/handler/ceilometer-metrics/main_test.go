@@ -17,6 +17,16 @@ var (
 	metricsUT []data.Metric
 )
 
+var expectedMsgpackMetric = data.Metric{
+	Name:      "ceilometer_test_name_0_0_82",
+	Time:      0,
+	Type:      data.UNTYPED,
+	Interval:  100 * time.Second,
+	Value:     0,
+	LabelKeys: []string{"test_name_0_0_82", "publisher", "type", "counter", "project", "unit", "resource"},
+	LabelVals: []string{"test_resource_id", "localhost.localdomain", "test_name_0_0_82", "test_name_0_0_82", "test_project_id_0", "test_unit", "test_resource_id"},
+}
+
 // CeilometerMetricTemplate holds correct parsings for comparing against parsed results
 type CeilometerMetricTestTemplate struct {
 	TestInput        jsoniter.RawMessage `json:"testInput"`
@@ -48,7 +58,7 @@ func MetricReceive(name string, mTime float64, mType data.MetricType, interval t
 	})
 }
 
-func TestCeilometerIncoming(t *testing.T) {
+func TestCeilometerIncomingJSON(t *testing.T) {
 	plugin := New()
 	err := plugin.Config([]byte{})
 	if err != nil {
@@ -84,6 +94,26 @@ func TestCeilometerIncoming(t *testing.T) {
 		expMetric.Interval = time.Second * metricTimeout
 		assert.Equal(t, expMetric, metricsUT[index])
 	}
+}
+func TestCeilometerIncomingMsgpack(t *testing.T) {
+	plugin := New()
+	err := plugin.Config([]byte("source: tcp"))
+	if err != nil {
+		t.Errorf("failed configuring ceilometer handler plugin: %s", err.Error())
+	}
+
+	testData, err := ioutil.ReadFile("messages/msgpack-test.msgpack")
+	if err != nil {
+		t.Errorf("failed loading test data: %s", err.Error())
+	}
+
+	metricsUT = []data.Metric{}
+	err = plugin.Handle(testData, false, MetricReceive, EventReceive)
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equal(t, expectedMsgpackMetric, metricsUT[0])
 }
 
 func TestGenLabelsSizes(t *testing.T) {
