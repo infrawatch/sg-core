@@ -73,12 +73,11 @@ func (lw *logWrapper) Warnf(format string, a ...interface{}) {
 
 // Socket basic struct
 type Socket struct {
-	conf              configT
-	logger            *logWrapper
-	dumpBuf           *bufio.Writer
-	dumpFile          *os.File
-	mutex             sync.Mutex
-	connectionsOpened int
+	conf     configT
+	logger   *logWrapper
+	dumpBuf  *bufio.Writer
+	dumpFile *os.File
+	mutex    sync.Mutex
 }
 
 func (s *Socket) initUnixSocket() *net.UnixConn {
