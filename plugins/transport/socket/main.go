@@ -138,21 +138,19 @@ func (s *Socket) initTCPSocket() *net.TCPListener {
 	return pc
 }
 
-func (s *Socket) WriteTCPMsg(w transport.WriteFn, msgBuffer []byte, n int) ([]byte, error) {
+func (s *Socket) WriteTCPMsg(w transport.WriteFn, msgBuffer []byte, n int) (int64, error) {
 	var pos int64 = 0
 	var length int64
 	reader := bytes.NewReader(msgBuffer[:n])
 	for pos < int64(n) {
 		_, err := reader.Seek(pos, io.SeekStart)
 		if err != nil {
-			return nil, err
+			return pos, err
 		}
 		err = binary.Read(reader, binary.LittleEndian, &length)
-		if err != nil {
-			return nil, err
-		}
-		if pos+msgLengthSize+length > int64(n) {
-			s.logger.Debugf("message length outside of current buffer")
+		if err != nil ||
+		   pos+msgLengthSize+length > int64(n) ||
+		   pos+msgLengthSize+length < 0 {
 			break
 		}
 		s.mutex.Lock()
@@ -161,12 +159,12 @@ func (s *Socket) WriteTCPMsg(w transport.WriteFn, msgBuffer []byte, n int) ([]by
 		s.mutex.Unlock()
 		pos += msgLengthSize + length
 	}
-	return msgBuffer[pos:n], nil
+	return pos, nil
 }
 
 func (s *Socket) ReceiveData(maxBuffSize int64, done chan bool, pc net.Conn, w transport.WriteFn) {
-	msgBuffer := make([]byte, maxBuffSize)
 	defer pc.Close()
+	msgBuffer := make([]byte, maxBuffSize)
 	var remainingMsg []byte
 	for {
 		n, err := pc.Read(msgBuffer)
@@ -201,10 +199,13 @@ func (s *Socket) ReceiveData(maxBuffSize int64, done chan bool, pc net.Conn, w t
 		}
 
 		if s.conf.Type == tcp {
-			remainingMsg, err = s.WriteTCPMsg(w, msgBuffer, n)
+			parsed, err := s.WriteTCPMsg(w, msgBuffer, n)
 			if err != nil {
+				s.logger.Errorf(err, "error, while parsing messages")
 				return
 			}
+			remainingMsg = make([]byte, int64(n) - parsed)
+			copy(remainingMsg, msgBuffer[parsed:n])
 		} else {
 			w(msgBuffer[:n])
 			msgCount++
@@ -230,13 +231,17 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 			s.logger.Errorf(nil, "Failed to initialize socket transport plugin")
 			return
 		}
-		defer TCPSocket.Close()
 		go func() {
 			for {
 				pc, err := TCPSocket.AcceptTCP()
 				if err != nil {
-					s.logger.Errorf(err, "failed to accept TCP connection")
-					continue
+					select {
+					case <-ctx.Done():
+						break
+					default:
+						s.logger.Errorf(err, "failed to accept TCP connection")
+						continue
+					}
 				}
 				go s.ReceiveData(maxBufferSize, done, pc, w)
 			}

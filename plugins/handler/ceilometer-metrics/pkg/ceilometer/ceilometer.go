@@ -82,7 +82,7 @@ func (c *Ceilometer) ParseInputMsgPack(blob []byte) (*Message, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = msgpack.Unmarshal(blob, &msg)
+	err = msgpack.Unmarshal(blob, msg)
 	if err != nil {
 		return nil, err
 	}
