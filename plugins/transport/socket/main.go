@@ -149,8 +149,8 @@ func (s *Socket) WriteTCPMsg(w transport.WriteFn, msgBuffer []byte, n int) (int6
 		}
 		err = binary.Read(reader, binary.LittleEndian, &length)
 		if err != nil ||
-		   pos+msgLengthSize+length > int64(n) ||
-		   pos+msgLengthSize+length < 0 {
+			pos+msgLengthSize+length > int64(n) ||
+			pos+msgLengthSize+length < 0 {
 			break
 		}
 		s.mutex.Lock()
@@ -204,7 +204,7 @@ func (s *Socket) ReceiveData(maxBuffSize int64, done chan bool, pc net.Conn, w t
 				s.logger.Errorf(err, "error, while parsing messages")
 				return
 			}
-			remainingMsg = make([]byte, int64(n) - parsed)
+			remainingMsg = make([]byte, int64(n)-parsed)
 			copy(remainingMsg, msgBuffer[parsed:n])
 		} else {
 			w(msgBuffer[:n])
