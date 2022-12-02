@@ -153,7 +153,7 @@ func (s *Socket) WriteTCPMsg(w transport.WriteFn, msgBuffer []byte, n int) (int6
 		}
 
 		if pos+msgLengthSize+length > int64(n) ||
-		   pos+msgLengthSize+length < 0 {
+			pos+msgLengthSize+length < 0 {
 			break
 		}
 		s.mutex.Lock()
