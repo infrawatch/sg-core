@@ -142,15 +142,18 @@ func (s *Socket) WriteTCPMsg(w transport.WriteFn, msgBuffer []byte, n int) (int6
 	var pos int64 = 0
 	var length int64
 	reader := bytes.NewReader(msgBuffer[:n])
-	for pos < int64(n) {
+	for pos+msgLengthSize < int64(n) {
 		_, err := reader.Seek(pos, io.SeekStart)
 		if err != nil {
 			return pos, err
 		}
 		err = binary.Read(reader, binary.LittleEndian, &length)
-		if err != nil ||
-			pos+msgLengthSize+length > int64(n) ||
-			pos+msgLengthSize+length < 0 {
+		if err != nil {
+			return pos, err
+		}
+
+		if pos+msgLengthSize+length > int64(n) ||
+		   pos+msgLengthSize+length < 0 {
 			break
 		}
 		s.mutex.Lock()
