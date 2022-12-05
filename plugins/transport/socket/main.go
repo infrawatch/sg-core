@@ -310,7 +310,7 @@ func (s *Socket) Config(c []byte) error {
 
 	s.conf.Type = strings.ToLower(s.conf.Type)
 	if s.conf.Type != unix && s.conf.Type != udp && s.conf.Type != tcp {
-		return fmt.Errorf("unable to determine socket type from configuration file. Should be either \"unix\", \"udp\" or \"tcp\", received: %s",
+		return fmt.Errorf("unable to determine socket type from configuration file. Should be one of \"unix\", \"udp\" or \"tcp\", received: %s",
 			s.conf.Type)
 	}
 
