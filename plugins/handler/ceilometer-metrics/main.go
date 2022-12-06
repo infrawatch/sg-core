@@ -84,10 +84,15 @@ func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.M
 	c.totalMessagesReceived++
 	var msg *ceilometer.Message
 	var err error
-	if c.config.Source == "unix" {
-		msg, err = c.ceilo.ParseInputJSON(blob)
-	} else {
+	switch c.config.Source {
+	case "tcp":
+		fallthrough
+	case "udp":
 		msg, err = c.ceilo.ParseInputMsgPack(blob)
+	case "unix":
+		fallthrough
+	default:
+		msg, err = c.ceilo.ParseInputJSON(blob)
 	}
 	if err != nil {
 		return err
