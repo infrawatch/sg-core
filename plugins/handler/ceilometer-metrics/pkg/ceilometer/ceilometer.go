@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 var (
@@ -22,20 +23,20 @@ type Metadata struct {
 // Metric represents a single metric from ceilometer for unmarshalling
 type Metric struct {
 	Source           string
-	CounterName      string  `json:"counter_name"`
-	CounterType      string  `json:"counter_type"`
-	CounterUnit      string  `json:"counter_unit"`
-	CounterVolume    float64 `json:"counter_volume"`
-	UserID           string  `json:"user_id"`
-	ProjectID        string  `json:"project_id"`
-	ResourceID       string  `json:"resource_id"`
+	CounterName      string  `json:"counter_name" msgpack:"counter_name"`
+	CounterType      string  `json:"counter_type" msgpack:"counter_type"`
+	CounterUnit      string  `json:"counter_unit" msgpack:"counter_unit"`
+	CounterVolume    float64 `json:"counter_volume" msgpack:"counter_volume"`
+	UserID           string  `json:"user_id" msgpack:"user_id"`
+	ProjectID        string  `json:"project_id" msgpack:"project_id"`
+	ResourceID       string  `json:"resource_id" msgpack:"resource_id"`
 	Timestamp        string
 	ResourceMetadata Metadata `json:"resource_metadata"`
 }
 
 // Message struct represents an incoming ceilometer metrics message
 type Message struct {
-	Publisher string   `json:"publisher_id"`
+	Publisher string   `json:"publisher_id" msgpack:"publisher_id"`
 	Payload   []Metric `json:"payload"`
 }
 
@@ -70,6 +71,22 @@ func (c *Ceilometer) ParseInputJSON(blob []byte) (*Message, error) {
 	if err != nil {
 		return nil, err
 	}
+	return msg, nil
+}
+
+// ParseInputMsgPack parse blob into list of metrics
+func (c *Ceilometer) ParseInputMsgPack(blob []byte) (*Message, error) {
+	msg := &Message{}
+	metric := Metric{}
+	err := msgpack.Unmarshal(blob, &metric)
+	if err != nil {
+		return nil, err
+	}
+	err = msgpack.Unmarshal(blob, msg)
+	if err != nil {
+		return nil, err
+	}
+	msg.Payload = append(msg.Payload, metric)
 	return msg, nil
 }
 
