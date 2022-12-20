@@ -26,19 +26,18 @@ linters:
   disable-all: true
   enable:
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
     - dupl
     - errcheck
     # - exhaustive
+    - exportloopref
     # - gochecknoinits
     - goconst
     - gocritic
     - gocyclo
     - gofmt
     - goimports
-    - golint
     - goprintffuncname
     - gosec
     - gosimple
@@ -48,10 +47,8 @@ linters:
     - nakedret
     - noctx
     - nolintlint
-    - rowserrcheck
-    - scopelint
+    - revive
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     # - unused
@@ -59,5 +56,4 @@ linters:
     # NOTE: not all application plugins use ability to emit internal events through
     #       passed bus function in it's constructor.
     #- unparam
-    - varcheck
     # - whitespace
