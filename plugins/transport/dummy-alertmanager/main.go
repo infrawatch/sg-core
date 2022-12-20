@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 
@@ -42,7 +42,7 @@ func (dam *DummyAM) Run(ctx context.Context, w transport.WriteFn, done chan bool
 		} else {
 			defer out.Close()
 		}
-		msg, err := ioutil.ReadAll(req.Body)
+		msg, err := io.ReadAll(req.Body)
 		if err != nil {
 			dam.logger.Metadata(logging.Metadata{"plugin": "dummy-alertmanager", "error": err})
 			dam.logger.Error("failed to read request")

@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -65,7 +65,7 @@ func TestCeilometerIncomingJSON(t *testing.T) {
 		t.Errorf("failed configuring ceilometer handler plugin: %s", err.Error())
 	}
 
-	testData, err := ioutil.ReadFile("messages/metric-tests.json")
+	testData, err := os.ReadFile("messages/metric-tests.json")
 	if err != nil {
 		t.Errorf("failed loading test data: %s", err.Error())
 	}
@@ -102,7 +102,7 @@ func TestCeilometerIncomingMsgpack(t *testing.T) {
 		t.Errorf("failed configuring ceilometer handler plugin: %s", err.Error())
 	}
 
-	testData, err := ioutil.ReadFile("messages/msgpack-test.msgpack")
+	testData, err := os.ReadFile("messages/msgpack-test.msgpack")
 	if err != nil {
 		t.Errorf("failed loading test data: %s", err.Error())
 	}

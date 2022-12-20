@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sync"
 
@@ -94,7 +94,7 @@ func (am *AlertManager) Run(ctx context.Context, done chan bool) {
 						am.logger.Error("failed to report alert to AlertManager")
 					} else if resp.StatusCode != http.StatusOK {
 						// https://github.com/prometheus/alertmanager/blob/master/api/v2/openapi.yaml#L170
-						body, _ := ioutil.ReadAll(resp.Body)
+						body, _ := io.ReadAll(resp.Body)
 						resp.Body.Close()
 						am.logger.Metadata(logging.Metadata{
 							"plugin": appname,

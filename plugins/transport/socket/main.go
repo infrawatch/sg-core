@@ -222,7 +222,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	switch s.conf.Type {
 	case udp:
 		pc = s.initUDPSocket()
-		if pc == nil {
+		if pc == (*net.UDPConn)(nil) {
 			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: "+s.conf.Type)
 			return
 		}
@@ -253,7 +253,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 		fallthrough
 	default:
 		pc = s.initUnixSocket()
-		if pc == nil {
+		if pc == (*net.UnixConn)(nil) {
 			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: "+s.conf.Type)
 			return
 		}
