@@ -52,7 +52,7 @@ func (dam *DummyAM) Run(ctx context.Context, w transport.WriteFn, done chan bool
 
 	})
 
-	srv := &http.Server{Addr: fmt.Sprintf(":%d", dam.conf.Port)}
+	srv := &http.Server{Addr: fmt.Sprintf(":%d", dam.conf.Port), ReadHeaderTimeout: 5 * time.Second}
 	go func(server *http.Server, ctx context.Context) {
 		<-ctx.Done()
 		if err := srv.Shutdown(ctx); err != nil {

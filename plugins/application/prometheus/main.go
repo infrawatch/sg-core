@@ -320,7 +320,7 @@ func (p *Prometheus) Run(ctx context.Context, done chan bool) {
 	// run exporter for prometheus to scrape
 	metricsURL := fmt.Sprintf("%s:%d", p.configuration.Host, p.configuration.Port)
 
-	srv := &http.Server{Addr: metricsURL}
+	srv := &http.Server{Addr: metricsURL, ReadHeaderTimeout: 5 * time.Second}
 	srv.Handler = handler
 
 	wg := new(sync.WaitGroup)
