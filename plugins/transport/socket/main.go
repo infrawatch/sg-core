@@ -139,7 +139,7 @@ func (s *Socket) initTCPSocket() *net.TCPListener {
 }
 
 func (s *Socket) WriteTCPMsg(w transport.WriteFn, msgBuffer []byte, n int) (int64, error) {
-	var pos int64 = 0
+	var pos int64
 	var length int64
 	reader := bytes.NewReader(msgBuffer[:n])
 	for pos+msgLengthSize < int64(n) {
