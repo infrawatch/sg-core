@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -51,7 +51,7 @@ func MetricReceive(name string, mTime float64, mType data.MetricType, interval t
 func TestCeilometerIncoming(t *testing.T) {
 	plugin := New()
 
-	testData, err := ioutil.ReadFile("messages/metric-tests.json")
+	testData, err := os.ReadFile("messages/metric-tests.json")
 	if err != nil {
 		t.Errorf("failed loading test data: %s", err.Error())
 	}

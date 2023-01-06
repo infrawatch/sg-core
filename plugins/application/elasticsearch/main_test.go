@@ -2,7 +2,6 @@ package main
 
 import (
 	stdjson "encoding/json"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -212,7 +211,7 @@ var (
 )
 
 func TestElasticsearchApp(t *testing.T) {
-	tmpdir, err := ioutil.TempDir(".", "elastic_test_tmp")
+	tmpdir, err := os.MkdirTemp(".", "elastic_test_tmp")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -19,7 +18,7 @@ var (
 
 // ParseConfig parses and validates input into config object
 func ParseConfig(r io.Reader, config interface{}) error {
-	configBytes, err := ioutil.ReadAll(r)
+	configBytes, err := io.ReadAll(r)
 	if err != nil {
 		return errors.Wrap(err, "while reading configuration")
 	}

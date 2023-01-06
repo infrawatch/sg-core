@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -166,7 +165,7 @@ var (
 )
 
 func TestAlertmanagerApp(t *testing.T) {
-	tmpdir, err := ioutil.TempDir(".", "alertman_test_tmp")
+	tmpdir, err := os.MkdirTemp(".", "alertman_test_tmp")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 

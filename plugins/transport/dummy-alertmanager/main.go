@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/config"
@@ -42,7 +43,7 @@ func (dam *DummyAM) Run(ctx context.Context, w transport.WriteFn, done chan bool
 		} else {
 			defer out.Close()
 		}
-		msg, err := ioutil.ReadAll(req.Body)
+		msg, err := io.ReadAll(req.Body)
 		if err != nil {
 			dam.logger.Metadata(logging.Metadata{"plugin": "dummy-alertmanager", "error": err})
 			dam.logger.Error("failed to read request")
@@ -52,7 +53,7 @@ func (dam *DummyAM) Run(ctx context.Context, w transport.WriteFn, done chan bool
 
 	})
 
-	srv := &http.Server{Addr: fmt.Sprintf(":%d", dam.conf.Port)}
+	srv := &http.Server{Addr: fmt.Sprintf(":%d", dam.conf.Port), ReadHeaderTimeout: 5 * time.Second}
 	go func(server *http.Server, ctx context.Context) {
 		<-ctx.Done()
 		if err := srv.Shutdown(ctx); err != nil {
