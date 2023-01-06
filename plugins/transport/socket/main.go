@@ -139,7 +139,7 @@ func (s *Socket) initTCPSocket() *net.TCPListener {
 }
 
 func (s *Socket) WriteTCPMsg(w transport.WriteFn, msgBuffer []byte, n int) (int64, error) {
-	var pos int64 = 0
+	var pos int64
 	var length int64
 	reader := bytes.NewReader(msgBuffer[:n])
 	for pos+msgLengthSize < int64(n) {
@@ -222,7 +222,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	switch s.conf.Type {
 	case udp:
 		pc = s.initUDPSocket()
-		if pc == nil {
+		if pc == (*net.UDPConn)(nil) {
 			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: "+s.conf.Type)
 			return
 		}
@@ -253,7 +253,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 		fallthrough
 	default:
 		pc = s.initUnixSocket()
-		if pc == nil {
+		if pc == (*net.UnixConn)(nil) {
 			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: "+s.conf.Type)
 			return
 		}

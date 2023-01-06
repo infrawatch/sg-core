@@ -6,8 +6,8 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 
 	esv7 "github.com/elastic/go-elasticsearch/v7"
@@ -35,7 +35,7 @@ func createTLSConfig(serverName string, certFile string, keyFile string, caFile 
 		return nil, err
 	}
 
-	ca, err := ioutil.ReadFile(caFile)
+	ca, err := os.ReadFile(caFile)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (esc *Client) Connect(cfg *AppConfig) error {
 		return fmt.Errorf("failed to get info from connection: %s", err.Error())
 	}
 	defer res.Body.Close()
-	_, err = io.Copy(ioutil.Discard, res.Body)
+	_, err = io.Copy(io.Discard, res.Body)
 	if err != nil {
 		return fmt.Errorf("failed to discard response body: %s", err.Error())
 	}
@@ -102,7 +102,7 @@ func (esc *Client) IndicesExists(indices []string) (bool, error) {
 		return false, err
 	}
 	defer res.Body.Close()
-	_, err = io.Copy(ioutil.Discard, res.Body)
+	_, err = io.Copy(io.Discard, res.Body)
 	if err != nil {
 		return false, fmt.Errorf("failed to discard response body: %s", err.Error())
 	}
@@ -123,10 +123,10 @@ func (esc *Client) IndicesDelete(indices []string) error {
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusNotFound {
-		body, _ := ioutil.ReadAll(res.Body)
+		body, _ := io.ReadAll(res.Body)
 		return fmt.Errorf("failed to delete indices [%d]: %s", res.StatusCode, body)
 	}
-	_, err = io.Copy(ioutil.Discard, res.Body)
+	_, err = io.Copy(io.Discard, res.Body)
 	if err != nil {
 		return fmt.Errorf("failed to discard response body: %s", err.Error())
 	}
@@ -143,14 +143,14 @@ func (esc *Client) IndicesCreate(indices []string) error {
 		defer res.Body.Close()
 
 		if res.StatusCode != http.StatusOK {
-			body, _ := ioutil.ReadAll(res.Body)
+			body, _ := io.ReadAll(res.Body)
 			msg := string(body)
 			if strings.Contains(msg, "resource_already_exists_exception") {
 				return nil
 			}
 			return fmt.Errorf("failed to create index [%d]: %s", res.StatusCode, msg)
 		}
-		_, err = io.Copy(ioutil.Discard, res.Body)
+		_, err = io.Copy(io.Discard, res.Body)
 		if err != nil {
 			return fmt.Errorf("failed to discard response body: %s", err.Error())
 		}
@@ -168,10 +168,10 @@ func (esc *Client) Index(index string, documents []string, bulk bool) error {
 			}
 			defer res.Body.Close()
 			if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
-				body, _ := ioutil.ReadAll(res.Body)
+				body, _ := io.ReadAll(res.Body)
 				return fmt.Errorf("failed to index document[%d]: %s", res.StatusCode, body)
 			}
-			_, err = io.Copy(ioutil.Discard, res.Body)
+			_, err = io.Copy(io.Discard, res.Body)
 			if err != nil {
 				return fmt.Errorf("failed to discard response body: %s", err.Error())
 			}
@@ -183,10 +183,10 @@ func (esc *Client) Index(index string, documents []string, bulk bool) error {
 		}
 		defer res.Body.Close()
 		if res.StatusCode != http.StatusOK && res.StatusCode != http.StatusCreated {
-			body, _ := ioutil.ReadAll(res.Body)
+			body, _ := io.ReadAll(res.Body)
 			return fmt.Errorf("failed to index document(s)[%d]: %s", res.StatusCode, body)
 		}
-		_, err = io.Copy(ioutil.Discard, res.Body)
+		_, err = io.Copy(io.Discard, res.Body)
 		if err != nil {
 			return fmt.Errorf("failed to discard response body: %s", err.Error())
 		}

@@ -9,11 +9,7 @@ import (
 	"github.com/infrawatch/sg-core/pkg/transport"
 )
 
-const maxBufferSize = 4096
-
 var msgBuffer []byte
-
-var sent bool
 
 var logMessages = []string{
 	`", "host":"localhost", "severity":"7", "facility":"daemon", "tag":"rtkit-daemon[734691]:", "source":"rtkit-daemon", "message":"Supervising 0 threads of 0 processes of 0 users.", "file":"", "cloud": "cloud1", "region": "<region-name>"}`,

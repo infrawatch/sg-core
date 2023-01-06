@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v3
         with:
-          go-version: '1.15'
+          go-version: '1.19'
       - uses: actions/checkout@v3
       #- name: download libraries
       #  run: go mod download
@@ -33,7 +33,7 @@ jobs:
           # Caching conflicts happen in GHA, so just disable for now
           skip-cache: true
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
-          version: v1.33
+          version: v1.50
   unit-tests:
     name: Unit tests
     runs-on: ubuntu-20.04
@@ -78,7 +78,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
         with:
-          go-version: '1.15'
+          go-version: '1.19'
       - name: Verify image builds
         run: |
           docker build --tag infrawatch/sg-core:latest --file build/Dockerfile .

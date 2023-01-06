@@ -3,7 +3,7 @@ package lib
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path"
@@ -113,15 +113,15 @@ zKWpPamfIFoJAwMCDScnagYi2J5V51hZOQSld+7T2gyd7B+JcCOBpHvQeRrEknEV
 )
 
 func TestElasticsearchTLSConf(t *testing.T) {
-	tmpdir, err := ioutil.TempDir(".", "connector_test_tmp")
+	tmpdir, err := os.MkdirTemp(".", "connector_test_tmp")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 	certpath := path.Join(tmpdir, "cert.pem")
-	require.NoError(t, ioutil.WriteFile(certpath, []byte(testCert), 0600))
+	require.NoError(t, os.WriteFile(certpath, []byte(testCert), 0600))
 	keypath := path.Join(tmpdir, "key.pem")
-	require.NoError(t, ioutil.WriteFile(keypath, []byte(testKey), 0600))
+	require.NoError(t, os.WriteFile(keypath, []byte(testKey), 0600))
 	cacrtpath := path.Join(tmpdir, "ca.pem")
-	require.NoError(t, ioutil.WriteFile(cacrtpath, []byte(testCa), 0600))
+	require.NoError(t, os.WriteFile(cacrtpath, []byte(testCa), 0600))
 
 	t.Run("Test insecure connection.", func(t *testing.T) {
 		tlsConf, err := createTLSConfig("overmind.localdomain", certpath, keypath, cacrtpath)
@@ -146,7 +146,7 @@ func curl(t *testing.T, url string, query string) []byte {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	return body
 }
