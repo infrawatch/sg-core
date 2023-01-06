@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
 	"net"
 	"os"
 	"path"
@@ -18,7 +17,7 @@ import (
 const regularBuffSize = 16384
 
 func TestUnixSocketTransport(t *testing.T) {
-	tmpdir, err := ioutil.TempDir(".", "socket_test_tmp")
+	tmpdir, err := os.MkdirTemp(".", "socket_test_tmp")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 
@@ -83,7 +82,7 @@ func TestUnixSocketTransport(t *testing.T) {
 }
 
 func TestUdpSocketTransport(t *testing.T) {
-	tmpdir, err := ioutil.TempDir(".", "socket_test_tmp")
+	tmpdir, err := os.MkdirTemp(".", "socket_test_tmp")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
 

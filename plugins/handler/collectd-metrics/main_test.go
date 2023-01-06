@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var testMsgsInvalid map[string]string = map[string]string{
+var testMsgsInvalid = map[string]string{
 	"Null":                    ``,
 	"Non-list":                `{}`,
 	"Empty":                   `[{}]`,
@@ -22,7 +22,7 @@ var testMsgsInvalid map[string]string = map[string]string{
 	"Inconsistent Dimensions": `[{"values": [2121], "dstypes": ["derive","counter"], "dsnames":["samples"], "host":"localhost","plugin":"metric","type":"type0"}]`,
 }
 
-var testMsgsValid map[string]string = map[string]string{
+var testMsgsValid = map[string]string{
 	"Without Instance Types":    `[{"values": [2121], "dstypes": ["derive"], "dsnames":["samples"], "host":"localhost", "plugin":"metric", "type":"type0"}]`,
 	"With Instance Types":       `[{"values": [2122], "dstypes": ["derive"], "dsnames":["samples"], "host":"localhost", "plugin_instance":"plugin0", "type_instance":"type0", "plugin":"metric", "type":"type666"}]`,
 	"Multi-dimensional Metrics": `[{"values": [2112, 1001], "dstypes": ["derive","counter"], "dsnames":["pamples","wamples"], "host":"localhost", "plugin":"metric", "type":"type0"}]`,
