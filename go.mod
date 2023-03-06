@@ -11,7 +11,7 @@ require (
 	github.com/infrawatch/apputils v0.0.0-20210809211320-3573b2937d14
 	github.com/json-iterator/go v1.1.12
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_golang v1.11.1
 	github.com/stretchr/testify v1.6.1
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	gopkg.in/errgo.v2 v2.1.0
