@@ -23,8 +23,8 @@ var expectedMsgpackMetric = data.Metric{
 	Type:      data.UNTYPED,
 	Interval:  100 * time.Second,
 	Value:     0,
-	LabelKeys: []string{"test_name_0_0_82", "publisher", "type", "counter", "project", "unit", "resource"},
-	LabelVals: []string{"test_resource_id", "localhost.localdomain", "test_name_0_0_82", "test_name_0_0_82", "test_project_id_0", "test_unit", "test_resource_id"},
+	LabelKeys: []string{"test_name_0_0_82", "publisher", "type", "counter", "project", "project_name", "user", "user_name", "unit", "resource"},
+	LabelVals: []string{"test_resource_id", "localhost.localdomain", "test_name_0_0_82", "test_name_0_0_82", "test_project_id_0", "test_project_name_0", "test_user_id", "test_user_name", "test_unit", "test_resource_id"},
 }
 
 // CeilometerMetricTemplate holds correct parsings for comparing against parsed results
@@ -127,7 +127,9 @@ func TestGenLabelsSizes(t *testing.T) {
 			CounterUnit:   "GB",
 			CounterVolume: 2,
 			UserID:        "user_id",
+			UserName:      "user_name",
 			ProjectID:     "db3fce7b7aeb4109bb2794f9337e68fa",
+			ProjectName:   "test_project",
 			ResourceID:    "ed8102c3-923a-4f5a-9a24-d59afc174755",
 			Timestamp:     "2021-03-30T15:20:19.891893",
 		}
@@ -144,8 +146,8 @@ func TestGenLabelsSizes(t *testing.T) {
 			}
 		}
 
-		// should have 7 labels
-		assert.Equal(t, len(labelKeys), 7)
+		// should have 10 labels
+		assert.Equal(t, len(labelKeys), 10)
 	})
 
 	t.Run("exhaustive labels", func(t *testing.T) {
@@ -156,7 +158,9 @@ func TestGenLabelsSizes(t *testing.T) {
 			CounterUnit:   "GB",
 			CounterVolume: 2,
 			UserID:        "user_id",
+			UserName:      "user_name",
 			ProjectID:     "db3fce7b7aeb4109bb2794f9337e68fa",
+			ProjectName:   "test_project",
 			ResourceID:    "ed8102c3-923a-4f5a-9a24-d59afc174755",
 			Timestamp:     "2021-03-30T15:20:19.891893",
 			ResourceMetadata: ceilometer.Metadata{
@@ -170,8 +174,8 @@ func TestGenLabelsSizes(t *testing.T) {
 		assert.Equal(t, len(labelKeys), len(labelVals))
 
 		fmt.Println(labelKeys)
-		// should have 8 labels
-		assert.Equal(t, len(labelKeys), 8)
+		// should have 11 labels
+		assert.Equal(t, len(labelKeys), 11)
 
 	})
 

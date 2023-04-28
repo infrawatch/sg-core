@@ -28,7 +28,9 @@ type Metric struct {
 	CounterUnit      string  `json:"counter_unit" msgpack:"counter_unit"`
 	CounterVolume    float64 `json:"counter_volume" msgpack:"counter_volume"`
 	UserID           string  `json:"user_id" msgpack:"user_id"`
+	UserName         string  `json:"user_name" msgpack:"user_name"`
 	ProjectID        string  `json:"project_id" msgpack:"project_id"`
+	ProjectName      string  `json:"project_name" msgpack:"project_name"`
 	ResourceID       string  `json:"resource_id" msgpack:"resource_id"`
 	Timestamp        string
 	ResourceMetadata Metadata `json:"resource_metadata"`

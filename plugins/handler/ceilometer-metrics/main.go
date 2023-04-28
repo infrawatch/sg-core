@@ -184,8 +184,8 @@ func genName(cNameShards []string) string {
 }
 
 func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]string, []string) {
-	labelKeys := make([]string, 8) //  TODO: set to persistent var
-	labelVals := make([]string, 8)
+	labelKeys := make([]string, 11) //  TODO: set to persistent var
+	labelVals := make([]string, 11)
 	plugin := cNameShards[0]
 	pluginVal := m.ResourceID
 	if len(cNameShards) > 2 {
@@ -220,6 +220,24 @@ func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]s
 	if m.ProjectID != "" {
 		labelKeys[index] = "project"
 		labelVals[index] = m.ProjectID
+		index++
+	}
+
+	if m.ProjectName != "" {
+		labelKeys[index] = "project_name"
+		labelVals[index] = m.ProjectName
+		index++
+	}
+
+	if m.UserID != "" {
+		labelKeys[index] = "user"
+		labelVals[index] = m.UserID
+		index++
+	}
+
+	if m.UserName != "" {
+		labelKeys[index] = "user_name"
+		labelVals[index] = m.UserName
 		index++
 	}
 
