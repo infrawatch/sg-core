@@ -23,8 +23,8 @@ var expectedMsgpackMetric = data.Metric{
 	Type:      data.UNTYPED,
 	Interval:  100 * time.Second,
 	Value:     0,
-	LabelKeys: []string{"test_name_0_0_82", "publisher", "type", "counter", "project", "project_name", "user", "user_name", "unit", "resource"},
-	LabelVals: []string{"test_resource_id", "localhost.localdomain", "test_name_0_0_82", "test_name_0_0_82", "test_project_id_0", "test_project_name_0", "test_user_id", "test_user_name", "test_unit", "test_resource_id"},
+	LabelKeys: []string{"test_name_0_0_82", "publisher", "type", "counter", "project", "project_name", "user", "user_name", "unit", "resource", "resource_name"},
+	LabelVals: []string{"test_resource_id", "localhost.localdomain", "test_name_0_0_82", "test_name_0_0_82", "test_project_id_0", "test_project_name_0", "test_user_id", "test_user_name", "test_unit", "test_resource_id", "test_display_name:test_name"},
 }
 
 // CeilometerMetricTemplate holds correct parsings for comparing against parsed results
