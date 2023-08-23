@@ -70,32 +70,78 @@ char *RSYSLOG_MSG1 = "{\"@timestamp\":\"";
 char *RSYSLOG_MSG2 = "\", \"host\":\"";
 char *RSYSLOG_MSG3 = "\", \"severity\":\"5\", \"facility\":\"user\", \"tag\":\"tag1\", \"source\":\"some-source\", \"message\":\"a log message from generator'\", \"file\":\"\", \"cloud\": \"cloud1\", \"region\": \"some-region\"}";
 
+char *CEIL_MSG1 =
+    "{\"request\": {\"oslo.version\": \"2.0\", \"oslo.message\": \"{\\\"message_id\\\": \\\"111c1c6e-21b8-4113-1a21-d10121214113\\\", \\\"publisher_id\\\": \\\"telemetry.publisher.somethingk.cloud.internal\\\", \\\"event_type\\\": \\\"metering\\\", \\\"priority\\\": \\\"SAMPLE\\\", \\\"payload\\\": [";
+char *CEIL_MSG2 =
+    "{\\\"source\\\": \\\"openstack\\\", \\\"counter_name\\\": \\\"some_counter_name\\\", \\\"counter_type\\\": \\\"delta\\\", \\\"counter_unit\\\": \\\"user\\\", \\\"counter_volume\\\": 1, \\\"user_id\\\": \\\"11118c1fa1d019019b118c1901e41151\\\", \\\"project_id\\\": \\\"None\\\", \\\"resource_id\\\": \\\"161b1cd1a6d1491e9b11811918e41151\\\", \\\"timestamp\\\": \\\"";
+char *CEIL_MSG3 =
+    "\\\", \\\"resource_metadata\\\": {\\\"host\\\": \\\"compute-0.redhat.local\\\", \\\"flavor_id\\\": \\\"71cd0af1-afd3-4ee4-b918-cec05bf89578\\\", \\\"flavor_name\\\": \\\"m1.tiny\\\", \\\"display_name\\\": \\\"new-instance\\\", \\\"image_ref\\\": \\\"45333e02-643d-4f4f-a817-065060753983\\\", \\\"launched_at\\\": \\\"2020-09-14T16:12:49.839122\\\", \\\"created_at\\\": \\\"2020-09-14 16:12:39+00:00\\\"}, \\\"message_id\\\": \\\"22a22d22-0292-12e2-8232-c2a2e02d52a5\\\", \\\"monotonic_time\\\": \\\"None\\\", \\\"message_signature\\\": \\\"6322324324323b2d32832932132432c32732e32e323d2f3732d32e3232c32323\\\"}";
+char *CEIL_MSG4 = "], \\\"timestamp\\\": \\\"";
+char *CEIL_MSG5 = "\\\"}\"}, \"context\": {}}";
+
+
 inline static char *msg_cpy(char *p, char *end, char *msg, int msg_len) {
-	long remain = end - p + 1;
-	if ( (p+msg_len) > end) { 
-		p = '\0';
-		return (char *)NULL; 
-	} 
-	p = memccpy(p, msg, '\0', remain); 
-	return --p;
+    long remain = end - p + 1;
+    if ( (p+msg_len) > end) {
+        p = '\0';
+        return (char *)NULL;
+    }
+    p = memccpy(p, msg, '\0', remain);
+    return --p;
+}
+
+static char *build_ceil_mesg(app_data_t *app, char *time_buf) {
+    char *end = &app->MSG_BUFFER[sizeof(app->MSG_BUFFER) - 1];
+    char *p = app->MSG_BUFFER;
+
+    if ( ( p = msg_cpy(p, end, CEIL_MSG1, sizeof(CEIL_MSG1) ) ) == NULL )
+        return NULL;
+
+    for (int i = 0; i < app->num_cd_per_mesg;) {
+        if ( ( p = msg_cpy(p, end, CEIL_MSG2, sizeof(CEIL_MSG2) ) ) == NULL )
+            return NULL;
+        if ( ( p = msg_cpy(p, end, time_buf, sizeof(time_buf) ) ) == NULL )
+            return NULL;
+        if ( ( p = msg_cpy(p, end, CEIL_MSG3, sizeof(CEIL_MSG3) ) ) == NULL )
+            return NULL;
+
+        if (++i < app->num_cd_per_mesg) {
+            *p++ = ',';
+        }
+
+        app->curr_host++;
+        if (app->curr_host == (app->host_list_len - 1))
+            app->curr_host = 0;
+    }
+
+    if ( ( p = msg_cpy(p, end, CEIL_MSG4, sizeof(CEIL_MSG4) ) ) == NULL )
+        return NULL;
+    if ( ( p = msg_cpy(p, end, time_buf, sizeof(time_buf) ) ) == NULL )
+        return NULL;
+    if ( ( p = msg_cpy(p, end, CEIL_MSG5, sizeof(CEIL_MSG5) ) ) == NULL )
+        return NULL;
+
+    *p = '\0';
+
+    return app->MSG_BUFFER;
 }
 
 static char *build_log_mesg(app_data_t *app, char *time_buf) {
-	char *end = &app->MSG_BUFFER[sizeof(app->MSG_BUFFER) - 1];
+    char *end = &app->MSG_BUFFER[sizeof(app->MSG_BUFFER) - 1];
     char *p = app->MSG_BUFFER;
 
     for (int i = 0; i < app->num_cd_per_mesg;) {
-		char *hostname = app->host_list[app->curr_host].hostname;
+        char *hostname = app->host_list[app->curr_host].hostname;
         if ( ( p = msg_cpy(p, end, RSYSLOG_MSG1, sizeof(RSYSLOG_MSG1) ) ) == NULL )
-			return NULL;
+            return NULL;
         if ( ( p = msg_cpy(p, end, time_buf, sizeof(time_buf) ) ) == NULL )
-			return NULL;
+            return NULL;
         if ( ( p = msg_cpy(p, end, RSYSLOG_MSG2, sizeof(RSYSLOG_MSG2) ) ) == NULL )
-			return NULL;
+            return NULL;
         if ( ( p = msg_cpy(p, end, hostname, strlen(hostname) ) ) == NULL )
-			return NULL;
+            return NULL;
         if ( ( p = msg_cpy(p, end, RSYSLOG_MSG3, sizeof(RSYSLOG_MSG3) ) ) == NULL )
-			return NULL;
+            return NULL;
         app->curr_host++;
         if (app->curr_host == (app->host_list_len - 1))
             app->curr_host = 0;
@@ -108,7 +154,7 @@ static char *build_log_mesg(app_data_t *app, char *time_buf) {
 
 
 static char *build_metric_mesg(app_data_t *app, char *time_buf) {
-	char *end = &app->MSG_BUFFER[sizeof(app->MSG_BUFFER) - 1];
+    char *end = &app->MSG_BUFFER[sizeof(app->MSG_BUFFER) - 1];
     char *p = app->MSG_BUFFER;
     char val_buff[20];
 
@@ -116,27 +162,27 @@ static char *build_metric_mesg(app_data_t *app, char *time_buf) {
 
     for (int i = 0; i < app->num_cd_per_mesg;) {
         sprintf(val_buff, "%ld", app->host_list[app->curr_host].count++);
-		char *hostname = app->host_list[app->curr_host].hostname;
-		char *metric = app->host_list[app->curr_host].metric;
+        char *hostname = app->host_list[app->curr_host].hostname;
+        char *metric = app->host_list[app->curr_host].metric;
 
         if ( ( p = msg_cpy(p, end, CD_MSG1, sizeof(CD_MSG1) ) ) == NULL )
-			return NULL;
+            return NULL;
         if ( ( p = msg_cpy(p, end, val_buff, sizeof(val_buff) ) ) == NULL )
-			return NULL;
+            return NULL;
         if ( ( p = msg_cpy(p, end, CD_MSG2, sizeof(CD_MSG2) ) ) == NULL )
-			return NULL;
+            return NULL;
         if ( ( p = msg_cpy(p, end, time_buf, sizeof(time_buf) ) ) == NULL )
-			return NULL;
+            return NULL;
         if ( ( p = msg_cpy(p, end, CD_MSG3, sizeof(CD_MSG3) ) ) == NULL )
-			return NULL;
+            return NULL;
         if ( ( p = msg_cpy(p, end, hostname, strlen(hostname) ) ) == NULL )
-			return NULL;
+            return NULL;
         if ( ( p = msg_cpy(p, end, CD_MSG4, sizeof(CD_MSG4) ) ) == NULL )
-			return NULL;
+            return NULL;
         if ( ( p = msg_cpy(p, end, metric, strlen(metric) ) ) == NULL )
-			return NULL;
+            return NULL;
         if ( ( p = msg_cpy(p, end, CD_MSG5, sizeof(CD_MSG5) ) ) == NULL )
-			return NULL;
+            return NULL;
 
         if (++i < app->num_cd_per_mesg) {
             *p++ = ',';
@@ -156,14 +202,16 @@ static char *build_metric_mesg(app_data_t *app, char *time_buf) {
 static void gen_mesg(pn_rwbytes_t *buf, app_data_t *app, char *time_buf) {
     if (app->logs) {
         buf->start = build_log_mesg(app, time_buf);
+    } else if (app->ceilometer) {
+        buf->start = build_ceil_mesg(app, time_buf);
     } else {
         buf->start = build_metric_mesg(app, time_buf);
     }
 
-	if (buf->start != NULL)
-		buf->size = strlen(buf->start);
-	else
-		buf->size = 0;
+    if (buf->start != NULL)
+        buf->size = strlen(buf->start);
+    else
+        buf->size = 0;
 }
 
 /* Create a message with a map { "sequence" : number } encode it and return the
@@ -254,7 +302,7 @@ static bool send_burst(app_data_t *app, pn_event_t *event) {
             break;
         }
     }
-    
+
     if (app->sleep_usec)
        usleep(app->sleep_usec);
 

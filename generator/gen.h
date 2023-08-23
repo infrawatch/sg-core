@@ -28,6 +28,7 @@ typedef struct  {
     int num_metrics;
     int metrics_per_second;
     int logs;
+    int ceilometer;
     
     pthread_t amqp_snd_th;
 
