@@ -107,6 +107,7 @@ int main(int argc, char **argv) {
     app.presettled = false;
     app.logs = false;
     app.ceilometer = false;
+    app.collectd = true;
 
     int num_threads = 1;
 
@@ -150,8 +151,7 @@ int main(int argc, char **argv) {
                 break;
             case 'g':
                 if (!strcmp(optarg, "collectd")) {
-                    // used by default
-                    break;
+					app.collectd = true;
                 } else if (!strcmp(optarg, "ceilometer")) {
                     app.ceilometer = true;
                 } else if (!strcmp(optarg, "rsyslog")) {

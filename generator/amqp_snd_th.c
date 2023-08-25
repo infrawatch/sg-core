@@ -204,9 +204,11 @@ static void gen_mesg(pn_rwbytes_t *buf, app_data_t *app, char *time_buf) {
         buf->start = build_log_mesg(app, time_buf);
     } else if (app->ceilometer) {
         buf->start = build_ceil_mesg(app, time_buf);
-    } else {
+    } else if (app->collectd){
         buf->start = build_metric_mesg(app, time_buf);
-    }
+    } else {
+		buf->start = NULL;
+	}
 
     if (buf->start != NULL)
         buf->size = strlen(buf->start);
