@@ -14,7 +14,7 @@ base=$(pwd)
 GOCMD=${GOCMD:-"go"}
 PLUGIN_DIR=${PLUGIN_DIR:-"/tmp/plugins/"}
 CONTAINER_BUILD=${CONTAINER_BUILD:-false}
-BUILD_ARGS=${BUILD_ARGS:-'-buildvcs=false'}
+BUILD_ARGS=${BUILD_ARGS:-''}
 
 PRODUCTION_BUILD=${PRODUCTION_BUILD:-false}
 if $PRODUCTION_BUILD; then

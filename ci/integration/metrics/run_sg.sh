@@ -18,6 +18,8 @@ go1.19 download
 
 # install sg-core and start sg-core
 mkdir -p /usr/lib64/sg-core
-PLUGIN_DIR=/usr/lib64/sg-core/ GOCMD=go1.19 ./build.sh
+PLUGIN_DIR=/usr/lib64/sg-core/ GOCMD=go1.19 BUILD_ARGS=-buildvcs=false ./build.sh
+
+ls /usr/lib64/sg-core/
 
 ./sg-core -config ./ci/integration/metrics/sg_config.yaml
