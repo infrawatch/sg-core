@@ -171,7 +171,7 @@ jobs:
             $RSYSLOG_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_rsyslog.sh
       - name: Wait for services to start successfuly
         run: |
-          timeout=180
+          timeout=240
           echo "======================= rsyslog ======================="
           rsyslog_wait=0
           while [[ $(docker exec qdr qdstat -b 127.0.0.1:5666 -a | grep rsyslog/logs | awk '{print $8}') -le 0 ]]
