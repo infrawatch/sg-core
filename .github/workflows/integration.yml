@@ -104,13 +104,14 @@ jobs:
           sleep 360
           echo "=========================== qdr =========================" && \
           docker exec qdr qdstat -b 127.0.0.1:5666 -a
+          docker logs qdr
           echo "========================= sg-core =======================" && \
           docker logs sgcore
           echo "======================== collectd =======================" && \
           cat /var/log/collectd.log
           echo "========================= ceilometer ====================" && \
           sudo journalctl -xu devstack@ceilometer-anotification.service
-          echo "========================= sg-core =======================" && \
+          echo "======================== prometheus =====================" && \
           docker logs prometheus
       - name: Validate metrics processing
         run: |
