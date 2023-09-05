@@ -227,7 +227,7 @@ jobs:
       RSYSLOG_VOLUME: "--volume ${{ github.workspace }}/ci/service_configs/rsyslog/rsyslog_config.conf:/etc/rsyslog.d/integration.conf:z"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       # start data store services
       - name: Start Elasticsearch service
         run: |
