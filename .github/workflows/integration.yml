@@ -178,7 +178,7 @@ jobs:
           echo pseudo_vhost=true | crudini --merge /etc/ceilometer/ceilometer.conf oslo_messaging_amqp
           echo rpc_address_prefix="" | crudini --merge /etc/ceilometer/ceilometer.conf oslo_messaging_amqp
           echo notify_address_prefix="" | crudini --merge /etc/ceilometer/ceilometer.conf oslo_messaging_amqp
-          cp ci/integration/metrics/ceilometer/*pipeline.yaml /etc/ceilometer/.
+          cp ci/integration/metrics/ceilometer/bridge/*pipeline.yaml /etc/ceilometer/.
           cat /etc/ceilometer/*
           sudo pip install pyngus
           sudo systemctl restart devstack@ceilometer-anotification.service
@@ -186,7 +186,82 @@ jobs:
         run: |
           docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME -e OPSTOOLS_REPO \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
-            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/ceilometer/run_sg_with_bridge.sh
+            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/ceilometer/bridge/run_sg.sh
+      - name: Run Prometheus to store metrics
+        run: |
+          docker run --name=prometheus -d --network host \
+          --volume ${{ github.workspace }}/ci/integration/metrics/prometheus.yml:/etc/prometheus/prometheus.yml:ro \
+          $PROMETHEUS_IMAGE
+      - name: Debug output
+        run: |
+          sleep 360
+          echo "=========================== qdr =========================" && \
+          docker exec qdr qdstat -b 127.0.0.1:5666 -a
+          docker logs qdr
+          echo "========================= sg-core =======================" && \
+          docker logs sgcore
+          echo "========================= ceilometer ====================" && \
+          sudo journalctl -xu devstack@ceilometer-anotification.service
+          echo "======================== prometheus =====================" && \
+          docker logs prometheus
+      - name: Validate metrics processing
+        run: |
+          docker run --name=validate -uroot --network host \
+            --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
+            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/ceilometer/run_validation.sh
+#-------------------------------------------------------------------------------
+  ceilometer-metrics-tcp:
+    name: "[metrics] transport: socket(tcp); handler: ceilometer-metrics; application: prometheus"
+    runs-on: ubuntu-22.04
+    env:
+      PROMETHEUS_IMAGE: prom/prometheus:latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Prepare environment
+        run: |
+          mkdir -p /opt/stack/
+          sudo setfacl -Rdm u::7,g::0,o:0 /opt/stack
+      - name: Prepare environment for mysql-server installation # https://stackoverflow.com/a/66026366
+        run: |
+          sudo apt-get -f install -o Dpkg::Options::="--force-overwrite"
+          sudo apt-get purge mysql\*
+          sudo rm -rf /var/lib/mysql
+          sudo rm -rf /etc/mysql
+          sudo dpkg -l | grep -i mysql
+          sudo apt-get clean
+      - name: Prepare environment for postgres-server installation
+        run: |
+          sudo apt remove postgresql-client-common
+          sudo apt install postgresql-client-common=238
+          sudo apt install postgresql-common
+          sudo python -m pip install --upgrade pip
+          sudo python -m pip install --upgrade virtualenv
+      - name: Install devstack
+        run: |
+          SOURCE=$(pwd)
+          git clone http://github.com/openstack/devstack /opt/stack/devstack
+          pushd /opt/stack/devstack
+          cp $SOURCE/ci/integration/metrics/local.conf .
+          sudo apt-get update
+          ./stack.sh
+          popd
+      - name: Set Ceilometer pipelines to TCP output and restart notification agent
+        run: |
+          sudo apt-get install -y crudini
+          echo addressing_mode="dynamic" | crudini --merge /etc/ceilometer/ceilometer.conf oslo_messaging_amqp
+          echo pseudo_vhost=true | crudini --merge /etc/ceilometer/ceilometer.conf oslo_messaging_amqp
+          echo rpc_address_prefix="" | crudini --merge /etc/ceilometer/ceilometer.conf oslo_messaging_amqp
+          echo notify_address_prefix="" | crudini --merge /etc/ceilometer/ceilometer.conf oslo_messaging_amqp
+          cp ci/integration/metrics/ceilometer/tcp/*pipeline.yaml /etc/ceilometer/.
+          cat /etc/ceilometer/*
+          sudo pip install pyngus
+          sudo systemctl restart devstack@ceilometer-anotification.service
+      - name: Run sg-core to process metrics
+        run: |
+          docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME -e OPSTOOLS_REPO \
+            --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
+            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/ceilometer/tcp/run_sg.sh
       - name: Run Prometheus to store metrics
         run: |
           docker run --name=prometheus -d --network host \

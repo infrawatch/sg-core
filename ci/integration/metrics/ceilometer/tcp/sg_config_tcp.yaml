@@ -7,6 +7,7 @@ transports:
   - name: socket
     config:
       type: tcp
+      socketaddr: 127.0.0.1:4242
     handlers:
       - name: ceilometer-metrics
 
