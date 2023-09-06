@@ -10,6 +10,8 @@ transports:
       socketaddr: 127.0.0.1:4242
     handlers:
       - name: ceilometer-metrics
+        config:
+          source: tcp
 
 applications:
   - name: prometheus

@@ -20,4 +20,4 @@ go1.19 download
 mkdir -p /usr/lib64/sg-core
 PLUGIN_DIR=/usr/lib64/sg-core/ GOCMD=go1.19 BUILD_ARGS=-buildvcs=false ./build.sh
 
-./sg-core -config ./ci/integration/metrics/sg_config_collectd_bridge.yaml
+./sg-core -config ./ci/integration/metrics/collectd/sg_config.yaml
