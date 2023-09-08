@@ -9,12 +9,6 @@ transports:
       path: /tmp/sg-bridge/test-socket
     handlers:
       - name: collectd-metrics
-  - name: amqp1
-    config:
-      uri: amqp://127.0.0.1:5666
-      channel: anycast/ceilometer/metering.sample
-    handlers:
-      - name: ceilometer-metrics
 
 applications:
   - name: prometheus
