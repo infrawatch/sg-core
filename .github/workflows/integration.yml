@@ -70,7 +70,7 @@ jobs:
           docker run --name=sgbridge --network host $BRIDGE_VOLUME -d \
             $BRIDGE_IMAGE --amqp_url amqp://localhost:5666/$QDR_CHANNEL \
             --gw_unix=$BRIDGE_SOCKET
-      - name: Start sg-bridge for with same branch
+      - name: Start sg-bridge from same branch
         if: steps.bridge_branch.outcome == 'success'
         run: |
           docker run --name=sgbridge --network host $BRIDGE_VOLUME -d -uroot \
@@ -164,7 +164,7 @@ jobs:
           docker run --name=sgbridge --network host $BRIDGE_VOLUME -d \
             $BRIDGE_IMAGE --amqp_url amqp://localhost:5666/$QDR_CHANNEL \
             --gw_unix=$BRIDGE_SOCKET
-      - name: Start sg-bridge for with same branch
+      - name: Start sg-bridge from same branch
         if: steps.bridge_branch.outcome == 'success'
         run: |
           docker run --name=sgbridge --network host $BRIDGE_VOLUME -d -uroot \
