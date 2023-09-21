@@ -36,7 +36,7 @@ extern int batch_count;
 static void usage(void) {
     fprintf(stdout,
             "%s: gen [OPTIONS] amqp_ip amqp_port\n\n"
-            "Generate Collectd or Rsyslog traffic on AMQP...\n\n"
+            "Generate Collectd, Ceilometer or Rsyslog traffic on AMQP...\n\n"
             "positional args:\n"
             " amqp_ip           ip address of QDR\n"
             " amqp_port         port number of the QDR\n"
@@ -45,13 +45,13 @@ static void usage(void) {
             " -i container_id   should be unique (defaults to sa-RND)\n"
             " -a amqp_address   AMQP address for endpoint (defaults to collectd/telemetry)\n"
             " -c count          message count to stop (defaults to 0 for continuous)\n"
-            " -n cd_per_mesg    number of collectd or rsyslog messages per AMQP message (defaults to 1)\n"
+            " -n cd_per_mesg    number of messages per AMQP message (defaults to 1)\n"
             " -o num_hosts      number of hosts to simulate (defaults to 1)\n"
             " -m messages_hosts number of metrics or logs per hosts to simulate (defaults to 100)\n"
             " -t num_threads    number of independent send pthreads (defaults to 1)\n"
             " -b burst_size     maximum number of AMQP msgs to send per credit interval (defaults to # of credits)\n"
             " -s sleep_usec     number of usec to sleep per credit interval (defaults to 0 for no sleep)\n"
-            " -l                generate rsyslog log messages (generates collectd metrics by default)\n"
+            " -g message_type   choose between collectd, ceilometer or rsyslog message type (generates collectd metrics by default)\n"
             " -v                verbose, print extra info (additional -v increases verbosity)\n"
             " -h                show help\n\n"
             "\n",
@@ -106,10 +106,12 @@ int main(int argc, char **argv) {
     app.num_metrics = 100;
     app.presettled = false;
     app.logs = false;
+    app.ceilometer = false;
+    app.collectd = true;
 
     int num_threads = 1;
 
-    while ((opt = getopt(argc, argv, "i:a:c:hvb:s:n:o:m:pt:l")) != -1) {
+    while ((opt = getopt(argc, argv, "i:a:c:hvb:s:n:o:m:pt:g:")) != -1) {
         switch (opt) {
             case 'i':
                 sprintf(cid_buf, optarg);
@@ -147,8 +149,17 @@ int main(int argc, char **argv) {
             case 'n':
                 app.num_cd_per_mesg = atoi(optarg);
                 break;
-            case 'l':
-                app.logs = true;
+            case 'g':
+                if (!strcmp(optarg, "collectd")) {
+					app.collectd = true;
+                } else if (!strcmp(optarg, "ceilometer")) {
+                    app.ceilometer = true;
+                } else if (!strcmp(optarg, "rsyslog")) {
+                    app.logs = true;
+                } else {
+                    usage();
+                    return 1;
+                }
                 break;
             default:
                 usage();
