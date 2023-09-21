@@ -184,8 +184,8 @@ func genName(cNameShards []string) string {
 }
 
 func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]string, []string) {
-	labelKeys := make([]string, 8) //  TODO: set to persistent var
-	labelVals := make([]string, 8)
+	labelKeys := make([]string, 12) //  TODO: set to persistent var
+	labelVals := make([]string, 12)
 	plugin := cNameShards[0]
 	pluginVal := m.ResourceID
 	if len(cNameShards) > 2 {
@@ -223,6 +223,24 @@ func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]s
 		index++
 	}
 
+	if m.ProjectName != "" {
+		labelKeys[index] = "project_name"
+		labelVals[index] = m.ProjectName
+		index++
+	}
+
+	if m.UserID != "" {
+		labelKeys[index] = "user"
+		labelVals[index] = m.UserID
+		index++
+	}
+
+	if m.UserName != "" {
+		labelKeys[index] = "user_name"
+		labelVals[index] = m.UserName
+		index++
+	}
+
 	if m.CounterUnit != "" {
 		labelKeys[index] = "unit"
 		labelVals[index] = m.CounterUnit
@@ -238,6 +256,25 @@ func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]s
 	if m.ResourceMetadata.Host != "" {
 		labelKeys[index] = "vm_instance"
 		labelVals[index] = m.ResourceMetadata.Host
+		index++
+	}
+
+	if m.ResourceMetadata.DisplayName != "" {
+		labelKeys[index] = "resource_name"
+		labelVals[index] = m.ResourceMetadata.DisplayName
+		// index++
+	}
+
+	if m.ResourceMetadata.Name != "" {
+		labelKeys[index] = "resource_name"
+		if labelVals[index] != "" {
+			// Use the ":" delimiter when DisplayName is not None
+			labelVals[index] = labelVals[index] + ":" + m.ResourceMetadata.Name
+		} else {
+			labelVals[index] = m.ResourceMetadata.Name
+		}
+	}
+	if labelVals[index] != "" {
 		index++
 	}
 
