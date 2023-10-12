@@ -18,7 +18,7 @@ function configure_sg-core {
 }
 
 function init_sg-core {
-	$CONTAINER_EXECUTABLE run -v $SG_CORE_CONF:/etc/sg-core.conf.yaml -n host --name sg-core $SG_CORE_CONTAINER_IMAGE
+	$CONTAINER_EXECUTABLE run -v $SG_CORE_CONF:/etc/sg-core.conf.yaml --network host --name sg-core -d $SG_CORE_CONTAINER_IMAGE
 }
 
 # check for service enabled
