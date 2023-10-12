@@ -1,15 +1,9 @@
-if is_ubuntu; then
-	CONTAINER_EXECUTABLE="docker"
-else
-	CONTAINER_EXECUTABLE="podman"
-fi
-
 function preinstall_sg-core {
-	install_package $CONTAINER_EXECUTABLE
+	install_package $SG_CORE_CONTAINER_EXECUTABLE
 }
 
 function install_sg-core {
-	$CONTAINER_EXECUTABLE pull $SG_CORE_CONTAINER_IMAGE
+	$SG_CORE_CONTAINER_EXECUTABLE pull $SG_CORE_CONTAINER_IMAGE
 }
 
 function configure_sg-core {
@@ -18,7 +12,7 @@ function configure_sg-core {
 }
 
 function init_sg-core {
-	$CONTAINER_EXECUTABLE run -v $SG_CORE_CONF:/etc/sg-core.conf.yaml --network host --name sg-core -d $SG_CORE_CONTAINER_IMAGE
+	$SG_CORE_CONTAINER_EXECUTABLE run -v $SG_CORE_CONF:/etc/sg-core.conf.yaml --network host --name sg-core -d $SG_CORE_CONTAINER_IMAGE
 }
 
 # check for service enabled
@@ -46,12 +40,12 @@ if is_service_enabled sg-core; then
     fi
 
     if [[ "$1" == "unstack" ]]; then
-		$CONTAINER_EXECUTABLE stop sg-core
-		$CONTAINER_EXECUTABLE rm sg-core
+		$SG_CORE_CONTAINER_EXECUTABLE stop sg-core
+		$SG_CORE_CONTAINER_EXECUTABLE rm sg-core
     fi
 
     if [[ "$1" == "clean" ]]; then
-		$CONTAINER_EXECUTABLE rmi sg-core:latest
+		$SG_CORE_CONTAINER_EXECUTABLE rmi sg-core:latest
     fi
 fi
 
