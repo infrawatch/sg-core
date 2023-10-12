@@ -3,7 +3,7 @@ plugin_requires sg-core ceilometer
 enable_service sg-core
 enable_service ceilometer
 
-SG_CORE_DIR=sg-core/$DEST
+SG_CORE_DIR=$DEST/sg-core
 SG_CORE_CONF_DIR=/etc/sg-core
 SG_CORE_CONF=$SG_CORE_CONF_DIR/sg-core.conf.yaml
 
