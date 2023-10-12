@@ -1,0 +1,12 @@
+define_plugin sg-core
+plugin_requires sg-core ceilometer
+enable_service sg-core
+enable_service ceilometer
+
+SG_CORE_DIR=$DEST
+SG_CORE_CONF_DIR=/etd/sg-core
+SG_CORE_CONF=$SG_CORE_CONF_DIR/sg-core.conf.yaml
+
+SG_CORE_CONTAINER_REPOSITORY=${SG_CORE_CONTAINER_REPOSITORY:-quay.io/infrawatch/sg-core}
+SG_CORE_CONTAINER_TAG=${SG_CORE_CONTAINER_TAG:-latest}
+SG_CORE_CONTAINER_IMAGE=$SG_CORE_CONTAINER_REPOSITORY:$SG_CORE_CONTAINER_TAG
