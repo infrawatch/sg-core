@@ -13,6 +13,7 @@ function install_sg-core {
 }
 
 function configure_sg-core {
+	sudo mkdir -p `dirname $SG_CORE_CONF`
 	sudo cp $SG_CORE_DIR/devstack/sg-core.conf.yaml $SG_CORE_CONF
 }
 
