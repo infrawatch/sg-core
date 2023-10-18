@@ -1,0 +1,20 @@
+---
+
+pluginDir: /usr/lib64/sg-core
+logLevel: debug
+
+transports:
+  - name: socket
+    config:
+      type: tcp
+      socketaddr: 127.0.0.1:4242
+    handlers:
+      - name: ceilometer-metrics
+        config:
+          source: tcp
+
+applications:
+  - name: prometheus
+    config:
+        host: 0.0.0.0
+        port: 3000
