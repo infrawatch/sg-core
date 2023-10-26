@@ -163,7 +163,7 @@ func SetTransportHandlers(name string, handlerBlocks []struct {
 
 		err = h.Config(configBlob)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed configuring handler plugin '%s'", block.Name)
 		}
 
 		handlers[name] = append(handlers[name], h)

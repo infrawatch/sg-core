@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/infrawatch/sg-core/pkg/bus"
+	"github.com/infrawatch/sg-core/pkg/config"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/infrawatch/sg-core/pkg/handler"
 	"github.com/infrawatch/sg-core/plugins/handler/ceilometer-metrics/pkg/ceilometer"
@@ -29,6 +32,14 @@ type ceilometerMetricHandler struct {
 	totalMetricsDecoded   uint64
 	totalDecodeErrors     uint64
 	totalMessagesReceived uint64
+	config                ceilometerConfig
+}
+
+// The tcp and udp ceilometer publishers send the data in a message pack format.
+// The messaging ceilometer publisher sends the data in a JSON format.
+// That's the reason why we need to know the source.
+type ceilometerConfig struct {
+	Source string `yaml:"source"`
 }
 
 func (c *ceilometerMetricHandler) Run(ctx context.Context, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) {
@@ -71,7 +82,18 @@ func (c *ceilometerMetricHandler) Run(ctx context.Context, mpf bus.MetricPublish
 
 func (c *ceilometerMetricHandler) Handle(blob []byte, reportErrs bool, mpf bus.MetricPublishFunc, epf bus.EventPublishFunc) error {
 	c.totalMessagesReceived++
-	msg, err := c.ceilo.ParseInputJSON(blob)
+	var msg *ceilometer.Message
+	var err error
+	switch c.config.Source {
+	case "tcp":
+		fallthrough
+	case "udp":
+		msg, err = c.ceilo.ParseInputMsgPack(blob)
+	case "unix":
+		fallthrough
+	default:
+		msg, err = c.ceilo.ParseInputJSON(blob)
+	}
 	if err != nil {
 		return err
 	}
@@ -162,8 +184,8 @@ func genName(cNameShards []string) string {
 }
 
 func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]string, []string) {
-	labelKeys := make([]string, 8) //  TODO: set to persistent var
-	labelVals := make([]string, 8)
+	labelKeys := make([]string, 12) //  TODO: set to persistent var
+	labelVals := make([]string, 12)
 	plugin := cNameShards[0]
 	pluginVal := m.ResourceID
 	if len(cNameShards) > 2 {
@@ -201,6 +223,24 @@ func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]s
 		index++
 	}
 
+	if m.ProjectName != "" {
+		labelKeys[index] = "project_name"
+		labelVals[index] = m.ProjectName
+		index++
+	}
+
+	if m.UserID != "" {
+		labelKeys[index] = "user"
+		labelVals[index] = m.UserID
+		index++
+	}
+
+	if m.UserName != "" {
+		labelKeys[index] = "user_name"
+		labelVals[index] = m.UserName
+		index++
+	}
+
 	if m.CounterUnit != "" {
 		labelKeys[index] = "unit"
 		labelVals[index] = m.CounterUnit
@@ -219,6 +259,25 @@ func genLabels(m ceilometer.Metric, publisher string, cNameShards []string) ([]s
 		index++
 	}
 
+	if m.ResourceMetadata.DisplayName != "" {
+		labelKeys[index] = "resource_name"
+		labelVals[index] = m.ResourceMetadata.DisplayName
+		// index++
+	}
+
+	if m.ResourceMetadata.Name != "" {
+		labelKeys[index] = "resource_name"
+		if labelVals[index] != "" {
+			// Use the ":" delimiter when DisplayName is not None
+			labelVals[index] = labelVals[index] + ":" + m.ResourceMetadata.Name
+		} else {
+			labelVals[index] = m.ResourceMetadata.Name
+		}
+	}
+	if labelVals[index] != "" {
+		index++
+	}
+
 	return labelKeys[:index], labelVals[:index]
 }
 
@@ -227,6 +286,20 @@ func (c *ceilometerMetricHandler) Identify() string {
 }
 
 func (c *ceilometerMetricHandler) Config(blob []byte) error {
+	c.config = ceilometerConfig{
+		Source: "unix",
+	}
+	err := config.ParseConfig(bytes.NewReader(blob), &c.config)
+	if err != nil {
+		return err
+	}
+
+	c.config.Source = strings.ToLower(c.config.Source)
+
+	if c.config.Source != "unix" && c.config.Source != "tcp" && c.config.Source != "udp" {
+		return fmt.Errorf("incorrect source, should be either \"unix\", \"tcp\" or \"udp\", received: %s",
+			c.config.Source)
+	}
 	return nil
 }
 
