@@ -4,8 +4,7 @@
 
 set -ex
 
-CHANNEL=$QDR_CHANNEL_CEILOMTR
-CHANNEL=${CHANNEL:-$QDR_CHANNEL_COLLECTD}
+CHANNEL=$QDR_CHANNEL
 
 # enable required repo(s)
 curl -o /etc/yum.repos.d/CentOS-OpsTools.repo $OPSTOOLS_REPO
