@@ -1,8 +1,5 @@
-
 ---
 - project:
     name: infrawatch/sg-core
-    github-check:
-      jobs:
-        - stf-crc-latest-nightly_bundles
-        - stf-crc-latest-local_build
+    templates:
+      - stf-crc-jobs
