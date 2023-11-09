@@ -1,6 +1,9 @@
 ### sg-core ###
 function preinstall_sg-core {
 	install_package $SG_CORE_CONTAINER_EXECUTABLE
+	if is_ubuntu; then
+		install_package uidmap
+	fi
 }
 
 function install_sg-core {
