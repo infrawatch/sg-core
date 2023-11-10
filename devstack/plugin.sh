@@ -1,11 +1,11 @@
-### sg-core ###
-function preinstall_sg-core {
+function install_container_executable {
 	install_package $SG_CORE_CONTAINER_EXECUTABLE
 	if is_ubuntu; then
 		install_package uidmap
 	fi
 }
 
+### sg-core ###
 function install_sg-core {
 	$SG_CORE_CONTAINER_EXECUTABLE pull $SG_CORE_CONTAINER_IMAGE
 }
@@ -20,10 +20,6 @@ function init_sg-core {
 }
 
 ### prometheus ###
-function preinstall_prometheus {
-	install_package $SG_CORE_CONTAINER_EXECUTABLE
-}
-
 function install_prometheus {
 	$SG_CORE_CONTAINER_EXECUTABLE pull $PROMETHEUS_CONTAINER_IMAGE
 }
@@ -65,7 +61,7 @@ if is_service_enabled sg-core; then
 		if [[ "$1" == "stack" && "$2" == "pre-install" ]]; then
 			# Set up system services
 			echo_summary "Configuring system services for sg-core"
-			preinstall_sg-core
+			install_container_executable
 
 		elif [[ "$1" == "stack" && "$2" == "install" ]]; then
 			# Perform installation of service source
@@ -96,7 +92,7 @@ if is_service_enabled sg-core; then
 		    if [[ "$1" == "stack" && "$2" == "pre-install" ]]; then
 			# Set up system services
 			echo_summary "Configuring system services prometheus"
-			preinstall_prometheus
+			install_container_executable
 
 		elif [[ "$1" == "stack" && "$2" == "install" ]]; then
 			# Perform installation of service source
