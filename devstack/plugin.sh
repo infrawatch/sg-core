@@ -1,5 +1,14 @@
 function install_container_executable {
-	install_package $SG_CORE_CONTAINER_EXECUTABLE
+	if install_package podman; then
+		SG_CORE_CONTAINER_EXECUTABLE="podman"
+	elif install_package docker.io; then
+		sudo chown stack:docker /var/run/docker.sock
+		sudo usermod -aG docker stack
+		SG_CORE_CONTAINER_EXECUTABLE="docker"
+	else
+		echo_summary "Couldn't install podman or docker"
+		return 1
+	fi
 	if is_ubuntu; then
 		install_package uidmap
 	fi
