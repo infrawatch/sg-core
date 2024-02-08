@@ -3,12 +3,34 @@ plugin_requires sg-core ceilometer
 enable_service sg-core
 enable_service ceilometer
 
+### sg-core ###
+SG_CORE_ENABLE=${SG_CORE_ENABLE:-true}
+
 SG_CORE_DIR=$DEST/sg-core
 SG_CORE_CONF_DIR=/etc/sg-core
 SG_CORE_CONF=$SG_CORE_CONF_DIR/sg-core.conf.yaml
+SG_CORE_WORKDIR=$SG_CORE_DIR/devstack/workdir
 
 SG_CORE_CONTAINER_REPOSITORY=${SG_CORE_CONTAINER_REPOSITORY:-quay.io/infrawatch/sg-core}
 SG_CORE_CONTAINER_TAG=${SG_CORE_CONTAINER_TAG:-latest}
 SG_CORE_CONTAINER_IMAGE=$SG_CORE_CONTAINER_REPOSITORY:$SG_CORE_CONTAINER_TAG
 
-SG_CORE_CONTAINER_EXECUTABLE="podman"
+### prometheus ###
+PROMETHEUS_ENABLE=${PROMETHEUS_ENABLE:-true}
+
+PROMETHEUS_CONF_DIR=/etc/prometheus
+PROMETHEUS_CONF=$PROMETHEUS_CONF_DIR/prometheus.yml
+
+PROMETHEUS_CONTAINER_REPOSITORY=${PROMETHEUS_CONTAINER_REPOSITORY:-quay.io/prometheus/prometheus}
+PROMETHEUS_CONTAINER_TAG=${PROMETHEUS_CONTAINER_TAG:-latest}
+PROMETHEUS_CONTAINER_IMAGE=$PROMETHEUS_CONTAINER_REPOSITORY:$PROMETHEUS_CONTAINER_TAG
+
+# It's assumed, that each service scrape target has its own same named
+# file in the scrape_configs folder
+# List of "," delimited names
+# Currently supported values are "sg-core" and "prometheus"
+PROMETHEUS_SERVICE_SCRAPE_TARGETS=${PROMETHEUS_SERVICE_SCRAPE_TARGETS:="sg-core"}
+
+# List of "," delimited targets. Each target is <ip>:<port>
+PROMETHEUS_CUSTOM_SCRAPE_TARGETS=${PROMETHEUS_CUSTOM_SCRAPE_TARGETS:-""}
+
