@@ -14,8 +14,8 @@ yum install -y git golang gcc make glibc-langpack-en qpid-proton-c-devel
 export GOBIN=$GOPATH/bin
 export PATH=$PATH:$GOBIN
 
-go install golang.org/dl/go1.20@latest
-go1.20 download
+go install golang.org/dl/go1.22@latest
+go1.22 download
 
 
-go1.20 test -v -coverprofile=profile.cov ./...
+go1.22 test -v -coverprofile=profile.cov ./...
