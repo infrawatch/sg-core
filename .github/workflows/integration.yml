@@ -25,7 +25,7 @@ jobs:
       PROMETHEUS_IMAGE: prom/prometheus:latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.1.3
       - name: Prepare environment
         run: |
           mkdir -p /opt/stack/
@@ -119,7 +119,7 @@ jobs:
       PROMETHEUS_IMAGE: prom/prometheus:latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.1.3
       - name: Prepare environment
         run: |
           mkdir -p /opt/stack/
@@ -217,7 +217,7 @@ jobs:
       PROMETHEUS_IMAGE: prom/prometheus:latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.1.3
       - name: Prepare environment
         run: |
           mkdir -p /opt/stack/
@@ -299,7 +299,7 @@ jobs:
       RSYSLOG_VOLUME: "--volume ${{ github.workspace }}/ci/service_configs/rsyslog/rsyslog_config.conf:/etc/rsyslog.d/integration.conf:z"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.1.3
       # start data store services
       - name: Start Elasticsearch service
         run: |
