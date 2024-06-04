@@ -1,7 +1,7 @@
 name: Integration testing
 env:
   PROJECT_ROOT: /root/go/src/github.com/infrawatch/sg-core
-  OPSTOOLS_REPO: https://git.centos.org/rpms/centos-release-opstools/raw/c8s-sig-opstools/f/SOURCES/CentOS-OpsTools.repo
+  OPSTOOLS_REPO: https://raw.githubusercontent.com/infrawatch/sg-core/04dcb34edd2c234b378222d2f9a17e15c0dad936/build/repos/opstools.repo
 
   QDR_IMAGE: quay.io/interconnectedcloud/qdrouterd:1.17.0
   QDR_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/qdr:/etc/qpid-dispatch:ro"
