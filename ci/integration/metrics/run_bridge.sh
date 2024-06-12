@@ -20,4 +20,4 @@ git checkout $BRANCH || true
 make
 
 touch $BRIDGE_SOCKET
-./bridge --amqp_url amqp://localhost:5666/$CHANNEL --gw_unix=$BRIDGE_SOCKET
+./bridge --amqp_url amqp://localhost:5666/$CHANNEL --gw_unix=$BRIDGE_SOCKET --stat_period 1

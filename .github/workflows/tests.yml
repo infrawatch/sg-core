@@ -19,7 +19,6 @@ jobs:
   golangci:
     name: Linting
     runs-on: ubuntu-20.04
-    container: 'quay.io/plmr/sg-core-ci'
     steps:
       - uses: actions/setup-go@v5
         with:
