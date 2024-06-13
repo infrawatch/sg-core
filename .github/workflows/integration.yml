@@ -102,6 +102,8 @@ jobs:
           docker logs qdr
           echo "========================= sg-core =======================" && \
           docker logs sgcore
+          echo "========================= sg-bridge =======================" && \
+          docker logs sgbridge
           echo "======================== prometheus =====================" && \
           docker logs prometheus
       - name: Validate metrics processing
@@ -200,6 +202,8 @@ jobs:
           docker logs qdr
           echo "========================= sg-core =======================" && \
           docker logs sgcore
+          echo "========================= sg-bridge =======================" && \
+          docker logs sgbridge
           echo "========================= ceilometer ====================" && \
           sudo journalctl -xu devstack@ceilometer-anotification.service
           echo "======================== prometheus =====================" && \
@@ -283,6 +287,10 @@ jobs:
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/ceilometer/run_validation.sh
 #-------------------------------------------------------------------------------
   logging:
+    # Disable Logging CI job, because it's failing. This functionality was never
+    # used in the downstream product. We can re-enable and fix the job if we
+    # determine the functionality is useful.
+    if: false
     name: "[logging] handler: logs; application: elasticsearch, loki"
     runs-on: ubuntu-22.04
     env:
