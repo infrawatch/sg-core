@@ -8,7 +8,7 @@ set -ex
 curl -o /etc/yum.repos.d/CentOS-OpsTools.repo $OPSTOOLS_REPO
 sed -i 's/gpgcheck=1/gpgcheck=0/g' /etc/yum.repos.d/CentOS-OpsTools.repo
 
-dnf install -y git gcc make qpid-proton-c-devel
+dnf install -y git gcc make qpid-proton-c-devel redhat-rpm-config
 
 # install and start sg-bridge
 BRANCH="$(echo ${GITHUB_REF#refs/heads/})"

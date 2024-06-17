@@ -75,7 +75,7 @@ jobs:
         run: |
           docker run --name=sgbridge --network host $BRIDGE_VOLUME -d -uroot \
             -e GITHUB_REF -e BRIDGE_SOCKET -e QDR_CHANNEL -e OPSTOOLS_REPO \
-            --workdir=$(dirname $BRIDGE_SOCKET) \
+            --workdir=$(dirname $BRIDGE_SOCKET) --volume ${{ github.workspace }}:$PROJECT_ROOT:z \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/run_bridge.sh
       - name: Install collectd
         run: |
@@ -171,7 +171,7 @@ jobs:
         run: |
           docker run --name=sgbridge --network host $BRIDGE_VOLUME -d -uroot \
             -e GITHUB_REF -e BRIDGE_SOCKET -e QDR_CHANNEL -e OPSTOOLS_REPO \
-            --workdir=$(dirname $BRIDGE_SOCKET) \
+            --workdir=$(dirname $BRIDGE_SOCKET) --volume ${{ github.workspace }}:$PROJECT_ROOT:z \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/run_bridge.sh
       - name: Set Ceilometer pipelines to QDR output and restart notification agent
         run: |
@@ -334,7 +334,7 @@ jobs:
         if: steps.bridge_branch.outcome == 'success'
         run: |
           docker run --name=sgbridge $BRIDGE_VOLUME -d -uroot --network host -e OPSTOOLS_REPO \
-            -e GITHUB_REF -e BRIDGE_SOCKET --workdir=$(dirname $BRIDGE_SOCKET) \
+            -e GITHUB_REF -e BRIDGE_SOCKET --workdir=$(dirname $BRIDGE_SOCKET) --volume ${{ github.workspace }}:$PROJECT_ROOT:z \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_bridge.sh
       - name: Run rsyslog to produce log messages
         run: |
