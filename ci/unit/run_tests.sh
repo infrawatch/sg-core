@@ -1,6 +1,6 @@
 #!/bin/env bash
-# CI script for CentOS8 job
-# purpose: runt unit test suite and submit code coverage
+# CI script for CentOS9 job
+# purpose: run unit test suite and submit code coverage
 
 set -ex
 
@@ -15,7 +15,6 @@ export GOBIN=$GOPATH/bin
 export PATH=$PATH:$GOBIN
 
 go install golang.org/dl/go1.22@latest
-go1.22 download
+go1.22.0 download
 
-
-go1.22 test -v -coverprofile=profile.cov ./...
+go1.22.0 test -v -coverprofile=profile.cov ./...
