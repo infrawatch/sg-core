@@ -10,7 +10,7 @@ env:
   ELASTIC_IMAGE: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
   ELASTIC_PORT: "-p 9200:9200 -p 9300:9300"
 
-  TEST_IMAGE: registry.access.redhat.com/ubi8
+  TEST_IMAGE: registry.access.redhat.com/ubi9
   COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
 
 on: [push, pull_request]
