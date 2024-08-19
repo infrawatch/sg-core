@@ -5,7 +5,7 @@
 set -ex
 
 # enable required repo(s)
-curl -o /etc/yum.repos.d/CentOS-OpsTools.repo $OPSTOOLS_REPO
+curl -o /etc/yum.repos.d/centos9-caracal.repo $OPENSTACK_REPO
 
 # without glibc-langpack-en locale setting in CentOS8 is broken without this package
 yum install -y git golang gcc make glibc-langpack-en qpid-proton-c-devel

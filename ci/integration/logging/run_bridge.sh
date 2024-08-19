@@ -5,8 +5,7 @@
 set -ex
 
 # enable required repo(s)
-curl -o /etc/yum.repos.d/CentOS-OpsTools.repo $OPSTOOLS_REPO
-sed -i 's/gpgcheck=1/gpgcheck=0/g' /etc/yum.repos.d/CentOS-OpsTools.repo
+curl -o /etc/yum.repos.d/centos9-caracal.repo $OPENSTACK_REPO
 
 dnf install -y git gcc make qpid-proton-c-devel redhat-rpm-config
 

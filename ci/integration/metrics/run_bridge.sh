@@ -7,7 +7,7 @@ set -ex
 CHANNEL=$QDR_CHANNEL
 
 # enable required repo(s)
-curl -o /etc/yum.repos.d/CentOS-OpsTools.repo $OPSTOOLS_REPO
+curl -o /etc/yum.repos.d/centos9-caracal.repo $OPENSTACK_REPO
 
 dnf install -y git gcc make qpid-proton-c-devel redhat-rpm-config
 
