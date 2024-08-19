@@ -12,11 +12,11 @@ dnf install -y git golang gcc make qpid-proton-c-devel
 export GOBIN=$GOPATH/bin
 export PATH=$PATH:$GOBIN
 
-go install golang.org/dl/go1.22.0@latest
-go1.22.0 download
+go install golang.org/dl/go1.22.6@latest
+go1.22.6 download
 
 # install sg-core and start sg-core
 mkdir -p /usr/lib64/sg-core
-PLUGIN_DIR=/usr/lib64/sg-core/ GOCMD=go1.22.0 BUILD_ARGS=-buildvcs=false ./build.sh
+PLUGIN_DIR=/usr/lib64/sg-core/ GOCMD=go1.22.6 BUILD_ARGS=-buildvcs=false ./build.sh
 
 ./sg-core -config ./ci/integration/metrics/ceilometer/tcp/sg_config.yaml
