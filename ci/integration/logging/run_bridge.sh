@@ -8,7 +8,7 @@ set -ex
 curl -o /etc/yum.repos.d/CentOS-OpsTools.repo $OPSTOOLS_REPO
 sed -i 's/gpgcheck=1/gpgcheck=0/g' /etc/yum.repos.d/CentOS-OpsTools.repo
 
-dnf install -y git gcc make qpid-proton-c-devel
+dnf install -y git gcc make qpid-proton-c-devel redhat-rpm-config
 
 # install and start sg-bridge
 BRANCH="$(echo ${GITHUB_REF#refs/heads/})"
@@ -18,4 +18,4 @@ git checkout $BRANCH || true
 make
 
 touch $BRIDGE_SOCKET
-./bridge --amqp_url amqp://localhost:5666/rsyslog/logs --gw_unix=$BRIDGE_SOCKET
+./bridge --amqp_url amqp://localhost:5666/rsyslog/logs --gw_unix=$BRIDGE_SOCKET --stat_period 1

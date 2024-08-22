@@ -1,7 +1,7 @@
 name: CI
 env:
   PROJECT_ROOT: /root/go/src/github.com/infrawatch/sg-core
-  OPSTOOLS_REPO: https://git.centos.org/rpms/centos-release-opstools/raw/c8s-sig-opstools/f/SOURCES/CentOS-OpsTools.repo
+  OPSTOOLS_REPO: https://raw.githubusercontent.com/infrawatch/sg-core/04dcb34edd2c234b378222d2f9a17e15c0dad936/build/repos/opstools.repo
 
   LOKI_IMAGE: quay.io/infrawatch/loki:2.4.2
   LOKI_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/loki:/etc/loki:ro"
@@ -19,12 +19,11 @@ jobs:
   golangci:
     name: Linting
     runs-on: ubuntu-20.04
-    container: 'quay.io/plmr/sg-core-ci'
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.20'
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4.1.3
       #- name: download libraries
       #  run: go mod download
       - name: golangci-lint
@@ -39,7 +38,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4.1.3
       # start services
       - name: Start Elasticsearch service
         run: |
@@ -68,15 +67,15 @@ jobs:
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/unit/run_tests.sh
       - name: Send coverage
-        uses: shogo82148/actions-goveralls@v1
+        uses: shogo82148/actions-goveralls@v1.8.0
         with:
           path-to-profile: ${{ github.workspace }}/profile.cov
   image-build:
     name: Image build
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v4.1.3
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.20'
       - name: Verify image builds
