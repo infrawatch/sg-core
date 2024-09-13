@@ -11,7 +11,7 @@ sed -i 's/gpgcheck=1/gpgcheck=0/g' /etc/yum.repos.d/CentOS-OpsTools.repo
 dnf install -y git gcc make qpid-proton-c-devel redhat-rpm-config
 
 # install and start sg-bridge
-BRANCH="$(echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}")"
+BRANCH="$(echo ${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}})"
 git clone https://github.com/infrawatch/sg-bridge.git
 pushd sg-bridge
 git checkout $BRANCH || true
