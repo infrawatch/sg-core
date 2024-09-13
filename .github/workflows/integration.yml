@@ -62,8 +62,8 @@ jobs:
         id: bridge_branch
         continue-on-error: true
         run: |
-          echo "refs/heads/${GITHUB_HEAD_REF}"
-          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo "refs/heads/${GITHUB_HEAD_REF}")"
+          echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}")"
       - name: Start sg-bridge from container image
         if: steps.bridge_branch.outcome != 'success'
         run: |
@@ -158,8 +158,8 @@ jobs:
         id: bridge_branch
         continue-on-error: true
         run: |
-          echo "refs/heads/${GITHUB_HEAD_REF}"
-          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo "refs/heads/${GITHUB_HEAD_REF}")"
+          echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}")"
       - name: Start sg-bridge from container image
         if: steps.bridge_branch.outcome != 'success'
         run: |
@@ -323,8 +323,8 @@ jobs:
         id: bridge_branch
         continue-on-error: true
         run: |
-          echo "refs/heads/${GITHUB_HEAD_REF}"
-          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo "refs/heads/${GITHUB_HEAD_REF}")"
+          echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}")"
       - name: Start sg-bridge from container image
         if: steps.bridge_branch.outcome != 'success'
         run: |
