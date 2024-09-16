@@ -62,8 +62,8 @@ jobs:
         id: bridge_branch
         continue-on-error: true
         run: |
-          echo "${GITHUB_REF#refs/heads/}"
-          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo ${GITHUB_REF#refs/heads/})"
+          echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}")"
       - name: Start sg-bridge from container image
         if: steps.bridge_branch.outcome != 'success'
         run: |
@@ -74,7 +74,7 @@ jobs:
         if: steps.bridge_branch.outcome == 'success'
         run: |
           docker run --name=sgbridge --network host $BRIDGE_VOLUME -d -uroot \
-            -e GITHUB_REF -e BRIDGE_SOCKET -e QDR_CHANNEL -e OPSTOOLS_REPO \
+            -e GITHUB_HEAD_REF -e BRIDGE_SOCKET -e QDR_CHANNEL -e OPSTOOLS_REPO \
             --workdir=$(dirname $BRIDGE_SOCKET) --volume ${{ github.workspace }}:$PROJECT_ROOT:z \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/run_bridge.sh
       - name: Install collectd
@@ -158,8 +158,8 @@ jobs:
         id: bridge_branch
         continue-on-error: true
         run: |
-          echo "${GITHUB_REF#refs/heads/}"
-          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo ${GITHUB_REF#refs/heads/})"
+          echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}")"
       - name: Start sg-bridge from container image
         if: steps.bridge_branch.outcome != 'success'
         run: |
@@ -170,7 +170,7 @@ jobs:
         if: steps.bridge_branch.outcome == 'success'
         run: |
           docker run --name=sgbridge --network host $BRIDGE_VOLUME -d -uroot \
-            -e GITHUB_REF -e BRIDGE_SOCKET -e QDR_CHANNEL -e OPSTOOLS_REPO \
+            -e GITHUB_HEAD_REF -e BRIDGE_SOCKET -e QDR_CHANNEL -e OPSTOOLS_REPO \
             --workdir=$(dirname $BRIDGE_SOCKET) --volume ${{ github.workspace }}:$PROJECT_ROOT:z \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/run_bridge.sh
       - name: Set Ceilometer pipelines to QDR output and restart notification agent
@@ -323,8 +323,8 @@ jobs:
         id: bridge_branch
         continue-on-error: true
         run: |
-          echo "${GITHUB_REF#refs/heads/}"
-          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo ${GITHUB_REF#refs/heads/})"
+          echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}")"
       - name: Start sg-bridge from container image
         if: steps.bridge_branch.outcome != 'success'
         run: |
@@ -334,7 +334,7 @@ jobs:
         if: steps.bridge_branch.outcome == 'success'
         run: |
           docker run --name=sgbridge $BRIDGE_VOLUME -d -uroot --network host -e OPSTOOLS_REPO \
-            -e GITHUB_REF -e BRIDGE_SOCKET --workdir=$(dirname $BRIDGE_SOCKET) --volume ${{ github.workspace }}:$PROJECT_ROOT:z \
+            -e GITHUB_HEAD_REF -e BRIDGE_SOCKET --workdir=$(dirname $BRIDGE_SOCKET) --volume ${{ github.workspace }}:$PROJECT_ROOT:z \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_bridge.sh
       - name: Run rsyslog to produce log messages
         run: |
