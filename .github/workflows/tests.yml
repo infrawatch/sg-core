@@ -1,7 +1,7 @@
 name: CI
 env:
   PROJECT_ROOT: /root/go/src/github.com/infrawatch/sg-core
-  OPSTOOLS_REPO: https://raw.githubusercontent.com/infrawatch/sg-core/04dcb34edd2c234b378222d2f9a17e15c0dad936/build/repos/opstools.repo
+  OPENSTACK_REPO: https://trunk.rdoproject.org/centos9-caracal/delorean-deps.repo
 
   LOKI_IMAGE: quay.io/infrawatch/loki:2.4.2
   LOKI_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/loki:/etc/loki:ro"
@@ -10,7 +10,7 @@ env:
   ELASTIC_IMAGE: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
   ELASTIC_PORT: "-p 9200:9200 -p 9300:9300"
 
-  TEST_IMAGE: registry.access.redhat.com/ubi8
+  TEST_IMAGE: registry.access.redhat.com/ubi9
   COVERALLS_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
 
 on: [push, pull_request]
@@ -63,7 +63,7 @@ jobs:
           docker logs loki
       - name: Run sg-core unit test suite
         run: |
-          docker run --name=testsuite -uroot --network host -e COVERALLS_REPO_TOKEN -e OPSTOOLS_REPO \
+          docker run --name=testsuite -uroot --network host -e COVERALLS_REPO_TOKEN -e OPENSTACK_REPO \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/unit/run_tests.sh
       - name: Send coverage

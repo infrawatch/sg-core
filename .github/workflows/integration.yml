@@ -1,7 +1,7 @@
 name: Integration testing
 env:
   PROJECT_ROOT: /root/go/src/github.com/infrawatch/sg-core
-  OPSTOOLS_REPO: https://raw.githubusercontent.com/infrawatch/sg-core/04dcb34edd2c234b378222d2f9a17e15c0dad936/build/repos/opstools.repo
+  OPENSTACK_REPO: https://trunk.rdoproject.org/centos9-caracal/delorean-deps.repo
 
   QDR_IMAGE: quay.io/interconnectedcloud/qdrouterd:1.17.0
   QDR_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/qdr:/etc/qpid-dispatch:ro"
@@ -10,7 +10,7 @@ env:
   BRIDGE_IMAGE: quay.io/infrawatch/sg-bridge:latest
   BRIDGE_VOLUME: "--volume=${{ github.workspace }}/tmp:/tmp/sg-bridge:z"
 
-  TEST_IMAGE: registry.access.redhat.com/ubi8
+  TEST_IMAGE: registry.access.redhat.com/ubi9
   TEST_PORT: "-p 3000:3000"
 
 on: [push, pull_request]
@@ -74,7 +74,7 @@ jobs:
         if: steps.bridge_branch.outcome == 'success'
         run: |
           docker run --name=sgbridge --network host $BRIDGE_VOLUME -d -uroot \
-            -e GITHUB_HEAD_REF -e BRIDGE_SOCKET -e QDR_CHANNEL -e OPSTOOLS_REPO \
+            -e GITHUB_HEAD_REF -e BRIDGE_SOCKET -e QDR_CHANNEL -e OPENSTACK_REPO \
             --workdir=$(dirname $BRIDGE_SOCKET) --volume ${{ github.workspace }}:$PROJECT_ROOT:z \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/run_bridge.sh
       - name: Install collectd
@@ -86,7 +86,7 @@ jobs:
           sudo collectd -C ci/integration/metrics/collectd/collectd.conf
       - name: Run sg-core to process metrics
         run: |
-          docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME -e OPSTOOLS_REPO \
+          docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME -e OPENSTACK_REPO \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/collectd/run_sg.sh
       - name: Run Prometheus to store metrics
@@ -170,7 +170,7 @@ jobs:
         if: steps.bridge_branch.outcome == 'success'
         run: |
           docker run --name=sgbridge --network host $BRIDGE_VOLUME -d -uroot \
-            -e GITHUB_HEAD_REF -e BRIDGE_SOCKET -e QDR_CHANNEL -e OPSTOOLS_REPO \
+            -e GITHUB_HEAD_REF -e BRIDGE_SOCKET -e QDR_CHANNEL -e OPENSTACK_REPO \
             --workdir=$(dirname $BRIDGE_SOCKET) --volume ${{ github.workspace }}:$PROJECT_ROOT:z \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/run_bridge.sh
       - name: Set Ceilometer pipelines to QDR output and restart notification agent
@@ -186,7 +186,7 @@ jobs:
           sudo systemctl restart devstack@ceilometer-anotification.service
       - name: Run sg-core to process metrics
         run: |
-          docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME -e OPSTOOLS_REPO \
+          docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME -e OPENSTACK_REPO \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/ceilometer/bridge/run_sg.sh
       - name: Run Prometheus to store metrics
@@ -263,7 +263,7 @@ jobs:
           sudo systemctl restart devstack@ceilometer-anotification.service
       - name: Run sg-core to process metrics
         run: |
-          docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME -e OPSTOOLS_REPO \
+          docker run --name=sgcore -d -uroot --network host $BRIDGE_VOLUME -e OPENSTACK_REPO \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/ceilometer/tcp/run_sg.sh
       - name: Run Prometheus to store metrics
@@ -333,7 +333,7 @@ jobs:
       - name: Start sg-bridge with same branch
         if: steps.bridge_branch.outcome == 'success'
         run: |
-          docker run --name=sgbridge $BRIDGE_VOLUME -d -uroot --network host -e OPSTOOLS_REPO \
+          docker run --name=sgbridge $BRIDGE_VOLUME -d -uroot --network host -e OPENSTACK_REPO \
             -e GITHUB_HEAD_REF -e BRIDGE_SOCKET --workdir=$(dirname $BRIDGE_SOCKET) --volume ${{ github.workspace }}:$PROJECT_ROOT:z \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_bridge.sh
       - name: Run rsyslog to produce log messages
@@ -395,7 +395,7 @@ jobs:
       # run integration tests
       - name: Run sg-core to process log messages
         run: |
-          docker run --name=sgcore -d -uroot --network host $TEST_PORT $BRIDGE_VOLUME -e OPSTOOLS_REPO \
+          docker run --name=sgcore -d -uroot --network host $TEST_PORT $BRIDGE_VOLUME -e OPENSTACK_REPO \
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_sg.sh
       - name: sg-core debug output

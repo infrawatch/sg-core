@@ -1,5 +1,5 @@
 #!/bin/env bash
-# CI script for UBI8 job
+# CI script for UBI9 job
 # purpose: spawn sg-bridge for message bus connection
 
 set -ex
@@ -7,8 +7,7 @@ set -ex
 CHANNEL=$QDR_CHANNEL
 
 # enable required repo(s)
-curl -o /etc/yum.repos.d/CentOS-OpsTools.repo $OPSTOOLS_REPO
-sed -i 's/gpgcheck=1/gpgcheck=0/g' /etc/yum.repos.d/CentOS-OpsTools.repo
+curl -o /etc/yum.repos.d/centos9-caracal.repo $OPENSTACK_REPO
 
 dnf install -y git gcc make qpid-proton-c-devel redhat-rpm-config
 
