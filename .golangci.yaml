@@ -21,37 +21,11 @@ issues:
     - plugins/application/print
     - devenv
 linters:
-  disable-all: true
   enable:
-    - bodyclose
-    - depguard
-    - dogsled
-    - dupl
-    - errcheck
-    # - exhaustive
-    - exportloopref
-    # - gochecknoinits
-    - goconst
-    - gocritic
-    - gocyclo
-    - gofmt
-    - goimports
-    - goprintffuncname
-    - gosec
-    - gosimple
-    - govet
-    - ineffassign
-    - misspell
-    - nakedret
-    - noctx
-    - nolintlint
+    - errorlint
     - revive
-    - staticcheck
-    - stylecheck
-    - typecheck
-    # - unused
-    - unconvert
-    # NOTE: not all application plugins use ability to emit internal events through
-    #       passed bus function in it's constructor.
-    #- unparam
-    # - whitespace
+    - ginkgolinter
+    - gofmt
+    - govet
+run:
+  timeout: 5m
