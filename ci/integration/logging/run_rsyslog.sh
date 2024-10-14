@@ -1,5 +1,5 @@
 #!/bin/env bash
-# CI script for UBI8 job
+# CI script for UBI9 job
 # purpose: spawn rsyslog with omamqp1 plugin and simulate log records creation
 
 set -ex
