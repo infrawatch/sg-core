@@ -1,11 +1,3 @@
-run:
-  skip-dirs:
-    - plugins/transport/dummy-alertmanager
-    - plugins/transport/dummy-events
-    - plugins/transport/dummy-metrics
-    - plugins/transport/dummy-logs
-    - plugins/application/print
-    - devenv
 issues:
   exclude-rules:
     - linters:
@@ -21,7 +13,13 @@ issues:
         - staticcheck
       # https://staticcheck.io/docs/checks#SA4008 (The variable in the loop condition never changes, are you incrementing the wrong variable?)
       text: "SA4008:"
-
+  exclude-dirs:
+    - plugins/transport/dummy-alertmanager
+    - plugins/transport/dummy-events
+    - plugins/transport/dummy-metrics
+    - plugins/transport/dummy-logs
+    - plugins/application/print
+    - devenv
 linters:
   disable-all: true
   enable:
