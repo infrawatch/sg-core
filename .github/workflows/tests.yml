@@ -18,7 +18,7 @@ on: [push, pull_request]
 jobs:
   golangci:
     name: Linting
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/setup-go@v5
         with:
@@ -27,15 +27,15 @@ jobs:
       #- name: download libraries
       #  run: go mod download
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v6.1.0
         with:
           # Caching conflicts happen in GHA, so just disable for now
           skip-cache: true
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
-          version: v1.51
+          version: v1.59.1
   unit-tests:
     name: Unit tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.1.3
@@ -72,7 +72,7 @@ jobs:
           path-to-profile: ${{ github.workspace }}/profile.cov
   image-build:
     name: Image build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4.1.3
       - uses: actions/setup-go@v5
