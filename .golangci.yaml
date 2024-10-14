@@ -13,6 +13,14 @@ issues:
         - staticcheck
       # https://staticcheck.io/docs/checks#SA4008 (The variable in the loop condition never changes, are you incrementing the wrong variable?)
       text: "SA4008:"
+    # Don't warn on unused parameters.
+    # Parameter names are useful; replacing them with '_' is undesirable.
+    - linters: [revive]
+      text: 'unused-parameter: parameter \S+ seems to be unused, consider removing or renaming it as _'
+    - linters: [revive]
+      text: 'redefines-builtin-id: redefinition of the built-in function new'
+    - linters: [revive]
+      text: 'redefines-builtin-id: redefinition of the built-in function len'
   exclude-dirs:
     - plugins/transport/dummy-alertmanager
     - plugins/transport/dummy-events
