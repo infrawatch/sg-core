@@ -25,7 +25,7 @@ function configure_sg-core {
 }
 
 function init_sg-core {
-	$SG_CORE_CONTAINER_EXECUTABLE run -v $SG_CORE_CONF:/etc/sg-core.conf.yaml --network host --name sg-core -d $SG_CORE_CONTAINER_IMAGE
+	$SG_CORE_CONTAINER_EXECUTABLE run -v $SG_CORE_CONF:/etc/sg-core.conf.yaml -p 3000:3000 --name sg-core -d $SG_CORE_CONTAINER_IMAGE
 }
 
 ### prometheus ###
