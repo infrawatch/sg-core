@@ -120,12 +120,12 @@ if is_service_enabled sg-core; then
 		fi
 
 		if [[ "$1" == "unstack" ]]; then
-			$PROMETHEUS_CONTAINER_EXECUTABLE stop prometheus
-			$PROMETHEUS_CONTAINER_EXECUTABLE rm -f prometheus
+			$SG_CORE_CONTAINER_EXECUTABLE stop prometheus
+			$SG_CORE_CONTAINER_EXECUTABLE rm -f prometheus
 		fi
 
 		if [[ "$1" == "clean" ]]; then
-			$PROMETHEUS_CONTAINER_EXECUTABLE rmi $PROMETHEUS_CONTAINER_IMAGE
+			$SG_CORE_CONTAINER_EXECUTABLE rmi $PROMETHEUS_CONTAINER_IMAGE
 		fi
 
 	fi
