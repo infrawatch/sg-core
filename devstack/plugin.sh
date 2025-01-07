@@ -61,7 +61,14 @@ function init_prometheus {
 	$SG_CORE_CONTAINER_EXECUTABLE run -v $PROMETHEUS_CONF:/etc/prometheus/prometheus.yml --network host --name prometheus -d $PROMETHEUS_CONTAINER_IMAGE --config.file=/etc/prometheus/prometheus.yml --web.enable-admin-api
 }
 
+### node_exporter ###
+function install_node_exporter {
+	$SG_CORE_CONTAINER_EXECUTABLE pull $NODE_EXPORTER_CONTAINER_IMAGE
+}
 
+function init_node_exporter {
+	$SG_CORE_CONTAINER_EXECUTABLE run -d --network host --pid host -v "/:/host:ro,rslave" --name node_exporter $NODE_EXPORTER_CONTAINER_IMAGE --path.rootfs=/host
+}
 # check for service enabled
 if is_service_enabled sg-core; then
 
@@ -126,6 +133,33 @@ if is_service_enabled sg-core; then
 
 		if [[ "$1" == "clean" ]]; then
 			$PROMETHEUS_CONTAINER_EXECUTABLE rmi $PROMETHEUS_CONTAINER_IMAGE
+		fi
+
+	fi
+	if [[ $NODE_EXPORTER_ENABLE = true ]]; then
+		    if [[ "$1" == "stack" && "$2" == "pre-install" ]]; then
+			# Set up system services
+			echo_summary "Configuring system services node_exporter"
+			install_container_executable
+
+		elif [[ "$1" == "stack" && "$2" == "install" ]]; then
+			# Perform installation of service source
+			echo_summary "Installing node_exporter"
+			install_node_exporter
+
+		elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
+			# Initialize and start the node_exporter service
+			echo_summary "Initializing node_exporter"
+			init_node_exporter
+		fi
+
+		if [[ "$1" == "unstack" ]]; then
+			$SG_CORE_CONTAINER_EXECUTABLE stop node_exporter
+			$SG_CORE_CONTAINER_EXECUTABLE rm -f node_exporter
+		fi
+
+		if [[ "$1" == "clean" ]]; then
+			$SG_CORE_CONTAINER_EXECUTABLE rmi $NODE_EXPORTER_CONTAINER_IMAGE
 		fi
 
 	fi
