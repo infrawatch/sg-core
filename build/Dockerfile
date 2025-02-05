@@ -7,7 +7,7 @@ WORKDIR $D
 COPY . $D/
 
 # dependencies for qpid-proton-c
-COPY build/repos/centos9-caracal.repo /etc/yum.repos.d/centos9-caracal.repo
+COPY build/repos/opstools.repo /etc/yum.repos.d/CentOS-OpsTools.repo
 
 RUN dnf install golang git qpid-proton-c-devel -y --setopt=tsflags=nodocs
 RUN go install golang.org/dl/go1.21.13@latest && /go/bin/go1.21.13 download && PRODUCTION_BUILD=false CONTAINER_BUILD=true GOCMD=/go/bin/go1.21.13 ./build.sh

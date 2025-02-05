@@ -5,7 +5,7 @@
 set -ex
 
 # enable required repo(s)
-curl -o /etc/yum.repos.d/centos9-caracal.repo $OPENSTACK_REPO
+curl -o /etc/yum.repos.d/CentOS-OpsTools.repo $OPSTOOLS_REPO
 
 dnf install -y git golang gcc make qpid-proton-c-devel
 
