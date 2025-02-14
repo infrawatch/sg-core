@@ -40,8 +40,7 @@ jobs:
           sudo apt-get clean
       - name: Prepare environment for postgres-server installation
         run: |
-          sudo apt remove postgresql-client-common
-          sudo apt install postgresql-client-common=253
+          sudo apt install postgresql-client-common
           sudo apt install postgresql-common
           sudo python -m pip install --upgrade pip
           sudo python -m pip install --upgrade virtualenv
@@ -136,8 +135,7 @@ jobs:
           sudo apt-get clean
       - name: Prepare environment for postgres-server installation
         run: |
-          sudo apt remove postgresql-client-common
-          sudo apt install postgresql-client-common=253
+          sudo apt install postgresql-client-common
           sudo apt install postgresql-common
           sudo python -m pip install --upgrade pip
           sudo python -m pip install --upgrade virtualenv
@@ -236,8 +234,7 @@ jobs:
           sudo apt-get clean
       - name: Prepare environment for postgres-server installation
         run: |
-          sudo apt remove postgresql-client-common
-          sudo apt install postgresql-client-common=253
+          sudo apt install postgresql-client-common
           sudo apt install postgresql-common
           sudo python -m pip install --upgrade pip
           sudo python -m pip install --upgrade virtualenv
