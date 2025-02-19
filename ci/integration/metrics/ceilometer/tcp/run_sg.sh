@@ -1,5 +1,5 @@
 #!/bin/env bash
-# CI script for UBI8 job
+# CI script for UBI9 job
 # purpose: spawn sg-core to process messages sent by rsyslog
 
 set -ex
@@ -13,11 +13,11 @@ dnf install -y git golang gcc make qpid-proton-c-devel
 export GOBIN=$GOPATH/bin
 export PATH=$PATH:$GOBIN
 
-go install golang.org/dl/go1.20@latest
-go1.20 download
+go install golang.org/dl/go1.21.13@latest
+go1.21.13 download
 
 # install sg-core and start sg-core
 mkdir -p /usr/lib64/sg-core
-PLUGIN_DIR=/usr/lib64/sg-core/ GOCMD=go1.20 BUILD_ARGS=-buildvcs=false ./build.sh
+PLUGIN_DIR=/usr/lib64/sg-core/ GOCMD=go1.21.13 BUILD_ARGS=-buildvcs=false ./build.sh
 
 ./sg-core -config ./ci/integration/metrics/ceilometer/tcp/sg_config.yaml

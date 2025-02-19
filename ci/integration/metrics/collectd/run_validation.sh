@@ -1,5 +1,5 @@
 #!/bin/env bash
-# CI script for UBI8 job
+# CI script for UBI9 job
 # purpose: verify the expected metric data is scraped by Prometheus
 
 set -ex
