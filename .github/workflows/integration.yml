@@ -1,7 +1,7 @@
 name: Integration testing
 env:
   PROJECT_ROOT: /root/go/src/github.com/infrawatch/sg-core
-  OPSTOOLS_REPO: https://raw.githubusercontent.com/infrawatch/sg-core/04dcb34edd2c234b378222d2f9a17e15c0dad936/build/repos/opstools.repo
+  OPSTOOLS_REPO: https://trunk.rdoproject.org/centos9-caracal/delorean-deps.repo
 
   QDR_IMAGE: quay.io/interconnectedcloud/qdrouterd:1.17.0
   QDR_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/qdr:/etc/qpid-dispatch:ro"
@@ -10,7 +10,7 @@ env:
   BRIDGE_IMAGE: quay.io/infrawatch/sg-bridge:latest
   BRIDGE_VOLUME: "--volume=${{ github.workspace }}/tmp:/tmp/sg-bridge:z"
 
-  TEST_IMAGE: registry.access.redhat.com/ubi8
+  TEST_IMAGE: registry.access.redhat.com/ubi9
   TEST_PORT: "-p 3000:3000"
 
 on: [push, pull_request]
@@ -22,7 +22,7 @@ jobs:
     env:
       QDR_CHANNEL: collectd/metrics
       BRIDGE_SOCKET: /tmp/sg-bridge/test-socket
-      PROMETHEUS_IMAGE: prom/prometheus:latest
+      PROMETHEUS_IMAGE: quay.io/prometheus/prometheus:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.1.3
@@ -118,7 +118,7 @@ jobs:
     env:
       QDR_CHANNEL: anycast/ceilometer/metering.sample
       BRIDGE_SOCKET: /tmp/sg-bridge/test-socket
-      PROMETHEUS_IMAGE: prom/prometheus:latest
+      PROMETHEUS_IMAGE: quay.io/prometheus/prometheus:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.1.3
@@ -218,7 +218,7 @@ jobs:
     name: "[metrics] transport: socket(tcp); handler: ceilometer-metrics; application: prometheus"
     runs-on: ubuntu-22.04
     env:
-      PROMETHEUS_IMAGE: prom/prometheus:latest
+      PROMETHEUS_IMAGE: quay.io/prometheus/prometheus:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.1.3

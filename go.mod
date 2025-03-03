@@ -1,6 +1,6 @@
 module github.com/infrawatch/sg-core
 
-go 1.20
+go 1.21.13
 
 require (
 	collectd.org v0.5.0
