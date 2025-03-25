@@ -1,7 +1,7 @@
 name: Integration testing
 env:
   PROJECT_ROOT: /root/go/src/github.com/infrawatch/sg-core
-  OPSTOOLS_REPO: https://trunk.rdoproject.org/centos9-caracal/delorean-deps.repo
+  OPSTOOLS_REPO: https://raw.githubusercontent.com/infrawatch/sg-core/0d28a1c2f87bd64f2d67effcda926855af057a82/build/repos/opstools.repo
 
   QDR_IMAGE: quay.io/interconnectedcloud/qdrouterd:1.17.0
   QDR_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/qdr:/etc/qpid-dispatch:ro"
