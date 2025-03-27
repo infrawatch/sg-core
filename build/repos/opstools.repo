@@ -1,19 +1,8 @@
-# CentOS-OpsTools.repo
-#
-# Please see http://wiki.centos.org/SpecialInterestGroup/OpsTools for more
-# information
+# CentOS 9 Opstools repos
 
-[centos-opstools-testing]
-name=CentOS-OpsTools - testing repo
-baseurl=https://buildlogs.centos.org/centos/$releasever-stream/opstools/$basearch/collectd-5/
-gpgcheck=0
-enabled=0
-
-[centos-opstools]
-name=CentOS-OpsTools - collectd
-#mirrorlist=http://mirrorlist.centos.org/?arch=$basearch&release=$releasever-stream&repo=opstools-collectd-5
-baseurl=http://vault.centos.org/$releasever-stream/opstools/$basearch/collectd-5/
-gpgcheck=0
+[centos9-opstools]
+name=centos9-opstools
+baseurl=http://mirror.stream.centos.org/SIGs/9-stream/opstools/$basearch/collectd-5/
 enabled=1
-skip_if_unavailable=1
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-SIG-OpsTools
+gpgcheck=0
+module_hotfixes=1

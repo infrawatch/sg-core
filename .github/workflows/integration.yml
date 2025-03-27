@@ -1,7 +1,7 @@
 name: Integration testing
 env:
   PROJECT_ROOT: /root/go/src/github.com/infrawatch/sg-core
-  OPSTOOLS_REPO: https://raw.githubusercontent.com/infrawatch/sg-core/04dcb34edd2c234b378222d2f9a17e15c0dad936/build/repos/opstools.repo
+  OPSTOOLS_REPO: https://raw.githubusercontent.com/infrawatch/sg-core/0d28a1c2f87bd64f2d67effcda926855af057a82/build/repos/opstools.repo
 
   QDR_IMAGE: quay.io/interconnectedcloud/qdrouterd:1.17.0
   QDR_VOLUME: "--volume=${{ github.workspace }}/ci/service_configs/qdr:/etc/qpid-dispatch:ro"
@@ -10,7 +10,7 @@ env:
   BRIDGE_IMAGE: quay.io/infrawatch/sg-bridge:latest
   BRIDGE_VOLUME: "--volume=${{ github.workspace }}/tmp:/tmp/sg-bridge:z"
 
-  TEST_IMAGE: registry.access.redhat.com/ubi8
+  TEST_IMAGE: registry.access.redhat.com/ubi9
   TEST_PORT: "-p 3000:3000"
 
 on: [push, pull_request]
@@ -22,7 +22,7 @@ jobs:
     env:
       QDR_CHANNEL: collectd/metrics
       BRIDGE_SOCKET: /tmp/sg-bridge/test-socket
-      PROMETHEUS_IMAGE: prom/prometheus:latest
+      PROMETHEUS_IMAGE: quay.io/prometheus/prometheus:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.1.3
@@ -48,7 +48,7 @@ jobs:
       - name: Install devstack
         run: |
           SOURCE=$(pwd)
-          git clone http://github.com/openstack/devstack /opt/stack/devstack
+          git clone -b stable/2024.2 http://github.com/openstack/devstack /opt/stack/devstack
           pushd /opt/stack/devstack
           cp $SOURCE/ci/integration/metrics/local.conf .
           sudo apt-get update
@@ -62,8 +62,8 @@ jobs:
         id: bridge_branch
         continue-on-error: true
         run: |
-          echo "${GITHUB_REF#refs/heads/}"
-          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo ${GITHUB_REF#refs/heads/})"
+          echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}")"
       - name: Start sg-bridge from container image
         if: steps.bridge_branch.outcome != 'success'
         run: |
@@ -74,7 +74,7 @@ jobs:
         if: steps.bridge_branch.outcome == 'success'
         run: |
           docker run --name=sgbridge --network host $BRIDGE_VOLUME -d -uroot \
-            -e GITHUB_REF -e BRIDGE_SOCKET -e QDR_CHANNEL -e OPSTOOLS_REPO \
+            -e GITHUB_HEAD_REF -e BRIDGE_SOCKET -e QDR_CHANNEL -e OPSTOOLS_REPO \
             --workdir=$(dirname $BRIDGE_SOCKET) --volume ${{ github.workspace }}:$PROJECT_ROOT:z \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/run_bridge.sh
       - name: Install collectd
@@ -118,7 +118,7 @@ jobs:
     env:
       QDR_CHANNEL: anycast/ceilometer/metering.sample
       BRIDGE_SOCKET: /tmp/sg-bridge/test-socket
-      PROMETHEUS_IMAGE: prom/prometheus:latest
+      PROMETHEUS_IMAGE: quay.io/prometheus/prometheus:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.1.3
@@ -144,7 +144,7 @@ jobs:
       - name: Install devstack
         run: |
           SOURCE=$(pwd)
-          git clone http://github.com/openstack/devstack /opt/stack/devstack
+          git clone -b stable/2024.2 http://github.com/openstack/devstack /opt/stack/devstack
           pushd /opt/stack/devstack
           cp $SOURCE/ci/integration/metrics/local.conf .
           sudo apt-get update
@@ -158,8 +158,8 @@ jobs:
         id: bridge_branch
         continue-on-error: true
         run: |
-          echo "${GITHUB_REF#refs/heads/}"
-          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo ${GITHUB_REF#refs/heads/})"
+          echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}")"
       - name: Start sg-bridge from container image
         if: steps.bridge_branch.outcome != 'success'
         run: |
@@ -170,7 +170,7 @@ jobs:
         if: steps.bridge_branch.outcome == 'success'
         run: |
           docker run --name=sgbridge --network host $BRIDGE_VOLUME -d -uroot \
-            -e GITHUB_REF -e BRIDGE_SOCKET -e QDR_CHANNEL -e OPSTOOLS_REPO \
+            -e GITHUB_HEAD_REF -e BRIDGE_SOCKET -e QDR_CHANNEL -e OPSTOOLS_REPO \
             --workdir=$(dirname $BRIDGE_SOCKET) --volume ${{ github.workspace }}:$PROJECT_ROOT:z \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/run_bridge.sh
       - name: Set Ceilometer pipelines to QDR output and restart notification agent
@@ -218,7 +218,7 @@ jobs:
     name: "[metrics] transport: socket(tcp); handler: ceilometer-metrics; application: prometheus"
     runs-on: ubuntu-22.04
     env:
-      PROMETHEUS_IMAGE: prom/prometheus:latest
+      PROMETHEUS_IMAGE: quay.io/prometheus/prometheus:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.1.3
@@ -244,7 +244,7 @@ jobs:
       - name: Install devstack
         run: |
           SOURCE=$(pwd)
-          git clone http://github.com/openstack/devstack /opt/stack/devstack
+          git clone -b stable/2024.2 http://github.com/openstack/devstack /opt/stack/devstack
           pushd /opt/stack/devstack
           cp $SOURCE/ci/integration/metrics/local.conf .
           sudo apt-get update
@@ -323,8 +323,8 @@ jobs:
         id: bridge_branch
         continue-on-error: true
         run: |
-          echo "${GITHUB_REF#refs/heads/}"
-          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo ${GITHUB_REF#refs/heads/})"
+          echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+          git ls-remote --exit-code --heads https://github.com/infrawatch/sg-bridge.git "$(echo "${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}")"
       - name: Start sg-bridge from container image
         if: steps.bridge_branch.outcome != 'success'
         run: |
@@ -334,7 +334,7 @@ jobs:
         if: steps.bridge_branch.outcome == 'success'
         run: |
           docker run --name=sgbridge $BRIDGE_VOLUME -d -uroot --network host -e OPSTOOLS_REPO \
-            -e GITHUB_REF -e BRIDGE_SOCKET --workdir=$(dirname $BRIDGE_SOCKET) --volume ${{ github.workspace }}:$PROJECT_ROOT:z \
+            -e GITHUB_HEAD_REF -e BRIDGE_SOCKET --workdir=$(dirname $BRIDGE_SOCKET) --volume ${{ github.workspace }}:$PROJECT_ROOT:z \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/logging/run_bridge.sh
       - name: Run rsyslog to produce log messages
         run: |
