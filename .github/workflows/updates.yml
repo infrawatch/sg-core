@@ -16,7 +16,7 @@ jobs:
 #        (github.event.issue.author_association == 'CONTRIBUTOR') ||
 #        (github.event.issue.author_association == 'MEMBER')
 #      )
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: update PR with coveralls badge
         uses: actions/github-script@v7.0.1
