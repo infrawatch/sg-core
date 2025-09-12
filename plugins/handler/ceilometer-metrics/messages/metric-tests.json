@@ -195,8 +195,8 @@
             "resource",
             "vm_instance",
             "resource_name",
-            "server_group",
-            "some_other_user_metadata"
+            "some_other_user_metadata",
+            "server_group"
           ],
           "LabelVals": [
             "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
@@ -211,8 +211,8 @@
             "d8bd99b6-6fd8-4c02-a2e3-efbf596df636",
             "compute-0.redhat.local",
             "instance-0000001",
-            "group1",
-            "value"
+            "value",
+            "group1"
           ],
           "Time": 1600099969,
           "Type": 2,
