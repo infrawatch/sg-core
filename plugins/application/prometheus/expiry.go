@@ -3,6 +3,7 @@ package main
 import (
 	"container/list"
 	"context"
+	"sync"
 	"time"
 )
 
@@ -15,6 +16,7 @@ type expiry interface {
 }
 
 type expiryProc struct {
+	sync.Mutex
 	entries  *list.List
 	interval time.Duration
 }
@@ -27,21 +29,31 @@ func newExpiryProc(interval time.Duration) *expiryProc {
 }
 
 func (ep *expiryProc) register(e expiry) {
+	ep.Lock()
+	defer ep.Unlock()
 	ep.entries.PushBack(e)
 }
 
 func (ep *expiryProc) check() {
+	ep.Lock()
+	defer ep.Unlock()
+
 	e := ep.entries.Front()
-	for {
-		if e == nil {
-			break
+	for e != nil {
+		// NOTE(vkmc) Shouldn't be required with the lock in place
+		if e.Value == nil {
+			next := e.Next()
+			ep.entries.Remove(e)
+			e = next
+			continue
 		}
 
-		if e.Value.(expiry).Expired(ep.interval) {
-			if e.Value.(expiry).Delete() {
-				n := e.Next()
+		expirable := e.Value.(expiry)
+		if expirable.Expired(ep.interval) {
+			if expirable.Delete() {
+				next := e.Next()
 				ep.entries.Remove(e)
-				e = n
+				e = next
 				continue
 			}
 		}
