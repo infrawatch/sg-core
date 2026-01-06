@@ -20,11 +20,14 @@ import (
 )
 
 const (
-	maxBufferSize = 65535
-	udp           = "udp"
-	unix          = "unix"
-	tcp           = "tcp"
-	msgLengthSize = 8
+	defaultBufferSize = 65535
+	minBufferSize     = 1024
+	maxBufferSize     = 10485760  // 10MB - max configurable buffer size
+	maxMessageSize    = 104857600 // 100MB - max single message size for TCP
+	udp               = "udp"
+	unix              = "unix"
+	tcp               = "tcp"
+	msgLengthSize     = 8
 )
 
 var (
@@ -42,6 +45,7 @@ type configT struct {
 	Path         string `validate:"required_without=Socketaddr"`
 	Type         string
 	Socketaddr   string `validate:"required_without=Path"`
+	BufferSize   int64  `yaml:"bufferSize"` // read buffer size in bytes (default: 65535, min: 1024, max: 10485760)
 	DumpMessages struct {
 		Enabled bool
 		Path    string
@@ -180,17 +184,66 @@ func (s *Socket) ReceiveData(maxBuffSize int64, done chan bool, pc net.Conn, w t
 			}
 			return
 		}
-		msgBuffer = append(remainingMsg, msgBuffer...)
+
+		// Combine remaining data from previous iteration with newly read data
+		var data []byte
+		if len(remainingMsg) > 0 {
+			data = append(remainingMsg, msgBuffer[:n]...)
+		} else {
+			data = msgBuffer[:n]
+		}
+		totalSize := len(data)
 
 		// whole buffer was used, so we are potentially handling larger message
-		if n == len(msgBuffer) {
-			s.logger.Warnf("full read buffer used")
+		if n == int(maxBuffSize) {
+			if s.conf.Type == tcp {
+				s.logger.Debugf("full read buffer used (%d bytes read), will read more if needed", n)
+			} else {
+				// For UDP/Unix sockets, this means the message was truncated by the OS
+				s.logger.Errorf(nil, "message truncated: buffer size (%d bytes) exceeded for %s socket - increase bufferSize configuration or message will be incomplete", maxBuffSize, s.conf.Type)
+			}
 		}
 
-		n += len(remainingMsg)
+		// For TCP, check if we need to read more data for a large message
+		if s.conf.Type == tcp && len(data) >= msgLengthSize {
+			// Peek at the message length header
+			reader := bytes.NewReader(data[:msgLengthSize])
+			var msgLength int64
+			err := binary.Read(reader, binary.LittleEndian, &msgLength)
+			if err == nil && msgLength > 0 {
+				// Validate message size
+				if msgLength > maxMessageSize {
+					s.logger.Errorf(nil, "rejecting TCP message: size (%d bytes) exceeds maximum allowed (%d bytes)", msgLength, maxMessageSize)
+					return
+				}
+				requiredSize := msgLengthSize + int(msgLength)
+				// If the message is larger than our current data, read more
+				if requiredSize > len(data) {
+					s.logger.Debugf("large TCP message detected, size: %d bytes, reading more data", msgLength)
+					// Read additional data until we have the complete message
+					additionalNeeded := requiredSize - len(data)
+					for additionalNeeded > 0 {
+						readSize := maxBuffSize
+						if int64(additionalNeeded) < maxBuffSize {
+							readSize = int64(additionalNeeded)
+						}
+						tempBuf := make([]byte, readSize)
+						n, err := pc.Read(tempBuf)
+						if err != nil || n < 1 {
+							s.logger.Errorf(err, "failed to read continuation of large TCP message (expected %d more bytes)", additionalNeeded)
+							return
+						}
+						data = append(data, tempBuf[:n]...)
+						additionalNeeded = requiredSize - len(data)
+					}
+					totalSize = len(data)
+					s.logger.Debugf("completed reading large TCP message, total size: %d bytes", totalSize)
+				}
+			}
+		}
 
 		if s.conf.DumpMessages.Enabled {
-			_, err := s.dumpBuf.Write(msgBuffer[:n])
+			_, err := s.dumpBuf.Write(data)
 			if err != nil {
 				s.logger.Errorf(err, "writing to dump buffer")
 			}
@@ -202,22 +255,29 @@ func (s *Socket) ReceiveData(maxBuffSize int64, done chan bool, pc net.Conn, w t
 		}
 
 		if s.conf.Type == tcp {
-			parsed, err := s.WriteTCPMsg(w, msgBuffer, n)
+			parsed, err := s.WriteTCPMsg(w, data, totalSize)
 			if err != nil {
 				s.logger.Errorf(err, "error, while parsing messages")
 				return
 			}
-			remainingMsg = make([]byte, int64(n)-parsed)
-			copy(remainingMsg, msgBuffer[parsed:n])
+			remainingMsg = make([]byte, int64(totalSize)-parsed)
+			copy(remainingMsg, data[parsed:totalSize])
 		} else {
-			w(msgBuffer[:n])
+			w(data)
 			msgCount++
+			remainingMsg = nil
 		}
 	}
 }
 
 // Run implements type Transport
 func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
+	// Use default buffer size if not configured (e.g., in tests)
+	bufferSize := s.conf.BufferSize
+	if bufferSize == 0 {
+		bufferSize = defaultBufferSize
+	}
+
 	var pc net.Conn
 	switch s.conf.Type {
 	case udp:
@@ -226,7 +286,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: "+s.conf.Type)
 			return
 		}
-		go s.ReceiveData(maxBufferSize, done, pc, w)
+		go s.ReceiveData(bufferSize, done, pc, w)
 
 	case tcp:
 		TCPSocket := s.initTCPSocket()
@@ -246,7 +306,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 						continue
 					}
 				}
-				go s.ReceiveData(maxBufferSize, done, pc, w)
+				go s.ReceiveData(bufferSize, done, pc, w)
 			}
 		}()
 	case unix:
@@ -257,7 +317,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: "+s.conf.Type)
 			return
 		}
-		go s.ReceiveData(maxBufferSize, done, pc, w)
+		go s.ReceiveData(bufferSize, done, pc, w)
 	}
 
 	for {
@@ -291,12 +351,21 @@ func (s *Socket) Config(c []byte) error {
 		}{
 			Path: "/dev/stdout",
 		},
-		Type: unix,
+		Type:       unix,
+		BufferSize: defaultBufferSize,
 	}
 
 	err := config.ParseConfig(bytes.NewReader(c), &s.conf)
 	if err != nil {
 		return err
+	}
+
+	// Validate buffer size
+	if s.conf.BufferSize < minBufferSize {
+		return fmt.Errorf("bufferSize must be at least %d bytes, got %d", minBufferSize, s.conf.BufferSize)
+	}
+	if s.conf.BufferSize > maxBufferSize {
+		return fmt.Errorf("bufferSize must be at most %d bytes, got %d", maxBufferSize, s.conf.BufferSize)
 	}
 
 	if s.conf.DumpMessages.Enabled {
