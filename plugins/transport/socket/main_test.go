@@ -19,6 +19,54 @@ import (
 const regularBuffSize = 16384
 const addition = "wubba lubba dub dub"
 
+// Helper function to send and receive Unix socket message
+func sendUnixSocketMessage(t *testing.T, logger *logging.Logger, tmpdir string, socketName string, msg []byte) []byte {
+	sktpath := path.Join(tmpdir, socketName)
+	skt, err := os.OpenFile(sktpath, os.O_RDWR|os.O_CREATE, os.ModeSocket|os.ModePerm)
+	require.NoError(t, err)
+	defer skt.Close()
+
+	trans := Socket{
+		conf: configT{
+			Path: sktpath,
+		},
+		logger: &logWrapper{
+			l: logger,
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	var receivedMsg []byte
+	go trans.Run(ctx, func(mess []byte) {
+		receivedMsg = mess
+		wg.Done()
+	}, make(chan bool))
+
+	// Wait for socket file to be created
+	for {
+		stat, err := os.Stat(sktpath)
+		require.NoError(t, err)
+		if stat.Mode()&os.ModeType == os.ModeSocket {
+			break
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+
+	wskt, err := net.DialUnix("unixgram", nil, &net.UnixAddr{Name: sktpath, Net: "unixgram"})
+	require.NoError(t, err)
+	_, err = wskt.Write(msg)
+	require.NoError(t, err)
+
+	wg.Wait()
+	cancel()
+	time.Sleep(100 * time.Millisecond)
+	wskt.Close()
+
+	return receivedMsg
+}
+
 func TestUnixSocketTransport(t *testing.T) {
 	tmpdir, err := os.MkdirTemp(".", "socket_test_tmp")
 	require.NoError(t, err)
@@ -29,80 +77,24 @@ func TestUnixSocketTransport(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("test normal message", func(t *testing.T) {
-		sktpath2 := path.Join(tmpdir, "socket2")
-		skt2, err := os.OpenFile(sktpath2, os.O_RDWR|os.O_CREATE, os.ModeSocket|os.ModePerm)
-		require.NoError(t, err)
-		defer skt2.Close()
-
-		trans := Socket{
-			conf: configT{
-				Path: sktpath2,
-			},
-			logger: &logWrapper{
-				l: logger,
-			},
-		}
-
 		// Create a normal-sized message (5KB)
 		msg := make([]byte, 5000)
 		for i := 0; i < len(msg); i++ {
-			msg[i] = byte('A' + (i % 26))
+			msg[i] = byte('A')
 		}
 		marker := []byte("--END--")
 		copy(msg[len(msg)-len(marker):], marker)
 
-		// Setup message verification
-		ctx, cancel := context.WithCancel(context.Background())
-		wg := sync.WaitGroup{}
-		wg.Add(1)
-		go trans.Run(ctx, func(mess []byte) {
-			// Verify we received the complete message
-			assert.Equal(t, len(msg), len(mess))
-			// Verify the end marker is present
-			endMarkerPos := len(mess) - len(marker)
-			assert.Equal(t, string(marker), string(mess[endMarkerPos:]))
-			wg.Done()
-		}, make(chan bool))
+		receivedMsg := sendUnixSocketMessage(t, logger, tmpdir, "socket1", msg)
 
-		// Wait for socket file to be created
-		for {
-			stat, err := os.Stat(sktpath2)
-			require.NoError(t, err)
-			if stat.Mode()&os.ModeType == os.ModeSocket {
-				break
-			}
-			time.Sleep(250 * time.Millisecond)
-		}
-
-		// Send the message
-		wskt, err := net.DialUnix("unixgram", nil, &net.UnixAddr{Name: sktpath2, Net: "unixgram"})
-		require.NoError(t, err)
-		_, err = wskt.Write(msg)
-		require.NoError(t, err)
-
-		// Wait for message processing
-		wg.Wait()
-
-		cancel()
-		time.Sleep(100 * time.Millisecond)
-		wskt.Close()
+		// Verify we received the complete message
+		assert.Equal(t, len(msg), len(receivedMsg))
+		// Verify the end marker is present
+		endMarkerPos := len(receivedMsg) - len(marker)
+		assert.Equal(t, string(marker), string(receivedMsg[endMarkerPos:]))
 	})
 
 	t.Run("test large message that fills initial buffer", func(t *testing.T) {
-		sktpath3 := path.Join(tmpdir, "socket3")
-		skt3, err := os.OpenFile(sktpath3, os.O_RDWR|os.O_CREATE, os.ModeSocket|os.ModePerm)
-		require.NoError(t, err)
-		defer skt3.Close()
-
-		trans := Socket{
-			conf: configT{
-				Path: sktpath3,
-			},
-			logger: &logWrapper{
-				l: logger,
-			},
-		}
-
 		// Create a message that fills the entire initial buffer (65535 bytes)
 		// Note: For Unix datagram sockets, the OS may have its own limits
 		msgSize := 65535
@@ -113,59 +105,14 @@ func TestUnixSocketTransport(t *testing.T) {
 		marker := []byte("--FULL--")
 		copy(msg[len(msg)-len(marker):], marker)
 
-		// Setup message verification
-		ctx, cancel := context.WithCancel(context.Background())
-		wg := sync.WaitGroup{}
-		wg.Add(1)
-		messageReceived := false
-		go trans.Run(ctx, func(mess []byte) {
-			messageReceived = true
-			// Message might be truncated due to OS limits on Unix datagrams
-			// Just verify we got something
-			assert.Equal(t, true, len(mess) > 0)
-			wg.Done()
-		}, make(chan bool))
+		receivedMsg := sendUnixSocketMessage(t, logger, tmpdir, "socket2", msg)
 
-		// Wait for socket file to be created
-		for {
-			stat, err := os.Stat(sktpath3)
-			require.NoError(t, err)
-			if stat.Mode()&os.ModeType == os.ModeSocket {
-				break
-			}
-			time.Sleep(250 * time.Millisecond)
-		}
-
-		// Send the large message
-		wskt, err := net.DialUnix("unixgram", nil, &net.UnixAddr{Name: sktpath3, Net: "unixgram"})
-		require.NoError(t, err)
-		_, err = wskt.Write(msg)
-		require.NoError(t, err)
-
-		// Wait for message processing
-		wg.Wait()
-		assert.Equal(t, true, messageReceived)
-
-		cancel()
-		time.Sleep(100 * time.Millisecond)
-		wskt.Close()
+		// Message might be truncated due to OS limits on Unix datagrams
+		// Just verify we got something
+		assert.Equal(t, true, len(receivedMsg) > 0)
 	})
 
 	t.Run("test large message transport", func(t *testing.T) {
-		sktpath := path.Join(tmpdir, "socket4")
-		skt, err := os.OpenFile(sktpath, os.O_RDWR|os.O_CREATE, os.ModeSocket|os.ModePerm)
-		require.NoError(t, err)
-		defer skt.Close()
-
-		trans := Socket{
-			conf: configT{
-				Path: sktpath,
-			},
-			logger: &logWrapper{
-				l: logger,
-			},
-		}
-
 		msg := make([]byte, regularBuffSize)
 		for i := 0; i < regularBuffSize; i++ {
 			msg[i] = byte('X')
@@ -173,37 +120,11 @@ func TestUnixSocketTransport(t *testing.T) {
 		msg[regularBuffSize-1] = byte('$')
 		msg = append(msg, []byte(addition)...)
 
-		// verify transport
-		ctx, cancel := context.WithCancel(context.Background())
-		wg := sync.WaitGroup{}
-		wg.Add(1)
-		go trans.Run(ctx, func(mess []byte) {
-			strmsg := string(mess)
-			assert.Equal(t, regularBuffSize+len(addition), len(strmsg))   // we received whole message
-			assert.Equal(t, addition, strmsg[len(strmsg)-len(addition):]) // and the out-of-band part is correct
-			wg.Done()
-		}, make(chan bool))
+		receivedMsg := sendUnixSocketMessage(t, logger, tmpdir, "socket3", msg)
 
-		// wait for socket file to be created
-		for {
-			stat, err := os.Stat(sktpath)
-			require.NoError(t, err)
-			if stat.Mode()&os.ModeType == os.ModeSocket {
-				break
-			}
-			time.Sleep(250 * time.Millisecond)
-		}
-
-		// write to socket
-		wskt, err := net.DialUnix("unixgram", nil, &net.UnixAddr{Name: sktpath, Net: "unixgram"})
-		require.NoError(t, err)
-		_, err = wskt.Write(msg)
-		require.NoError(t, err)
-
-		wg.Wait()
-		cancel()
-		time.Sleep(100 * time.Millisecond)
-		wskt.Close()
+		strmsg := string(receivedMsg)
+		assert.Equal(t, regularBuffSize+len(addition), len(strmsg))   // we received whole message
+		assert.Equal(t, addition, strmsg[len(strmsg)-len(addition):]) // and the out-of-band part is correct
 	})
 }
 
