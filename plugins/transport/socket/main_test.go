@@ -386,6 +386,48 @@ func createTCPMessage(t *testing.T, content []byte) []byte {
 	return append(msgLength.Bytes(), content...)
 }
 
+// Helper function to test TCP message with size and marker verification
+func testTCPMessageWithMarker(t *testing.T, logger *logging.Logger, addr string, msgSize int, fillByte byte, marker []byte) {
+	trans := Socket{
+		conf: configT{
+			Socketaddr: addr,
+			Type:       "tcp",
+		},
+		logger: &logWrapper{
+			l: logger,
+		},
+	}
+
+	msgContent := make([]byte, msgSize)
+	for i := 0; i < msgSize; i++ {
+		msgContent[i] = fillByte
+	}
+	copy(msgContent[len(msgContent)-len(marker):], marker)
+
+	fullMsg := createTCPMessage(t, msgContent)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go trans.Run(ctx, func(mess []byte) {
+		assert.Equal(t, msgSize, len(mess))
+		endMarkerPos := len(mess) - len(marker)
+		assert.Equal(t, string(marker), string(mess[endMarkerPos:]))
+		wg.Done()
+	}, make(chan bool))
+
+	time.Sleep(100 * time.Millisecond)
+
+	wskt := connectTCPWithRetry(t, addr)
+	_, err := wskt.Write(fullMsg)
+	require.NoError(t, err)
+
+	wg.Wait()
+	cancel()
+	time.Sleep(100 * time.Millisecond)
+	wskt.Close()
+}
+
 func TestTcpSocketTransport(t *testing.T) {
 	tmpdir, err := os.MkdirTemp(".", "socket_test_tmp")
 	require.NoError(t, err)
@@ -396,145 +438,18 @@ func TestTcpSocketTransport(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("test normal message", func(t *testing.T) {
-		trans := Socket{
-			conf: configT{
-				Socketaddr: "127.0.0.1:8660",
-				Type:       "tcp",
-			},
-			logger: &logWrapper{
-				l: logger,
-			},
-		}
-
 		// Create a normal message (5KB)
-		msgContent := make([]byte, 5000)
-		for i := 0; i < len(msgContent); i++ {
-			msgContent[i] = byte('T')
-		}
-		marker := []byte("--TCP-END--")
-		copy(msgContent[len(msgContent)-len(marker):], marker)
-
-		fullMsg := createTCPMessage(t, msgContent)
-
-		// Setup message verification
-		ctx, cancel := context.WithCancel(context.Background())
-		wg := sync.WaitGroup{}
-		wg.Add(1)
-		go trans.Run(ctx, func(mess []byte) {
-			assert.Equal(t, len(msgContent), len(mess))
-			endMarkerPos := len(mess) - len(marker)
-			assert.Equal(t, string(marker), string(mess[endMarkerPos:]))
-			wg.Done()
-		}, make(chan bool))
-
-		// Wait for socket to be ready
-		time.Sleep(100 * time.Millisecond)
-
-		// Connect and send
-		wskt := connectTCPWithRetry(t, "127.0.0.1:8660")
-		_, err = wskt.Write(fullMsg)
-		require.NoError(t, err)
-
-		wg.Wait()
-		cancel()
-		time.Sleep(100 * time.Millisecond)
-		wskt.Close()
+		testTCPMessageWithMarker(t, logger, "127.0.0.1:8660", 5000, 'T', []byte("--TCP-END--"))
 	})
 
 	t.Run("test message exceeding initial buffer", func(t *testing.T) {
-		trans := Socket{
-			conf: configT{
-				Socketaddr: "127.0.0.1:8661",
-				Type:       "tcp",
-			},
-			logger: &logWrapper{
-				l: logger,
-			},
-		}
-
 		// Create a message larger than initial buffer (100KB)
-		msgSize := 100000
-		msgContent := make([]byte, msgSize)
-		for i := 0; i < msgSize; i++ {
-			msgContent[i] = byte('B' + (i % 20))
-		}
-		marker := []byte("--LARGE-TCP--")
-		copy(msgContent[len(msgContent)-len(marker):], marker)
-
-		fullMsg := createTCPMessage(t, msgContent)
-
-		// Setup message verification
-		ctx, cancel := context.WithCancel(context.Background())
-		wg := sync.WaitGroup{}
-		wg.Add(1)
-		go trans.Run(ctx, func(mess []byte) {
-			// Verify we received the complete message
-			assert.Equal(t, msgSize, len(mess))
-			endMarkerPos := len(mess) - len(marker)
-			assert.Equal(t, string(marker), string(mess[endMarkerPos:]))
-			wg.Done()
-		}, make(chan bool))
-
-		// Wait for socket to be ready
-		time.Sleep(100 * time.Millisecond)
-
-		// Connect and send
-		wskt := connectTCPWithRetry(t, "127.0.0.1:8661")
-		_, err = wskt.Write(fullMsg)
-		require.NoError(t, err)
-
-		wg.Wait()
-		cancel()
-		time.Sleep(100 * time.Millisecond)
-		wskt.Close()
+		testTCPMessageWithMarker(t, logger, "127.0.0.1:8661", 100000, 'B', []byte("--LARGE-TCP--"))
 	})
 
 	t.Run("test very large TCP message", func(t *testing.T) {
-		trans := Socket{
-			conf: configT{
-				Socketaddr: "127.0.0.1:8662",
-				Type:       "tcp",
-			},
-			logger: &logWrapper{
-				l: logger,
-			},
-		}
-
 		// Create a 1MB message to test large message handling
-		msgSize := 1000000
-		msgContent := make([]byte, msgSize)
-		for i := 0; i < msgSize; i++ {
-			msgContent[i] = byte('M' + (i % 10))
-		}
-		marker := []byte("--MEGA-TCP--")
-		copy(msgContent[len(msgContent)-len(marker):], marker)
-
-		fullMsg := createTCPMessage(t, msgContent)
-
-		// Setup message verification
-		ctx, cancel := context.WithCancel(context.Background())
-		wg := sync.WaitGroup{}
-		wg.Add(1)
-		go trans.Run(ctx, func(mess []byte) {
-			// Verify we received the complete message
-			assert.Equal(t, msgSize, len(mess))
-			endMarkerPos := len(mess) - len(marker)
-			assert.Equal(t, string(marker), string(mess[endMarkerPos:]))
-			wg.Done()
-		}, make(chan bool))
-
-		// Wait for socket to be ready
-		time.Sleep(100 * time.Millisecond)
-
-		// Connect and send
-		wskt := connectTCPWithRetry(t, "127.0.0.1:8662")
-		_, err = wskt.Write(fullMsg)
-		require.NoError(t, err)
-
-		wg.Wait()
-		cancel()
-		time.Sleep(100 * time.Millisecond)
-		wskt.Close()
+		testTCPMessageWithMarker(t, logger, "127.0.0.1:8662", 1000000, 'M', []byte("--MEGA-TCP--"))
 	})
 
 	t.Run("test multiple large messages", func(t *testing.T) {
