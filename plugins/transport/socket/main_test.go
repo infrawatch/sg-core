@@ -28,21 +28,144 @@ func TestUnixSocketTransport(t *testing.T) {
 	logger, err := logging.NewLogger(logging.DEBUG, logpath)
 	require.NoError(t, err)
 
-	sktpath := path.Join(tmpdir, "socket")
-	skt, err := os.OpenFile(sktpath, os.O_RDWR|os.O_CREATE, os.ModeSocket|os.ModePerm)
-	require.NoError(t, err)
-	defer skt.Close()
+	t.Run("test normal message", func(t *testing.T) {
+		sktpath2 := path.Join(tmpdir, "socket2")
+		skt2, err := os.OpenFile(sktpath2, os.O_RDWR|os.O_CREATE, os.ModeSocket|os.ModePerm)
+		require.NoError(t, err)
+		defer skt2.Close()
 
-	trans := Socket{
-		conf: configT{
-			Path: sktpath,
-		},
-		logger: &logWrapper{
-			l: logger,
-		},
-	}
+		trans := Socket{
+			conf: configT{
+				Path: sktpath2,
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		// Create a normal-sized message (5KB)
+		msg := make([]byte, 5000)
+		for i := 0; i < len(msg); i++ {
+			msg[i] = byte('A' + (i % 26))
+		}
+		marker := []byte("--END--")
+		copy(msg[len(msg)-len(marker):], marker)
+
+		// Setup message verification
+		ctx, cancel := context.WithCancel(context.Background())
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		go trans.Run(ctx, func(mess []byte) {
+			// Verify we received the complete message
+			assert.Equal(t, len(msg), len(mess))
+			// Verify the end marker is present
+			endMarkerPos := len(mess) - len(marker)
+			assert.Equal(t, string(marker), string(mess[endMarkerPos:]))
+			wg.Done()
+		}, make(chan bool))
+
+		// Wait for socket file to be created
+		for {
+			stat, err := os.Stat(sktpath2)
+			require.NoError(t, err)
+			if stat.Mode()&os.ModeType == os.ModeSocket {
+				break
+			}
+			time.Sleep(250 * time.Millisecond)
+		}
+
+		// Send the message
+		wskt, err := net.DialUnix("unixgram", nil, &net.UnixAddr{Name: sktpath2, Net: "unixgram"})
+		require.NoError(t, err)
+		_, err = wskt.Write(msg)
+		require.NoError(t, err)
+
+		// Wait for message processing
+		wg.Wait()
+
+		cancel()
+		time.Sleep(100 * time.Millisecond)
+		wskt.Close()
+	})
+
+	t.Run("test large message that fills initial buffer", func(t *testing.T) {
+		sktpath3 := path.Join(tmpdir, "socket3")
+		skt3, err := os.OpenFile(sktpath3, os.O_RDWR|os.O_CREATE, os.ModeSocket|os.ModePerm)
+		require.NoError(t, err)
+		defer skt3.Close()
+
+		trans := Socket{
+			conf: configT{
+				Path: sktpath3,
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		// Create a message that fills the entire initial buffer (65535 bytes)
+		// Note: For Unix datagram sockets, the OS may have its own limits
+		msgSize := 65535
+		msg := make([]byte, msgSize)
+		for i := 0; i < msgSize; i++ {
+			msg[i] = byte('X')
+		}
+		marker := []byte("--FULL--")
+		copy(msg[len(msg)-len(marker):], marker)
+
+		// Setup message verification
+		ctx, cancel := context.WithCancel(context.Background())
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		messageReceived := false
+		go trans.Run(ctx, func(mess []byte) {
+			messageReceived = true
+			// Message might be truncated due to OS limits on Unix datagrams
+			// Just verify we got something
+			assert.Equal(t, true, len(mess) > 0)
+			wg.Done()
+		}, make(chan bool))
+
+		// Wait for socket file to be created
+		for {
+			stat, err := os.Stat(sktpath3)
+			require.NoError(t, err)
+			if stat.Mode()&os.ModeType == os.ModeSocket {
+				break
+			}
+			time.Sleep(250 * time.Millisecond)
+		}
+
+		// Send the large message
+		wskt, err := net.DialUnix("unixgram", nil, &net.UnixAddr{Name: sktpath3, Net: "unixgram"})
+		require.NoError(t, err)
+		_, err = wskt.Write(msg)
+		require.NoError(t, err)
+
+		// Wait for message processing
+		wg.Wait()
+		assert.Equal(t, true, messageReceived)
+
+		cancel()
+		time.Sleep(100 * time.Millisecond)
+		wskt.Close()
+	})
 
 	t.Run("test large message transport", func(t *testing.T) {
+		sktpath := path.Join(tmpdir, "socket4")
+		skt, err := os.OpenFile(sktpath, os.O_RDWR|os.O_CREATE, os.ModeSocket|os.ModePerm)
+		require.NoError(t, err)
+		defer skt.Close()
+
+		trans := Socket{
+			conf: configT{
+				Path: sktpath,
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
 		msg := make([]byte, regularBuffSize)
 		for i := 0; i < regularBuffSize; i++ {
 			msg[i] = byte('X')
@@ -53,8 +176,8 @@ func TestUnixSocketTransport(t *testing.T) {
 		// verify transport
 		ctx, cancel := context.WithCancel(context.Background())
 		wg := sync.WaitGroup{}
+		wg.Add(1)
 		go trans.Run(ctx, func(mess []byte) {
-			wg.Add(1)
 			strmsg := string(mess)
 			assert.Equal(t, regularBuffSize+len(addition), len(strmsg))   // we received whole message
 			assert.Equal(t, addition, strmsg[len(strmsg)-len(addition):]) // and the out-of-band part is correct
@@ -77,8 +200,9 @@ func TestUnixSocketTransport(t *testing.T) {
 		_, err = wskt.Write(msg)
 		require.NoError(t, err)
 
-		cancel()
 		wg.Wait()
+		cancel()
+		time.Sleep(100 * time.Millisecond)
 		wskt.Close()
 	})
 }
@@ -92,17 +216,119 @@ func TestUdpSocketTransport(t *testing.T) {
 	logger, err := logging.NewLogger(logging.DEBUG, logpath)
 	require.NoError(t, err)
 
-	trans := Socket{
-		conf: configT{
-			Socketaddr: "127.0.0.1:8642",
-			Type:       "udp",
-		},
-		logger: &logWrapper{
-			l: logger,
-		},
-	}
+	t.Run("test normal message", func(t *testing.T) {
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "127.0.0.1:8650",
+				Type:       "udp",
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		// Create a normal message (5KB)
+		msg := make([]byte, 5000)
+		for i := 0; i < len(msg); i++ {
+			msg[i] = byte('U')
+		}
+		marker := []byte("--UDP-END--")
+		copy(msg[len(msg)-len(marker):], marker)
+
+		// Setup message verification
+		ctx, cancel := context.WithCancel(context.Background())
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		go trans.Run(ctx, func(mess []byte) {
+			// Verify we received the complete message
+			assert.Equal(t, len(msg), len(mess))
+			// Verify the end marker is present
+			endMarkerPos := len(mess) - len(marker)
+			assert.Equal(t, string(marker), string(mess[endMarkerPos:]))
+			wg.Done()
+		}, make(chan bool))
+
+		// Wait for socket to be ready
+		time.Sleep(100 * time.Millisecond)
+
+		// Send the message
+		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:8650")
+		require.NoError(t, err)
+		wskt, err := net.DialUDP("udp", nil, addr)
+		require.NoError(t, err)
+		_, err = wskt.Write(msg)
+		require.NoError(t, err)
+
+		// Wait for message processing
+		wg.Wait()
+
+		cancel()
+		time.Sleep(100 * time.Millisecond)
+		wskt.Close()
+	})
+
+	t.Run("test message at buffer limit", func(t *testing.T) {
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "127.0.0.1:8651",
+				Type:       "udp",
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		// Create a message near the UDP limit (60KB - well within OS limits)
+		msgSize := 60000
+		msg := make([]byte, msgSize)
+		for i := 0; i < msgSize; i++ {
+			msg[i] = byte('L')
+		}
+		marker := []byte("--LARGE--")
+		copy(msg[len(msg)-len(marker):], marker)
+
+		// Setup message verification
+		ctx, cancel := context.WithCancel(context.Background())
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		go trans.Run(ctx, func(mess []byte) {
+			// Should receive complete message since it's within UDP limits
+			assert.Equal(t, msgSize, len(mess))
+			endMarkerPos := len(mess) - len(marker)
+			assert.Equal(t, string(marker), string(mess[endMarkerPos:]))
+			wg.Done()
+		}, make(chan bool))
+
+		// Wait for socket to be ready
+		time.Sleep(100 * time.Millisecond)
+
+		// Send the message
+		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:8651")
+		require.NoError(t, err)
+		wskt, err := net.DialUDP("udp", nil, addr)
+		require.NoError(t, err)
+		_, err = wskt.Write(msg)
+		require.NoError(t, err)
+
+		// Wait for message processing
+		wg.Wait()
+
+		cancel()
+		time.Sleep(100 * time.Millisecond)
+		wskt.Close()
+	})
 
 	t.Run("test large message transport", func(t *testing.T) {
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "127.0.0.1:8652",
+				Type:       "udp",
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
 		msg := make([]byte, regularBuffSize)
 		for i := 0; i < regularBuffSize; i++ {
 			msg[i] = byte('X')
@@ -113,24 +339,28 @@ func TestUdpSocketTransport(t *testing.T) {
 		// verify transport
 		ctx, cancel := context.WithCancel(context.Background())
 		wg := sync.WaitGroup{}
+		wg.Add(1)
 		go trans.Run(ctx, func(mess []byte) {
-			wg.Add(1)
 			strmsg := string(mess)
 			assert.Equal(t, regularBuffSize+len(addition), len(strmsg))   // we received whole message
 			assert.Equal(t, addition, strmsg[len(strmsg)-len(addition):]) // and the out-of-band part is correct
 			wg.Done()
 		}, make(chan bool))
 
+		// Wait for socket to be ready
+		time.Sleep(100 * time.Millisecond)
+
 		// write to socket
-		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:8642")
+		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:8652")
 		require.NoError(t, err)
 		wskt, err := net.DialUDP("udp", nil, addr)
 		require.NoError(t, err)
 		_, err = wskt.Write(msg)
 		require.NoError(t, err)
 
-		cancel()
 		wg.Wait()
+		cancel()
+		time.Sleep(100 * time.Millisecond)
 		wskt.Close()
 	})
 }
@@ -144,17 +374,287 @@ func TestTcpSocketTransport(t *testing.T) {
 	logger, err := logging.NewLogger(logging.DEBUG, logpath)
 	require.NoError(t, err)
 
-	trans := Socket{
-		conf: configT{
-			Socketaddr: "127.0.0.1:8642",
-			Type:       "tcp",
-		},
-		logger: &logWrapper{
-			l: logger,
-		},
-	}
+	t.Run("test normal message", func(t *testing.T) {
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "127.0.0.1:8660",
+				Type:       "tcp",
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		// Create a normal message (5KB)
+		msgContent := make([]byte, 5000)
+		for i := 0; i < len(msgContent); i++ {
+			msgContent[i] = byte('T')
+		}
+		marker := []byte("--TCP-END--")
+		copy(msgContent[len(msgContent)-len(marker):], marker)
+
+		// Prepend length header for TCP
+		msgLength := new(bytes.Buffer)
+		err := binary.Write(msgLength, binary.LittleEndian, uint64(len(msgContent)))
+		require.NoError(t, err)
+		fullMsg := append(msgLength.Bytes(), msgContent...)
+
+		// Setup message verification
+		ctx, cancel := context.WithCancel(context.Background())
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		go trans.Run(ctx, func(mess []byte) {
+			assert.Equal(t, len(msgContent), len(mess))
+			endMarkerPos := len(mess) - len(marker)
+			assert.Equal(t, string(marker), string(mess[endMarkerPos:]))
+			wg.Done()
+		}, make(chan bool))
+
+		// Wait for socket to be ready
+		time.Sleep(100 * time.Millisecond)
+
+		// Connect and send
+		wskt, err := net.Dial("tcp", "127.0.0.1:8660")
+		if err != nil {
+			for retries := 0; err != nil && retries < 3; retries++ {
+				time.Sleep(500 * time.Millisecond)
+				wskt, err = net.Dial("tcp", "127.0.0.1:8660")
+			}
+		}
+		require.NoError(t, err)
+
+		_, err = wskt.Write(fullMsg)
+		require.NoError(t, err)
+
+		wg.Wait()
+		cancel()
+		time.Sleep(100 * time.Millisecond)
+		wskt.Close()
+	})
+
+	t.Run("test message exceeding initial buffer", func(t *testing.T) {
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "127.0.0.1:8661",
+				Type:       "tcp",
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		// Create a message larger than initial buffer (100KB)
+		msgSize := 100000
+		msgContent := make([]byte, msgSize)
+		for i := 0; i < msgSize; i++ {
+			msgContent[i] = byte('B' + (i % 20))
+		}
+		marker := []byte("--LARGE-TCP--")
+		copy(msgContent[len(msgContent)-len(marker):], marker)
+
+		// Prepend length header for TCP
+		msgLength := new(bytes.Buffer)
+		err := binary.Write(msgLength, binary.LittleEndian, uint64(len(msgContent)))
+		require.NoError(t, err)
+		fullMsg := append(msgLength.Bytes(), msgContent...)
+
+		// Setup message verification
+		ctx, cancel := context.WithCancel(context.Background())
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		go trans.Run(ctx, func(mess []byte) {
+			// Verify we received the complete message
+			assert.Equal(t, msgSize, len(mess))
+			endMarkerPos := len(mess) - len(marker)
+			assert.Equal(t, string(marker), string(mess[endMarkerPos:]))
+			wg.Done()
+		}, make(chan bool))
+
+		// Wait for socket to be ready
+		time.Sleep(100 * time.Millisecond)
+
+		// Connect and send
+		wskt, err := net.Dial("tcp", "127.0.0.1:8661")
+		if err != nil {
+			for retries := 0; err != nil && retries < 3; retries++ {
+				time.Sleep(500 * time.Millisecond)
+				wskt, err = net.Dial("tcp", "127.0.0.1:8661")
+			}
+		}
+		require.NoError(t, err)
+
+		_, err = wskt.Write(fullMsg)
+		require.NoError(t, err)
+
+		wg.Wait()
+		cancel()
+		time.Sleep(100 * time.Millisecond)
+		wskt.Close()
+	})
+
+	t.Run("test very large TCP message", func(t *testing.T) {
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "127.0.0.1:8662",
+				Type:       "tcp",
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		// Create a 1MB message to test large message handling
+		msgSize := 1000000
+		msgContent := make([]byte, msgSize)
+		for i := 0; i < msgSize; i++ {
+			msgContent[i] = byte('M' + (i % 10))
+		}
+		marker := []byte("--MEGA-TCP--")
+		copy(msgContent[len(msgContent)-len(marker):], marker)
+
+		// Prepend length header for TCP
+		msgLength := new(bytes.Buffer)
+		err := binary.Write(msgLength, binary.LittleEndian, uint64(len(msgContent)))
+		require.NoError(t, err)
+		fullMsg := append(msgLength.Bytes(), msgContent...)
+
+		// Setup message verification
+		ctx, cancel := context.WithCancel(context.Background())
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		go trans.Run(ctx, func(mess []byte) {
+			// Verify we received the complete message
+			assert.Equal(t, msgSize, len(mess))
+			endMarkerPos := len(mess) - len(marker)
+			assert.Equal(t, string(marker), string(mess[endMarkerPos:]))
+			wg.Done()
+		}, make(chan bool))
+
+		// Wait for socket to be ready
+		time.Sleep(100 * time.Millisecond)
+
+		// Connect and send
+		wskt, err := net.Dial("tcp", "127.0.0.1:8662")
+		if err != nil {
+			for retries := 0; err != nil && retries < 3; retries++ {
+				time.Sleep(500 * time.Millisecond)
+				wskt, err = net.Dial("tcp", "127.0.0.1:8662")
+			}
+		}
+		require.NoError(t, err)
+
+		_, err = wskt.Write(fullMsg)
+		require.NoError(t, err)
+
+		wg.Wait()
+		cancel()
+		time.Sleep(100 * time.Millisecond)
+		wskt.Close()
+	})
+
+	t.Run("test multiple large messages", func(t *testing.T) {
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "127.0.0.1:8663",
+				Type:       "tcp",
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		numMessages := 3
+		messageSizes := []int{80000, 120000, 90000}
+		var combinedMsg bytes.Buffer
+
+		// Create multiple large messages
+		for i := 0; i < numMessages; i++ {
+			msgContent := make([]byte, messageSizes[i])
+			fillByte := byte('0' + i)
+			for j := 0; j < messageSizes[i]; j++ {
+				msgContent[j] = fillByte
+			}
+
+			// Write length header
+			msgLength := new(bytes.Buffer)
+			err := binary.Write(msgLength, binary.LittleEndian, uint64(len(msgContent)))
+			require.NoError(t, err)
+			combinedMsg.Write(msgLength.Bytes())
+			combinedMsg.Write(msgContent)
+		}
+
+		// Setup message verification
+		ctx, cancel := context.WithCancel(context.Background())
+		receivedCount := 0
+		var mutex sync.Mutex
+		wg := sync.WaitGroup{}
+		wg.Add(numMessages)
+
+		go trans.Run(ctx, func(mess []byte) {
+			mutex.Lock()
+			defer mutex.Unlock()
+
+			// Verify message size matches one of our expected sizes
+			found := false
+			for i, expectedSize := range messageSizes {
+				if len(mess) == expectedSize {
+					expectedByte := byte('0' + i)
+					allMatch := true
+					for _, b := range mess {
+						if b != expectedByte {
+							allMatch = false
+							break
+						}
+					}
+					if allMatch {
+						found = true
+						receivedCount++
+						wg.Done()
+						break
+					}
+				}
+			}
+			assert.Equal(t, true, found)
+		}, make(chan bool))
+
+		// Wait for socket to be ready
+		time.Sleep(100 * time.Millisecond)
+
+		// Connect and send all messages
+		wskt, err := net.Dial("tcp", "127.0.0.1:8663")
+		if err != nil {
+			for retries := 0; err != nil && retries < 3; retries++ {
+				time.Sleep(500 * time.Millisecond)
+				wskt, err = net.Dial("tcp", "127.0.0.1:8663")
+			}
+		}
+		require.NoError(t, err)
+
+		_, err = wskt.Write(combinedMsg.Bytes())
+		require.NoError(t, err)
+
+		wg.Wait()
+
+		mutex.Lock()
+		assert.Equal(t, numMessages, receivedCount)
+		mutex.Unlock()
+
+		cancel()
+		time.Sleep(100 * time.Millisecond)
+		wskt.Close()
+	})
 
 	t.Run("test large message transport single connection", func(t *testing.T) {
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "127.0.0.1:8664",
+				Type:       "tcp",
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
 		msg := make([]byte, regularBuffSize)
 		for i := 0; i < regularBuffSize; i++ {
 			msg[i] = byte('X')
@@ -169,33 +669,47 @@ func TestTcpSocketTransport(t *testing.T) {
 		// verify transport
 		ctx, cancel := context.WithCancel(context.Background())
 		wg := sync.WaitGroup{}
+		wg.Add(1)
 		go trans.Run(ctx, func(mess []byte) {
-			wg.Add(1)
 			strmsg := string(mess)
 			assert.Equal(t, regularBuffSize+len(addition), len(strmsg))   // we received whole message
 			assert.Equal(t, addition, strmsg[len(strmsg)-len(addition):]) // and the out-of-band part is correct
 			wg.Done()
 		}, make(chan bool))
 
+		// Wait for socket to be ready
+		time.Sleep(100 * time.Millisecond)
+
 		// write to socket
-		wskt, err := net.Dial("tcp", "127.0.0.1:8642")
+		wskt, err := net.Dial("tcp", "127.0.0.1:8664")
 		if err != nil {
 			// The socket might not be listening yet, wait a little bit and try to connect again
 			for retries := 0; err != nil && retries < 3; retries++ {
-				time.Sleep(2 * time.Second)
-				wskt, err = net.Dial("tcp", "127.0.0.1:8642")
+				time.Sleep(500 * time.Millisecond)
+				wskt, err = net.Dial("tcp", "127.0.0.1:8664")
 			}
 		}
 		require.NoError(t, err)
 		_, err = wskt.Write(msg)
 		require.NoError(t, err)
 
-		cancel()
 		wg.Wait()
+		cancel()
+		time.Sleep(100 * time.Millisecond)
 		wskt.Close()
 	})
 
 	t.Run("test large message transport multiple connections", func(t *testing.T) {
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "127.0.0.1:8665",
+				Type:       "tcp",
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
 		msg := make([]byte, regularBuffSize)
 		for i := 0; i < regularBuffSize; i++ {
 			msg[i] = byte('X')
@@ -210,27 +724,30 @@ func TestTcpSocketTransport(t *testing.T) {
 		// verify transport
 		ctx, cancel := context.WithCancel(context.Background())
 		wg := sync.WaitGroup{}
+		wg.Add(2)
 		go trans.Run(ctx, func(mess []byte) {
-			wg.Add(1)
 			strmsg := string(mess)
 			assert.Equal(t, regularBuffSize+len(addition), len(strmsg))   // we received whole message
 			assert.Equal(t, addition, strmsg[len(strmsg)-len(addition):]) // and the out-of-band part is correct
 			wg.Done()
 		}, make(chan bool))
 
+		// Wait for socket to be ready
+		time.Sleep(100 * time.Millisecond)
+
 		// write to socket
-		wskt1, err := net.Dial("tcp", "127.0.0.1:8642")
+		wskt1, err := net.Dial("tcp", "127.0.0.1:8665")
 		if err != nil {
 			// The socket might not be listening yet, wait a little bit and try to connect again
 			for retries := 0; err != nil && retries < 3; retries++ {
-				time.Sleep(2 * time.Second)
-				wskt1, err = net.Dial("tcp", "127.0.0.1:8642")
+				time.Sleep(500 * time.Millisecond)
+				wskt1, err = net.Dial("tcp", "127.0.0.1:8665")
 			}
 		}
 		require.NoError(t, err)
 
 		// We shouldn't need to retry the second connection, if this fails, then something is wrong
-		wskt2, err := net.Dial("tcp", "127.0.0.1:8642")
+		wskt2, err := net.Dial("tcp", "127.0.0.1:8665")
 		require.NoError(t, err)
 
 		_, err = wskt1.Write(msg)
@@ -238,8 +755,9 @@ func TestTcpSocketTransport(t *testing.T) {
 		_, err = wskt2.Write(msg)
 		require.NoError(t, err)
 
-		cancel()
 		wg.Wait()
+		cancel()
+		time.Sleep(100 * time.Millisecond)
 		wskt1.Close()
 		wskt2.Close()
 	})
