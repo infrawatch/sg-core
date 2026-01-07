@@ -307,8 +307,8 @@ func createTCPMessage(t *testing.T, content []byte) []byte {
 	return append(msgLength.Bytes(), content...)
 }
 
-// Helper function to test TCP message with size and marker verification
-func testTCPMessageWithMarker(t *testing.T, logger *logging.Logger, addr string, msgSize int, fillByte byte, marker []byte) {
+// Helper function to send and verify TCP socket message with marker
+func sendTCPSocketMessage(t *testing.T, logger *logging.Logger, addr string, msgSize int, fillByte byte, marker []byte) {
 	trans := Socket{
 		conf: configT{
 			Socketaddr: addr,
@@ -360,17 +360,17 @@ func TestTcpSocketTransport(t *testing.T) {
 
 	t.Run("test normal message", func(t *testing.T) {
 		// Create a normal message (5KB)
-		testTCPMessageWithMarker(t, logger, "127.0.0.1:8660", 5000, 'T', []byte("--TCP-END--"))
+		sendTCPSocketMessage(t, logger, "127.0.0.1:8660", 5000, 'T', []byte("--TCP-END--"))
 	})
 
 	t.Run("test message exceeding initial buffer", func(t *testing.T) {
 		// Create a message larger than initial buffer (100KB)
-		testTCPMessageWithMarker(t, logger, "127.0.0.1:8661", 100000, 'B', []byte("--LARGE-TCP--"))
+		sendTCPSocketMessage(t, logger, "127.0.0.1:8661", 100000, 'B', []byte("--LARGE-TCP--"))
 	})
 
 	t.Run("test very large TCP message", func(t *testing.T) {
 		// Create a 1MB message to test large message handling
-		testTCPMessageWithMarker(t, logger, "127.0.0.1:8662", 1000000, 'M', []byte("--MEGA-TCP--"))
+		sendTCPSocketMessage(t, logger, "127.0.0.1:8662", 1000000, 'M', []byte("--MEGA-TCP--"))
 	})
 
 	t.Run("test multiple large messages", func(t *testing.T) {
