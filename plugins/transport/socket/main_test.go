@@ -128,6 +128,45 @@ func TestUnixSocketTransport(t *testing.T) {
 	})
 }
 
+// Helper function to send and receive UDP socket message
+func sendUDPSocketMessage(t *testing.T, logger *logging.Logger, addr string, msg []byte) []byte {
+	trans := Socket{
+		conf: configT{
+			Socketaddr: addr,
+			Type:       "udp",
+		},
+		logger: &logWrapper{
+			l: logger,
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	var receivedMsg []byte
+	go trans.Run(ctx, func(mess []byte) {
+		receivedMsg = mess
+		wg.Done()
+	}, make(chan bool))
+
+	// Wait for socket to be ready
+	time.Sleep(100 * time.Millisecond)
+
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	require.NoError(t, err)
+	wskt, err := net.DialUDP("udp", nil, udpAddr)
+	require.NoError(t, err)
+	_, err = wskt.Write(msg)
+	require.NoError(t, err)
+
+	wg.Wait()
+	cancel()
+	time.Sleep(100 * time.Millisecond)
+	wskt.Close()
+
+	return receivedMsg
+}
+
 func TestUdpSocketTransport(t *testing.T) {
 	tmpdir, err := os.MkdirTemp(".", "socket_test_tmp")
 	require.NoError(t, err)
@@ -138,16 +177,6 @@ func TestUdpSocketTransport(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("test normal message", func(t *testing.T) {
-		trans := Socket{
-			conf: configT{
-				Socketaddr: "127.0.0.1:8650",
-				Type:       "udp",
-			},
-			logger: &logWrapper{
-				l: logger,
-			},
-		}
-
 		// Create a normal message (5KB)
 		msg := make([]byte, 5000)
 		for i := 0; i < len(msg); i++ {
@@ -156,49 +185,16 @@ func TestUdpSocketTransport(t *testing.T) {
 		marker := []byte("--UDP-END--")
 		copy(msg[len(msg)-len(marker):], marker)
 
-		// Setup message verification
-		ctx, cancel := context.WithCancel(context.Background())
-		wg := sync.WaitGroup{}
-		wg.Add(1)
-		go trans.Run(ctx, func(mess []byte) {
-			// Verify we received the complete message
-			assert.Equal(t, len(msg), len(mess))
-			// Verify the end marker is present
-			endMarkerPos := len(mess) - len(marker)
-			assert.Equal(t, string(marker), string(mess[endMarkerPos:]))
-			wg.Done()
-		}, make(chan bool))
+		receivedMsg := sendUDPSocketMessage(t, logger, "127.0.0.1:8650", msg)
 
-		// Wait for socket to be ready
-		time.Sleep(100 * time.Millisecond)
-
-		// Send the message
-		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:8650")
-		require.NoError(t, err)
-		wskt, err := net.DialUDP("udp", nil, addr)
-		require.NoError(t, err)
-		_, err = wskt.Write(msg)
-		require.NoError(t, err)
-
-		// Wait for message processing
-		wg.Wait()
-
-		cancel()
-		time.Sleep(100 * time.Millisecond)
-		wskt.Close()
+		// Verify we received the complete message
+		assert.Equal(t, len(msg), len(receivedMsg))
+		// Verify the end marker is present
+		endMarkerPos := len(receivedMsg) - len(marker)
+		assert.Equal(t, string(marker), string(receivedMsg[endMarkerPos:]))
 	})
 
 	t.Run("test message at buffer limit", func(t *testing.T) {
-		trans := Socket{
-			conf: configT{
-				Socketaddr: "127.0.0.1:8651",
-				Type:       "udp",
-			},
-			logger: &logWrapper{
-				l: logger,
-			},
-		}
-
 		// Create a message near the UDP limit (60KB - well within OS limits)
 		msgSize := 60000
 		msg := make([]byte, msgSize)
@@ -208,48 +204,15 @@ func TestUdpSocketTransport(t *testing.T) {
 		marker := []byte("--LARGE--")
 		copy(msg[len(msg)-len(marker):], marker)
 
-		// Setup message verification
-		ctx, cancel := context.WithCancel(context.Background())
-		wg := sync.WaitGroup{}
-		wg.Add(1)
-		go trans.Run(ctx, func(mess []byte) {
-			// Should receive complete message since it's within UDP limits
-			assert.Equal(t, msgSize, len(mess))
-			endMarkerPos := len(mess) - len(marker)
-			assert.Equal(t, string(marker), string(mess[endMarkerPos:]))
-			wg.Done()
-		}, make(chan bool))
+		receivedMsg := sendUDPSocketMessage(t, logger, "127.0.0.1:8651", msg)
 
-		// Wait for socket to be ready
-		time.Sleep(100 * time.Millisecond)
-
-		// Send the message
-		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:8651")
-		require.NoError(t, err)
-		wskt, err := net.DialUDP("udp", nil, addr)
-		require.NoError(t, err)
-		_, err = wskt.Write(msg)
-		require.NoError(t, err)
-
-		// Wait for message processing
-		wg.Wait()
-
-		cancel()
-		time.Sleep(100 * time.Millisecond)
-		wskt.Close()
+		// Should receive complete message since it's within UDP limits
+		assert.Equal(t, msgSize, len(receivedMsg))
+		endMarkerPos := len(receivedMsg) - len(marker)
+		assert.Equal(t, string(marker), string(receivedMsg[endMarkerPos:]))
 	})
 
 	t.Run("test large message transport", func(t *testing.T) {
-		trans := Socket{
-			conf: configT{
-				Socketaddr: "127.0.0.1:8652",
-				Type:       "udp",
-			},
-			logger: &logWrapper{
-				l: logger,
-			},
-		}
-
 		msg := make([]byte, regularBuffSize)
 		for i := 0; i < regularBuffSize; i++ {
 			msg[i] = byte('X')
@@ -257,32 +220,11 @@ func TestUdpSocketTransport(t *testing.T) {
 		msg[regularBuffSize-1] = byte('$')
 		msg = append(msg, []byte(addition)...)
 
-		// verify transport
-		ctx, cancel := context.WithCancel(context.Background())
-		wg := sync.WaitGroup{}
-		wg.Add(1)
-		go trans.Run(ctx, func(mess []byte) {
-			strmsg := string(mess)
-			assert.Equal(t, regularBuffSize+len(addition), len(strmsg))   // we received whole message
-			assert.Equal(t, addition, strmsg[len(strmsg)-len(addition):]) // and the out-of-band part is correct
-			wg.Done()
-		}, make(chan bool))
+		receivedMsg := sendUDPSocketMessage(t, logger, "127.0.0.1:8652", msg)
 
-		// Wait for socket to be ready
-		time.Sleep(100 * time.Millisecond)
-
-		// write to socket
-		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:8652")
-		require.NoError(t, err)
-		wskt, err := net.DialUDP("udp", nil, addr)
-		require.NoError(t, err)
-		_, err = wskt.Write(msg)
-		require.NoError(t, err)
-
-		wg.Wait()
-		cancel()
-		time.Sleep(100 * time.Millisecond)
-		wskt.Close()
+		strmsg := string(receivedMsg)
+		assert.Equal(t, regularBuffSize+len(addition), len(strmsg))   // we received whole message
+		assert.Equal(t, addition, strmsg[len(strmsg)-len(addition):]) // and the out-of-band part is correct
 	})
 }
 
