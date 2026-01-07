@@ -365,6 +365,27 @@ func TestUdpSocketTransport(t *testing.T) {
 	})
 }
 
+// Helper function to connect to TCP with retries
+func connectTCPWithRetry(t *testing.T, addr string) net.Conn {
+	wskt, err := net.Dial("tcp", addr)
+	if err != nil {
+		for retries := 0; err != nil && retries < 3; retries++ {
+			time.Sleep(500 * time.Millisecond)
+			wskt, err = net.Dial("tcp", addr)
+		}
+	}
+	require.NoError(t, err)
+	return wskt
+}
+
+// Helper function to create a TCP message with length header
+func createTCPMessage(t *testing.T, content []byte) []byte {
+	msgLength := new(bytes.Buffer)
+	err := binary.Write(msgLength, binary.LittleEndian, uint64(len(content)))
+	require.NoError(t, err)
+	return append(msgLength.Bytes(), content...)
+}
+
 func TestTcpSocketTransport(t *testing.T) {
 	tmpdir, err := os.MkdirTemp(".", "socket_test_tmp")
 	require.NoError(t, err)
@@ -393,11 +414,7 @@ func TestTcpSocketTransport(t *testing.T) {
 		marker := []byte("--TCP-END--")
 		copy(msgContent[len(msgContent)-len(marker):], marker)
 
-		// Prepend length header for TCP
-		msgLength := new(bytes.Buffer)
-		err := binary.Write(msgLength, binary.LittleEndian, uint64(len(msgContent)))
-		require.NoError(t, err)
-		fullMsg := append(msgLength.Bytes(), msgContent...)
+		fullMsg := createTCPMessage(t, msgContent)
 
 		// Setup message verification
 		ctx, cancel := context.WithCancel(context.Background())
@@ -414,15 +431,7 @@ func TestTcpSocketTransport(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 
 		// Connect and send
-		wskt, err := net.Dial("tcp", "127.0.0.1:8660")
-		if err != nil {
-			for retries := 0; err != nil && retries < 3; retries++ {
-				time.Sleep(500 * time.Millisecond)
-				wskt, err = net.Dial("tcp", "127.0.0.1:8660")
-			}
-		}
-		require.NoError(t, err)
-
+		wskt := connectTCPWithRetry(t, "127.0.0.1:8660")
 		_, err = wskt.Write(fullMsg)
 		require.NoError(t, err)
 
@@ -452,11 +461,7 @@ func TestTcpSocketTransport(t *testing.T) {
 		marker := []byte("--LARGE-TCP--")
 		copy(msgContent[len(msgContent)-len(marker):], marker)
 
-		// Prepend length header for TCP
-		msgLength := new(bytes.Buffer)
-		err := binary.Write(msgLength, binary.LittleEndian, uint64(len(msgContent)))
-		require.NoError(t, err)
-		fullMsg := append(msgLength.Bytes(), msgContent...)
+		fullMsg := createTCPMessage(t, msgContent)
 
 		// Setup message verification
 		ctx, cancel := context.WithCancel(context.Background())
@@ -474,15 +479,7 @@ func TestTcpSocketTransport(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 
 		// Connect and send
-		wskt, err := net.Dial("tcp", "127.0.0.1:8661")
-		if err != nil {
-			for retries := 0; err != nil && retries < 3; retries++ {
-				time.Sleep(500 * time.Millisecond)
-				wskt, err = net.Dial("tcp", "127.0.0.1:8661")
-			}
-		}
-		require.NoError(t, err)
-
+		wskt := connectTCPWithRetry(t, "127.0.0.1:8661")
 		_, err = wskt.Write(fullMsg)
 		require.NoError(t, err)
 
@@ -512,11 +509,7 @@ func TestTcpSocketTransport(t *testing.T) {
 		marker := []byte("--MEGA-TCP--")
 		copy(msgContent[len(msgContent)-len(marker):], marker)
 
-		// Prepend length header for TCP
-		msgLength := new(bytes.Buffer)
-		err := binary.Write(msgLength, binary.LittleEndian, uint64(len(msgContent)))
-		require.NoError(t, err)
-		fullMsg := append(msgLength.Bytes(), msgContent...)
+		fullMsg := createTCPMessage(t, msgContent)
 
 		// Setup message verification
 		ctx, cancel := context.WithCancel(context.Background())
@@ -534,15 +527,7 @@ func TestTcpSocketTransport(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 
 		// Connect and send
-		wskt, err := net.Dial("tcp", "127.0.0.1:8662")
-		if err != nil {
-			for retries := 0; err != nil && retries < 3; retries++ {
-				time.Sleep(500 * time.Millisecond)
-				wskt, err = net.Dial("tcp", "127.0.0.1:8662")
-			}
-		}
-		require.NoError(t, err)
-
+		wskt := connectTCPWithRetry(t, "127.0.0.1:8662")
 		_, err = wskt.Write(fullMsg)
 		require.NoError(t, err)
 
@@ -574,13 +559,7 @@ func TestTcpSocketTransport(t *testing.T) {
 			for j := 0; j < messageSizes[i]; j++ {
 				msgContent[j] = fillByte
 			}
-
-			// Write length header
-			msgLength := new(bytes.Buffer)
-			err := binary.Write(msgLength, binary.LittleEndian, uint64(len(msgContent)))
-			require.NoError(t, err)
-			combinedMsg.Write(msgLength.Bytes())
-			combinedMsg.Write(msgContent)
+			combinedMsg.Write(createTCPMessage(t, msgContent))
 		}
 
 		// Setup message verification
@@ -621,15 +600,7 @@ func TestTcpSocketTransport(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 
 		// Connect and send all messages
-		wskt, err := net.Dial("tcp", "127.0.0.1:8663")
-		if err != nil {
-			for retries := 0; err != nil && retries < 3; retries++ {
-				time.Sleep(500 * time.Millisecond)
-				wskt, err = net.Dial("tcp", "127.0.0.1:8663")
-			}
-		}
-		require.NoError(t, err)
-
+		wskt := connectTCPWithRetry(t, "127.0.0.1:8663")
 		_, err = wskt.Write(combinedMsg.Bytes())
 		require.NoError(t, err)
 
@@ -655,16 +626,13 @@ func TestTcpSocketTransport(t *testing.T) {
 			},
 		}
 
-		msg := make([]byte, regularBuffSize)
+		msgContent := make([]byte, regularBuffSize)
 		for i := 0; i < regularBuffSize; i++ {
-			msg[i] = byte('X')
+			msgContent[i] = byte('X')
 		}
-		msg[regularBuffSize-1] = byte('$')
-		msg = append(msg, []byte(addition)...)
-		msgLength := new(bytes.Buffer)
-		err := binary.Write(msgLength, binary.LittleEndian, uint64(len(msg)))
-		require.NoError(t, err)
-		msg = append(msgLength.Bytes(), msg...)
+		msgContent[regularBuffSize-1] = byte('$')
+		msgContent = append(msgContent, []byte(addition)...)
+		msg := createTCPMessage(t, msgContent)
 
 		// verify transport
 		ctx, cancel := context.WithCancel(context.Background())
@@ -681,15 +649,7 @@ func TestTcpSocketTransport(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 
 		// write to socket
-		wskt, err := net.Dial("tcp", "127.0.0.1:8664")
-		if err != nil {
-			// The socket might not be listening yet, wait a little bit and try to connect again
-			for retries := 0; err != nil && retries < 3; retries++ {
-				time.Sleep(500 * time.Millisecond)
-				wskt, err = net.Dial("tcp", "127.0.0.1:8664")
-			}
-		}
-		require.NoError(t, err)
+		wskt := connectTCPWithRetry(t, "127.0.0.1:8664")
 		_, err = wskt.Write(msg)
 		require.NoError(t, err)
 
@@ -710,16 +670,13 @@ func TestTcpSocketTransport(t *testing.T) {
 			},
 		}
 
-		msg := make([]byte, regularBuffSize)
+		msgContent := make([]byte, regularBuffSize)
 		for i := 0; i < regularBuffSize; i++ {
-			msg[i] = byte('X')
+			msgContent[i] = byte('X')
 		}
-		msg[regularBuffSize-1] = byte('$')
-		msg = append(msg, []byte(addition)...)
-		msgLength := new(bytes.Buffer)
-		err := binary.Write(msgLength, binary.LittleEndian, uint64(len(msg)))
-		require.NoError(t, err)
-		msg = append(msgLength.Bytes(), msg...)
+		msgContent[regularBuffSize-1] = byte('$')
+		msgContent = append(msgContent, []byte(addition)...)
+		msg := createTCPMessage(t, msgContent)
 
 		// verify transport
 		ctx, cancel := context.WithCancel(context.Background())
@@ -736,15 +693,7 @@ func TestTcpSocketTransport(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 
 		// write to socket
-		wskt1, err := net.Dial("tcp", "127.0.0.1:8665")
-		if err != nil {
-			// The socket might not be listening yet, wait a little bit and try to connect again
-			for retries := 0; err != nil && retries < 3; retries++ {
-				time.Sleep(500 * time.Millisecond)
-				wskt1, err = net.Dial("tcp", "127.0.0.1:8665")
-			}
-		}
-		require.NoError(t, err)
+		wskt1 := connectTCPWithRetry(t, "127.0.0.1:8665")
 
 		// We shouldn't need to retry the second connection, if this fails, then something is wrong
 		wskt2, err := net.Dial("tcp", "127.0.0.1:8665")
