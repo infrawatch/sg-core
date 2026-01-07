@@ -188,7 +188,9 @@ func (s *Socket) ReceiveData(maxBuffSize int64, done chan bool, pc net.Conn, w t
 		// Combine remaining data from previous iteration with newly read data
 		var data []byte
 		if len(remainingMsg) > 0 {
-			data = append(remainingMsg, msgBuffer[:n]...)
+			data = make([]byte, len(remainingMsg)+n)
+			copy(data, remainingMsg)
+			copy(data[len(remainingMsg):], msgBuffer[:n])
 		} else {
 			data = msgBuffer[:n]
 		}
