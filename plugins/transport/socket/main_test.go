@@ -19,54 +19,6 @@ import (
 const regularBuffSize = 65535 // default buffer size
 const addition = "wubba lubba dub dub"
 
-// Helper function to send and receive Unix socket message
-func sendUnixSocketMessage(t *testing.T, logger *logging.Logger, tmpdir string, socketName string, msg []byte) []byte {
-	sktpath := path.Join(tmpdir, socketName)
-	skt, err := os.OpenFile(sktpath, os.O_RDWR|os.O_CREATE, os.ModeSocket|os.ModePerm)
-	require.NoError(t, err)
-	defer skt.Close()
-
-	trans := Socket{
-		conf: configT{
-			Path: sktpath,
-		},
-		logger: &logWrapper{
-			l: logger,
-		},
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	var receivedMsg []byte
-	go trans.Run(ctx, func(mess []byte) {
-		receivedMsg = mess
-		wg.Done()
-	}, make(chan bool))
-
-	// Wait for socket file to be created
-	for {
-		stat, err := os.Stat(sktpath)
-		require.NoError(t, err)
-		if stat.Mode()&os.ModeType == os.ModeSocket {
-			break
-		}
-		time.Sleep(250 * time.Millisecond)
-	}
-
-	wskt, err := net.DialUnix("unixgram", nil, &net.UnixAddr{Name: sktpath, Net: "unixgram"})
-	require.NoError(t, err)
-	_, err = wskt.Write(msg)
-	require.NoError(t, err)
-
-	wg.Wait()
-	cancel()
-	time.Sleep(100 * time.Millisecond)
-	wskt.Close()
-
-	return receivedMsg
-}
-
 func TestUnixSocketTransport(t *testing.T) {
 	tmpdir, err := os.MkdirTemp(".", "socket_test_tmp")
 	require.NoError(t, err)
@@ -85,7 +37,48 @@ func TestUnixSocketTransport(t *testing.T) {
 		marker := []byte("--END--")
 		copy(msg[len(msg)-len(marker):], marker)
 
-		receivedMsg := sendUnixSocketMessage(t, logger, tmpdir, "socket1", msg)
+		sktpath := path.Join(tmpdir, "socket1")
+		skt, err := os.OpenFile(sktpath, os.O_RDWR|os.O_CREATE, os.ModeSocket|os.ModePerm)
+		require.NoError(t, err)
+		defer skt.Close()
+
+		trans := Socket{
+			conf: configT{
+				Path: sktpath,
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		var receivedMsg []byte
+		go trans.Run(ctx, func(mess []byte) {
+			receivedMsg = mess
+			wg.Done()
+		}, make(chan bool))
+
+		// Wait for socket file to be created
+		for {
+			stat, err := os.Stat(sktpath)
+			require.NoError(t, err)
+			if stat.Mode()&os.ModeType == os.ModeSocket {
+				break
+			}
+			time.Sleep(250 * time.Millisecond)
+		}
+
+		wskt, err := net.DialUnix("unixgram", nil, &net.UnixAddr{Name: sktpath, Net: "unixgram"})
+		require.NoError(t, err)
+		_, err = wskt.Write(msg)
+		require.NoError(t, err)
+
+		wg.Wait()
+		cancel()
+		time.Sleep(100 * time.Millisecond)
+		wskt.Close()
 
 		// Verify we received the complete message
 		assert.Equal(t, len(msg), len(receivedMsg))
@@ -96,25 +89,86 @@ func TestUnixSocketTransport(t *testing.T) {
 
 	t.Run("test large message transport", func(t *testing.T) {
 		// Create a message larger than initial buffer to test dynamic buffer growth
-		// This should trigger buffer expansion beyond regularBuffSize (65535 bytes)
-		largeBuffSize := regularBuffSize * 2
+		largeBuffSize := regularBuffSize * 2 // 131070 bytes
 		msg := make([]byte, largeBuffSize)
 		for i := 0; i < largeBuffSize; i++ {
 			msg[i] = byte('X')
 		}
 		msg[largeBuffSize-1] = byte('$')
-		msg = append(msg, []byte(addition)...)
+		msg = append(msg, []byte(addition)...) // Total: 131089 bytes
 
-		receivedMsg := sendUnixSocketMessage(t, logger, tmpdir, "socket2", msg)
+		// Setup socket using same pattern as sendUnixSocketMessage
+		sktpath := path.Join(tmpdir, "socket2")
+		skt, err := os.OpenFile(sktpath, os.O_RDWR|os.O_CREATE, os.ModeSocket|os.ModePerm)
+		require.NoError(t, err)
+		defer skt.Close()
 
-		// Message might be truncated due to OS limits on Unix datagrams
-		assert.Equal(t, true, len(receivedMsg) > 0)
-
-		// If we received a complete message, verify the content
-		if len(receivedMsg) == largeBuffSize+len(addition) {
-			strmsg := string(receivedMsg)
-			assert.Equal(t, addition, strmsg[len(strmsg)-len(addition):])
+		trans := Socket{
+			conf: configT{
+				Path: sktpath,
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
 		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		var receivedMsgs [][]byte
+		var mutex sync.Mutex
+		wg := sync.WaitGroup{}
+		wg.Add(3) // Expecting 3 messages
+
+		go trans.Run(ctx, func(mess []byte) {
+			mutex.Lock()
+			receivedMsgs = append(receivedMsgs, mess)
+			mutex.Unlock()
+			wg.Done()
+		}, make(chan bool))
+
+		// Wait for socket file to be created
+		for {
+			stat, err := os.Stat(sktpath)
+			require.NoError(t, err)
+			if stat.Mode()&os.ModeType == os.ModeSocket {
+				break
+			}
+			time.Sleep(250 * time.Millisecond)
+		}
+
+		wskt, err := net.DialUnix("unixgram", nil, &net.UnixAddr{Name: sktpath, Net: "unixgram"})
+		require.NoError(t, err)
+		defer wskt.Close()
+
+		// Send the same message 3 times
+		_, err = wskt.Write(msg)
+		require.NoError(t, err)
+		time.Sleep(100 * time.Millisecond)
+
+		_, err = wskt.Write(msg)
+		require.NoError(t, err)
+		time.Sleep(100 * time.Millisecond)
+
+		_, err = wskt.Write(msg)
+		require.NoError(t, err)
+
+		wg.Wait()
+
+		// Verify we received 3 messages
+		require.Equal(t, 3, len(receivedMsgs))
+
+		// First message: the message is truncated to the maximum 64KB (65535 bytes)
+		require.Equal(t, len(receivedMsgs[0]), regularBuffSize)
+
+		// Second message: check for 128KB (131070 bytes) with '$' at position 131069
+		require.Equal(t, len(receivedMsgs[1]), largeBuffSize)
+		assert.Equal(t, byte('$'), receivedMsgs[1][131069])
+
+		// Third message: check for > 128KB (131070 bytes) with "wubba lubba dub dub" at the end
+		require.GreaterOrEqual(t, len(receivedMsgs[2]), largeBuffSize+len(addition))
+		endStr := string(receivedMsgs[2][len(receivedMsgs[2])-len(addition):])
+		assert.Equal(t, addition, endStr)
 	})
 }
 
