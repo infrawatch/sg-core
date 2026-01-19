@@ -32,7 +32,7 @@ jobs:
           # Caching conflicts happen in GHA, so just disable for now
           skip-cache: true
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
-          version: v1.59.1
+          version: v1.64.2
   unit-tests:
     name: Unit tests
     runs-on: ubuntu-latest
