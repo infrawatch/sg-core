@@ -263,7 +263,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	case udp:
 		pc = s.initUDPSocket()
 		if pc == (*net.UDPConn)(nil) {
-			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: "+s.conf.Type)
+			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: %s", s.conf.Type)
 			return
 		}
 		go s.ReceiveData(maxBufferSize, done, pc, w)
@@ -271,7 +271,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	case tcp:
 		TCPSocket := s.initTCPSocket()
 		if TCPSocket == nil {
-			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: "+s.conf.Type)
+			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: %s", s.conf.Type)
 			return
 		}
 		go func() {
@@ -294,7 +294,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	default:
 		pc = s.initUnixSocket()
 		if pc == (*net.UnixConn)(nil) {
-			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: "+s.conf.Type)
+			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: %s", s.conf.Type)
 			return
 		}
 		go s.ReceiveData(maxBufferSize, done, pc, w)
