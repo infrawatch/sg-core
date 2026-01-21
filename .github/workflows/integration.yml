@@ -46,7 +46,7 @@ jobs:
       - name: Install devstack
         run: |
           SOURCE=$(pwd)
-          git clone -b stable/2024.2 http://github.com/openstack/devstack /opt/stack/devstack
+          git clone -b stable/2025.2 http://github.com/openstack/devstack /opt/stack/devstack
           pushd /opt/stack/devstack
           cp $SOURCE/ci/integration/metrics/local.conf .
           sudo apt-get update
@@ -140,7 +140,7 @@ jobs:
       - name: Install devstack
         run: |
           SOURCE=$(pwd)
-          git clone -b stable/2024.2 http://github.com/openstack/devstack /opt/stack/devstack
+          git clone -b stable/2025.2 http://github.com/openstack/devstack /opt/stack/devstack
           pushd /opt/stack/devstack
           cp $SOURCE/ci/integration/metrics/local.conf .
           sudo apt-get update
@@ -238,7 +238,7 @@ jobs:
       - name: Install devstack
         run: |
           SOURCE=$(pwd)
-          git clone -b stable/2024.2 http://github.com/openstack/devstack /opt/stack/devstack
+          git clone -b stable/2025.2 http://github.com/openstack/devstack /opt/stack/devstack
           pushd /opt/stack/devstack
           cp $SOURCE/ci/integration/metrics/local.conf .
           sudo apt-get update
