@@ -43,8 +43,6 @@ jobs:
           sudo apt remove postgresql-client-common
           sudo apt install postgresql-client-common
           sudo apt install postgresql-common
-          sudo python -m pip install --upgrade pip
-          sudo python -m pip install --upgrade virtualenv
       - name: Install devstack
         run: |
           SOURCE=$(pwd)
@@ -139,8 +137,6 @@ jobs:
           sudo apt remove postgresql-client-common
           sudo apt install postgresql-client-common
           sudo apt install postgresql-common
-          sudo python -m pip install --upgrade pip
-          sudo python -m pip install --upgrade virtualenv
       - name: Install devstack
         run: |
           SOURCE=$(pwd)
@@ -239,8 +235,6 @@ jobs:
           sudo apt remove postgresql-client-common
           sudo apt install postgresql-client-common
           sudo apt install postgresql-common
-          sudo python -m pip install --upgrade pip
-          sudo python -m pip install --upgrade virtualenv
       - name: Install devstack
         run: |
           SOURCE=$(pwd)
