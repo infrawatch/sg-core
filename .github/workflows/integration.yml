@@ -18,7 +18,7 @@ on: [push, pull_request]
 jobs:
   collectd-metrics-bridge:
     name: "[metrics] transport: socket(sg-bridge); handler: collectd-metrics; application: prometheus"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       QDR_CHANNEL: collectd/metrics
       BRIDGE_SOCKET: /tmp/sg-bridge/test-socket
@@ -41,7 +41,7 @@ jobs:
       - name: Prepare environment for postgres-server installation
         run: |
           sudo apt remove postgresql-client-common
-          sudo apt install postgresql-client-common=238
+          sudo apt install postgresql-client-common=253
           sudo apt install postgresql-common
           sudo python -m pip install --upgrade pip
           sudo python -m pip install --upgrade virtualenv
@@ -114,7 +114,7 @@ jobs:
 #-------------------------------------------------------------------------------
   ceilometer-metrics-bridge:
     name: "[metrics] transport: socket(sg-bridge); handler: ceilometer-metrics; application: prometheus"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       QDR_CHANNEL: anycast/ceilometer/metering.sample
       BRIDGE_SOCKET: /tmp/sg-bridge/test-socket
@@ -137,7 +137,7 @@ jobs:
       - name: Prepare environment for postgres-server installation
         run: |
           sudo apt remove postgresql-client-common
-          sudo apt install postgresql-client-common=238
+          sudo apt install postgresql-client-common=253
           sudo apt install postgresql-common
           sudo python -m pip install --upgrade pip
           sudo python -m pip install --upgrade virtualenv
@@ -216,7 +216,7 @@ jobs:
 #-------------------------------------------------------------------------------
   ceilometer-metrics-tcp:
     name: "[metrics] transport: socket(tcp); handler: ceilometer-metrics; application: prometheus"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       PROMETHEUS_IMAGE: quay.io/prometheus/prometheus:latest
     steps:
@@ -237,7 +237,7 @@ jobs:
       - name: Prepare environment for postgres-server installation
         run: |
           sudo apt remove postgresql-client-common
-          sudo apt install postgresql-client-common=238
+          sudo apt install postgresql-client-common=253
           sudo apt install postgresql-common
           sudo python -m pip install --upgrade pip
           sudo python -m pip install --upgrade virtualenv
@@ -292,7 +292,7 @@ jobs:
     # determine the functionality is useful.
     if: false
     name: "[logging] handler: logs; application: elasticsearch, loki"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       BRIDGE_SOCKET: /tmp/sg-bridge/test-socket
 
