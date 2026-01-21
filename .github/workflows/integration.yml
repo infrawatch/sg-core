@@ -42,7 +42,7 @@ jobs:
         run: |
           sudo apt remove postgresql-client-common
           sudo apt list -a postgresql-client-common
-          sudo apt install postgresql-client-common=257
+          sudo apt install postgresql-client-common=287
           sudo apt install postgresql-common
           sudo python -m pip install --upgrade pip
           sudo python -m pip install --upgrade virtualenv
@@ -139,7 +139,7 @@ jobs:
         run: |
           sudo apt remove postgresql-client-common
           sudo apt list -a postgresql-client-common
-          sudo apt install postgresql-client-common=257
+          sudo apt install postgresql-client-common=287
           sudo apt install postgresql-common
           sudo python -m pip install --upgrade pip
           sudo python -m pip install --upgrade virtualenv
@@ -240,7 +240,7 @@ jobs:
         run: |
           sudo apt remove postgresql-client-common
           sudo apt list -a postgresql-client-common
-          sudo apt install postgresql-client-common=257
+          sudo apt install postgresql-client-common=287
           sudo apt install postgresql-common
           sudo python -m pip install --upgrade pip
           sudo python -m pip install --upgrade virtualenv
