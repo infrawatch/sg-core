@@ -11,6 +11,7 @@ import (
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -80,11 +81,10 @@ this is: not: valid: yaml
 
 		config := `
 host: 0.0.0.0
-port: 9090
 `
 		err := prom.Config([]byte(config))
 		require.NoError(t, err)
-		assert.Equal(t, 9090, prom.configuration.Port)
+		assert.Equal(t, 3000, prom.configuration.Port)
 	})
 }
 
@@ -471,6 +471,13 @@ func TestPromCollector_Collect(t *testing.T) {
 		}
 
 		assert.Equal(t, 1, len(metrics))
+
+		// Verify that metric has a timestamp
+		var m dto.Metric
+		err := metrics[0].Write(&m)
+		require.NoError(t, err)
+		assert.NotNil(t, m.TimestampMs, "metric should have a timestamp")
+		assert.Equal(t, int64(123000), *m.TimestampMs, "timestamp should be 123 seconds in milliseconds")
 	})
 
 	t.Run("collect with zero timestamp", func(t *testing.T) {
@@ -500,6 +507,12 @@ func TestPromCollector_Collect(t *testing.T) {
 		}
 
 		assert.Equal(t, 1, len(metrics))
+
+		// Verify that metric does NOT have a timestamp when zero timestamp is provided
+		var m dto.Metric
+		err := metrics[0].Write(&m)
+		require.NoError(t, err)
+		assert.Nil(t, m.TimestampMs, "metric should not have a timestamp when zero timestamp is provided")
 	})
 
 	t.Run("collect marks metrics as scrapped", func(t *testing.T) {
@@ -529,9 +542,8 @@ func TestPromCollector_Collect(t *testing.T) {
 			close(ch)
 		}()
 
-		// Drain channel
-		for m := range ch {
-			_ = m
+		for range ch {
+			// Drain channel
 		}
 
 		// Check that scrapped flag is set
