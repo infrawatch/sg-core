@@ -529,8 +529,9 @@ func TestPromCollector_Collect(t *testing.T) {
 			close(ch)
 		}()
 
-		for range ch {
-			// Drain channel
+		// Drain channel
+		for m := range ch {
+			_ = m
 		}
 
 		// Check that scrapped flag is set
