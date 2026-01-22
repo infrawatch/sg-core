@@ -687,7 +687,7 @@ func TestInitializationErrors(t *testing.T) {
 	t.Run("unix socket initialization with path in non-existent directory", func(t *testing.T) {
 		// Create a file where we want to create a directory, causing mkdir to fail
 		blockingFile := path.Join(tmpdir, "blocking_file")
-		err := os.WriteFile(blockingFile, []byte("test"), 0644)
+		err := os.WriteFile(blockingFile, []byte("test"), 0600)
 		require.NoError(t, err)
 
 		// Try to create a socket in a "subdirectory" of this file (which is impossible)
@@ -996,16 +996,19 @@ func TestWriteTCPMsgErrors(t *testing.T) {
 
 		// First complete message
 		msg1 := []byte("Complete message 1")
-		binary.Write(&msgBuffer, binary.LittleEndian, uint64(len(msg1)))
+		err := binary.Write(&msgBuffer, binary.LittleEndian, uint64(len(msg1)))
+		require.NoError(t, err)
 		msgBuffer.Write(msg1)
 
 		// Second complete message
 		msg2 := []byte("Complete message 2")
-		binary.Write(&msgBuffer, binary.LittleEndian, uint64(len(msg2)))
+		err = binary.Write(&msgBuffer, binary.LittleEndian, uint64(len(msg2)))
+		require.NoError(t, err)
 		msgBuffer.Write(msg2)
 
 		// Third incomplete message (header indicates more data than available)
-		binary.Write(&msgBuffer, binary.LittleEndian, uint64(1000))
+		err = binary.Write(&msgBuffer, binary.LittleEndian, uint64(1000))
+		require.NoError(t, err)
 		msgBuffer.Write([]byte("Incomplete"))
 
 		receivedMessages := []string{}
