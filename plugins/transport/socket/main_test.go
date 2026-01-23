@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/binary"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/infrawatch/apputils/logging"
+	"github.com/infrawatch/sg-core/pkg/data"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/go-playground/assert.v1"
 )
@@ -470,5 +472,557 @@ func TestTcpSocketTransport(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 		wskt1.Close()
 		wskt2.Close()
+	})
+}
+
+func TestNew(t *testing.T) {
+	tmpdir, err := os.MkdirTemp(".", "socket_test_tmp")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpdir)
+
+	logpath := path.Join(tmpdir, "test.log")
+	logger, err := logging.NewLogger(logging.DEBUG, logpath)
+	require.NoError(t, err)
+
+	trans := New(logger)
+	require.NotNil(t, trans)
+
+	socket, ok := trans.(*Socket)
+	require.True(t, ok)
+	require.NotNil(t, socket.logger)
+	require.NotNil(t, socket.logger.l)
+}
+
+func TestListen(t *testing.T) {
+	tmpdir, err := os.MkdirTemp(".", "socket_test_tmp")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpdir)
+
+	logpath := path.Join(tmpdir, "test.log")
+	logger, err := logging.NewLogger(logging.DEBUG, logpath)
+	require.NoError(t, err)
+
+	trans := New(logger)
+	socket := trans.(*Socket)
+
+	// Listen should not panic and should print the event
+	testEvent := data.Event{
+		Index:     "test-index",
+		Time:      123.456,
+		Type:      data.EVENT,
+		Publisher: "test-publisher",
+		Severity:  data.INFO,
+	}
+	socket.Listen(testEvent)
+}
+
+func TestConfig(t *testing.T) {
+	tmpdir, err := os.MkdirTemp(".", "socket_test_tmp")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpdir)
+
+	logpath := path.Join(tmpdir, "test.log")
+	logger, err := logging.NewLogger(logging.DEBUG, logpath)
+	require.NoError(t, err)
+
+	t.Run("valid unix socket config", func(t *testing.T) {
+		trans := New(logger)
+		socket := trans.(*Socket)
+
+		config := `
+type: unix
+path: /tmp/test.sock
+`
+		err := socket.Config([]byte(config))
+		require.NoError(t, err)
+		assert.Equal(t, "unix", socket.conf.Type)
+		assert.Equal(t, "/tmp/test.sock", socket.conf.Path)
+	})
+
+	t.Run("valid udp socket config", func(t *testing.T) {
+		trans := New(logger)
+		socket := trans.(*Socket)
+
+		config := `
+type: udp
+socketaddr: 127.0.0.1:9999
+`
+		err := socket.Config([]byte(config))
+		require.NoError(t, err)
+		assert.Equal(t, "udp", socket.conf.Type)
+		assert.Equal(t, "127.0.0.1:9999", socket.conf.Socketaddr)
+	})
+
+	t.Run("valid tcp socket config", func(t *testing.T) {
+		trans := New(logger)
+		socket := trans.(*Socket)
+
+		config := `
+type: tcp
+socketaddr: 127.0.0.1:8888
+`
+		err := socket.Config([]byte(config))
+		require.NoError(t, err)
+		assert.Equal(t, "tcp", socket.conf.Type)
+		assert.Equal(t, "127.0.0.1:8888", socket.conf.Socketaddr)
+	})
+
+	t.Run("config with dump messages enabled", func(t *testing.T) {
+		trans := New(logger)
+		socket := trans.(*Socket)
+
+		dumpPath := path.Join(tmpdir, "dump.txt")
+		config := `
+type: unix
+path: /tmp/test.sock
+dumpMessages:
+  enabled: true
+  path: ` + dumpPath
+		err := socket.Config([]byte(config))
+		require.NoError(t, err)
+		assert.Equal(t, true, socket.conf.DumpMessages.Enabled)
+		assert.Equal(t, dumpPath, socket.conf.DumpMessages.Path)
+		require.NotNil(t, socket.dumpFile)
+		require.NotNil(t, socket.dumpBuf)
+		socket.dumpFile.Close()
+	})
+
+	t.Run("invalid socket type", func(t *testing.T) {
+		trans := New(logger)
+		socket := trans.(*Socket)
+
+		config := `
+type: invalid
+path: /tmp/test.sock
+`
+		err := socket.Config([]byte(config))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unable to determine socket type")
+	})
+
+	t.Run("unix socket without path", func(t *testing.T) {
+		trans := New(logger)
+		socket := trans.(*Socket)
+
+		config := `
+type: unix
+`
+		err := socket.Config([]byte(config))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "path")
+	})
+
+	t.Run("udp socket without socketaddr", func(t *testing.T) {
+		trans := New(logger)
+		socket := trans.(*Socket)
+
+		config := `
+type: udp
+`
+		err := socket.Config([]byte(config))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "socketaddr")
+	})
+
+	t.Run("tcp socket without socketaddr", func(t *testing.T) {
+		trans := New(logger)
+		socket := trans.(*Socket)
+
+		config := `
+type: tcp
+`
+		err := socket.Config([]byte(config))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "socketaddr")
+	})
+
+	t.Run("invalid yaml config", func(t *testing.T) {
+		trans := New(logger)
+		socket := trans.(*Socket)
+
+		config := `
+this is not: valid: yaml
+`
+		err := socket.Config([]byte(config))
+		require.Error(t, err)
+	})
+
+	t.Run("case insensitive socket type", func(t *testing.T) {
+		trans := New(logger)
+		socket := trans.(*Socket)
+
+		config := `
+type: TCP
+socketaddr: 127.0.0.1:8888
+`
+		err := socket.Config([]byte(config))
+		require.NoError(t, err)
+		assert.Equal(t, "tcp", socket.conf.Type)
+	})
+
+	t.Run("default values", func(t *testing.T) {
+		trans := New(logger)
+		socket := trans.(*Socket)
+
+		config := `
+path: /tmp/test.sock
+`
+		err := socket.Config([]byte(config))
+		require.NoError(t, err)
+		assert.Equal(t, "unix", socket.conf.Type)
+		assert.Equal(t, false, socket.conf.DumpMessages.Enabled)
+		assert.Equal(t, "/dev/stdout", socket.conf.DumpMessages.Path)
+	})
+}
+
+func TestInitializationErrors(t *testing.T) {
+	tmpdir, err := os.MkdirTemp(".", "socket_test_tmp")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpdir)
+
+	logpath := path.Join(tmpdir, "test.log")
+	logger, err := logging.NewLogger(logging.DEBUG, logpath)
+	require.NoError(t, err)
+
+	t.Run("unix socket initialization with path in non-existent directory", func(t *testing.T) {
+		// Create a file where we want to create a directory, causing mkdir to fail
+		blockingFile := path.Join(tmpdir, "blocking_file")
+		err := os.WriteFile(blockingFile, []byte("test"), 0600)
+		require.NoError(t, err)
+
+		// Try to create a socket in a "subdirectory" of this file (which is impossible)
+		invalidPath := path.Join(blockingFile, "subdir", "socket.sock")
+
+		trans := Socket{
+			conf: configT{
+				Path: invalidPath,
+				Type: unix,
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		result := trans.initUnixSocket()
+		require.Nil(t, result)
+	})
+
+	t.Run("udp socket initialization with invalid address", func(t *testing.T) {
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "not-a-valid-address:::::99999",
+				Type:       udp,
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		result := trans.initUDPSocket()
+		require.Nil(t, result)
+	})
+
+	t.Run("udp socket initialization with address already in use", func(t *testing.T) {
+		// First, bind to a port
+		addr, err := net.ResolveUDPAddr(udp, "127.0.0.1:18680")
+		require.NoError(t, err)
+		firstConn, err := net.ListenUDP(udp, addr)
+		require.NoError(t, err)
+		defer firstConn.Close()
+
+		// Now try to bind to the same port
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "127.0.0.1:18680",
+				Type:       udp,
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		result := trans.initUDPSocket()
+		require.Nil(t, result)
+	})
+
+	t.Run("tcp socket initialization with invalid address", func(t *testing.T) {
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "not-a-valid-address:::::99999",
+				Type:       tcp,
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		result := trans.initTCPSocket()
+		require.Nil(t, result)
+	})
+
+	t.Run("tcp socket initialization with address already in use", func(t *testing.T) {
+		// First, bind to a port
+		addr, err := net.ResolveTCPAddr(tcp, "127.0.0.1:18681")
+		require.NoError(t, err)
+		firstListener, err := net.ListenTCP(tcp, addr)
+		require.NoError(t, err)
+		defer firstListener.Close()
+
+		// Now try to bind to the same port
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "127.0.0.1:18681",
+				Type:       tcp,
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		result := trans.initTCPSocket()
+		require.Nil(t, result)
+	})
+}
+
+func TestDumpMessagesFeature(t *testing.T) {
+	tmpdir, err := os.MkdirTemp(".", "socket_test_tmp")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpdir)
+
+	logpath := path.Join(tmpdir, "test.log")
+	logger, err := logging.NewLogger(logging.DEBUG, logpath)
+	require.NoError(t, err)
+
+	t.Run("unix socket with dump messages enabled", func(t *testing.T) {
+		dumpPath := path.Join(tmpdir, "dump_unix.txt")
+		sktpath := path.Join(tmpdir, "socket_dump")
+		skt, err := os.OpenFile(sktpath, os.O_RDWR|os.O_CREATE, os.ModeSocket|os.ModePerm)
+		require.NoError(t, err)
+		defer skt.Close()
+
+		trans := Socket{
+			conf: configT{
+				Path: sktpath,
+				Type: unix,
+				DumpMessages: struct {
+					Enabled bool
+					Path    string
+				}{
+					Enabled: true,
+					Path:    dumpPath,
+				},
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		// Initialize dump file and buffer
+		trans.dumpFile, err = os.OpenFile(dumpPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		require.NoError(t, err)
+		defer trans.dumpFile.Close()
+		trans.dumpBuf = bufio.NewWriter(trans.dumpFile)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		var receivedMsg []byte
+		go trans.Run(ctx, func(mess []byte) {
+			receivedMsg = mess
+			wg.Done()
+		}, make(chan bool))
+
+		// Wait for socket file to be created
+		for {
+			stat, err := os.Stat(sktpath)
+			require.NoError(t, err)
+			if stat.Mode()&os.ModeType == os.ModeSocket {
+				break
+			}
+			time.Sleep(250 * time.Millisecond)
+		}
+
+		// Send a message
+		msg := []byte("test message with dump")
+		wskt, err := net.DialUnix("unixgram", nil, &net.UnixAddr{Name: sktpath, Net: "unixgram"})
+		require.NoError(t, err)
+		_, err = wskt.Write(msg)
+		require.NoError(t, err)
+
+		wg.Wait()
+		cancel()
+		time.Sleep(100 * time.Millisecond)
+		wskt.Close()
+
+		// Verify message was received
+		assert.Equal(t, string(msg), string(receivedMsg))
+
+		// Verify message was dumped to file
+		dumpContent, err := os.ReadFile(dumpPath)
+		require.NoError(t, err)
+		require.Contains(t, string(dumpContent), "test message with dump")
+	})
+
+	t.Run("tcp socket with dump messages enabled", func(t *testing.T) {
+		dumpPath := path.Join(tmpdir, "dump_tcp.txt")
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "127.0.0.1:18690",
+				Type:       tcp,
+				DumpMessages: struct {
+					Enabled bool
+					Path    string
+				}{
+					Enabled: true,
+					Path:    dumpPath,
+				},
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		// Initialize dump file and buffer
+		trans.dumpFile, err = os.OpenFile(dumpPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		require.NoError(t, err)
+		defer trans.dumpFile.Close()
+		trans.dumpBuf = bufio.NewWriter(trans.dumpFile)
+
+		msgContent := []byte("tcp dump test message")
+		fullMsg := createTCPMessage(t, msgContent)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		go trans.Run(ctx, func(mess []byte) {
+			assert.Equal(t, string(msgContent), string(mess))
+			wg.Done()
+		}, make(chan bool))
+
+		time.Sleep(100 * time.Millisecond)
+
+		wskt := connectTCPWithRetry(t, "127.0.0.1:18690")
+		_, err = wskt.Write(fullMsg)
+		require.NoError(t, err)
+
+		wg.Wait()
+		cancel()
+		time.Sleep(100 * time.Millisecond)
+		wskt.Close()
+
+		// Verify message was dumped to file
+		dumpContent, err := os.ReadFile(dumpPath)
+		require.NoError(t, err)
+		require.Contains(t, string(dumpContent), "tcp dump test message")
+	})
+}
+
+func TestWriteTCPMsgErrors(t *testing.T) {
+	tmpdir, err := os.MkdirTemp(".", "socket_test_tmp")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpdir)
+
+	logpath := path.Join(tmpdir, "test.log")
+	logger, err := logging.NewLogger(logging.DEBUG, logpath)
+	require.NoError(t, err)
+
+	t.Run("overflow protection - negative length", func(t *testing.T) {
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "127.0.0.1:8670",
+				Type:       "tcp",
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		// Create a buffer with a message that would cause overflow
+		msgBuffer := make([]byte, 100)
+		// Write a very large length value that will overflow when added to position
+		binary.LittleEndian.PutUint64(msgBuffer[0:8], uint64(0x7FFFFFFFFFFFFFFF))
+
+		messageCount := 0
+		pos, err := trans.WriteTCPMsg(func(data []byte) {
+			messageCount++
+		}, msgBuffer, len(msgBuffer))
+
+		require.NoError(t, err)
+		// Should stop without processing any messages due to overflow protection
+		assert.Equal(t, 0, messageCount)
+		assert.Equal(t, int64(0), pos)
+	})
+
+	t.Run("incomplete message - not enough data", func(t *testing.T) {
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "127.0.0.1:8671",
+				Type:       "tcp",
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		// Create a buffer with message length header indicating more data than available
+		msgBuffer := make([]byte, 20)
+		// Indicate 100 bytes of data, but we only have 12 bytes after the length header
+		binary.LittleEndian.PutUint64(msgBuffer[0:8], uint64(100))
+		copy(msgBuffer[8:], []byte("test"))
+
+		messageCount := 0
+		pos, err := trans.WriteTCPMsg(func(data []byte) {
+			messageCount++
+		}, msgBuffer, len(msgBuffer))
+
+		require.NoError(t, err)
+		// Should not process the incomplete message
+		assert.Equal(t, 0, messageCount)
+		assert.Equal(t, int64(0), pos)
+	})
+
+	t.Run("multiple messages with partial last message", func(t *testing.T) {
+		trans := Socket{
+			conf: configT{
+				Socketaddr: "127.0.0.1:8672",
+				Type:       "tcp",
+			},
+			logger: &logWrapper{
+				l: logger,
+			},
+		}
+
+		var msgBuffer bytes.Buffer
+
+		// First complete message
+		msg1 := []byte("Complete message 1")
+		err := binary.Write(&msgBuffer, binary.LittleEndian, uint64(len(msg1)))
+		require.NoError(t, err)
+		msgBuffer.Write(msg1)
+
+		// Second complete message
+		msg2 := []byte("Complete message 2")
+		err = binary.Write(&msgBuffer, binary.LittleEndian, uint64(len(msg2)))
+		require.NoError(t, err)
+		msgBuffer.Write(msg2)
+
+		// Third incomplete message (header indicates more data than available)
+		err = binary.Write(&msgBuffer, binary.LittleEndian, uint64(1000))
+		require.NoError(t, err)
+		msgBuffer.Write([]byte("Incomplete"))
+
+		receivedMessages := []string{}
+		pos, err := trans.WriteTCPMsg(func(data []byte) {
+			receivedMessages = append(receivedMessages, string(data))
+		}, msgBuffer.Bytes(), msgBuffer.Len())
+
+		require.NoError(t, err)
+		// Should process only the two complete messages
+		assert.Equal(t, 2, len(receivedMessages))
+		assert.Equal(t, "Complete message 1", receivedMessages[0])
+		assert.Equal(t, "Complete message 2", receivedMessages[1])
+		// Position should be at the start of the incomplete message
+		expectedPos := int64(8 + len(msg1) + 8 + len(msg2))
+		assert.Equal(t, expectedPos, pos)
 	})
 }
