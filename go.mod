@@ -1,6 +1,6 @@
 module github.com/infrawatch/sg-core
 
-go 1.21.13
+go 1.24.11
 
 require (
 	collectd.org v0.5.0
@@ -18,7 +18,7 @@ require (
 	gopkg.in/go-playground/assert.v1 v1.2.1
 	gopkg.in/go-playground/validator.v9 v9.31.0
 	gopkg.in/yaml.v2 v2.4.0
-	gopkg.in/yaml.v3 v3.0.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

@@ -20,11 +20,13 @@ import (
 )
 
 const (
-	maxBufferSize = 65535
-	udp           = "udp"
-	unix          = "unix"
-	tcp           = "tcp"
-	msgLengthSize = 8
+	maxBufferSize     = 65535     // 64KB - initial buffer size for all socket types and max for UDP (OS datagram limit)
+	maxBufferSizeUnix = 10485760  // 10MB - max buffer size for Unix domain sockets
+	maxBufferSizeTCP  = 104857600 // 100MB - max buffer size for TCP (stream-based, can handle very large messages)
+	udp               = "udp"
+	unix              = "unix"
+	tcp               = "tcp"
+	msgLengthSize     = 8
 )
 
 var (
@@ -138,6 +140,17 @@ func (s *Socket) initTCPSocket() *net.TCPListener {
 	return pc
 }
 
+func (s *Socket) getMaxBufferSize() int64 {
+	switch s.conf.Type {
+	case udp:
+		return maxBufferSize
+	case tcp:
+		return maxBufferSizeTCP
+	default:
+		return maxBufferSizeUnix
+	}
+}
+
 func (s *Socket) WriteTCPMsg(w transport.WriteFn, msgBuffer []byte, n int) (int64, error) {
 	var pos int64
 	var length int64
@@ -165,10 +178,13 @@ func (s *Socket) WriteTCPMsg(w transport.WriteFn, msgBuffer []byte, n int) (int6
 	return pos, nil
 }
 
-func (s *Socket) ReceiveData(maxBuffSize int64, done chan bool, pc net.Conn, w transport.WriteFn) {
+func (s *Socket) ReceiveData(initialBuffSize int64, done chan bool, pc net.Conn, w transport.WriteFn) {
 	defer pc.Close()
-	msgBuffer := make([]byte, maxBuffSize)
+	currentBuffSize := initialBuffSize
+	maxBuffSize := s.getMaxBufferSize()
+	msgBuffer := make([]byte, currentBuffSize)
 	var remainingMsg []byte
+
 	for {
 		n, err := pc.Read(msgBuffer)
 		if err != nil || n < 1 {
@@ -180,17 +196,40 @@ func (s *Socket) ReceiveData(maxBuffSize int64, done chan bool, pc net.Conn, w t
 			}
 			return
 		}
-		msgBuffer = append(remainingMsg, msgBuffer...)
 
-		// whole buffer was used, so we are potentially handling larger message
-		if n == len(msgBuffer) {
-			s.logger.Warnf("full read buffer used")
+		// Combine remaining data from previous iteration with newly read data
+		var data []byte
+		if len(remainingMsg) > 0 {
+			data = make([]byte, len(remainingMsg)+n)
+			copy(data, remainingMsg)
+			copy(data[len(remainingMsg):], msgBuffer[:n])
+		} else {
+			data = msgBuffer[:n]
+		}
+		totalSize := len(data)
+
+		// Check if buffer was completely filled - message may have been truncated
+		if n == int(currentBuffSize) {
+			if s.conf.Type == tcp {
+				s.logger.Debugf("full read buffer used (%d bytes), TCP will handle continuation if needed", n)
+			} else {
+				// For UDP/Unix sockets, buffer being full means message was likely truncated
+				if currentBuffSize < maxBuffSize {
+					newSize := currentBuffSize * 2
+					if newSize > maxBuffSize {
+						newSize = maxBuffSize
+					}
+					s.logger.Warnf("message may have been truncated (buffer filled with %d bytes), growing buffer from %d to %d bytes for next message", currentBuffSize, currentBuffSize, newSize)
+					currentBuffSize = newSize
+					msgBuffer = make([]byte, currentBuffSize)
+				} else {
+					s.logger.Errorf(nil, "message truncated: buffer size (%d bytes) exceeded for %s socket and already at maximum buffer size (%d bytes)", currentBuffSize, s.conf.Type, maxBuffSize)
+				}
+			}
 		}
 
-		n += len(remainingMsg)
-
 		if s.conf.DumpMessages.Enabled {
-			_, err := s.dumpBuf.Write(msgBuffer[:n])
+			_, err := s.dumpBuf.Write(data)
 			if err != nil {
 				s.logger.Errorf(err, "writing to dump buffer")
 			}
@@ -202,16 +241,17 @@ func (s *Socket) ReceiveData(maxBuffSize int64, done chan bool, pc net.Conn, w t
 		}
 
 		if s.conf.Type == tcp {
-			parsed, err := s.WriteTCPMsg(w, msgBuffer, n)
+			parsed, err := s.WriteTCPMsg(w, data, totalSize)
 			if err != nil {
 				s.logger.Errorf(err, "error, while parsing messages")
 				return
 			}
-			remainingMsg = make([]byte, int64(n)-parsed)
-			copy(remainingMsg, msgBuffer[parsed:n])
+			remainingMsg = make([]byte, int64(totalSize)-parsed)
+			copy(remainingMsg, data[parsed:totalSize])
 		} else {
-			w(msgBuffer[:n])
+			w(data)
 			msgCount++
+			remainingMsg = nil
 		}
 	}
 }
@@ -223,7 +263,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	case udp:
 		pc = s.initUDPSocket()
 		if pc == (*net.UDPConn)(nil) {
-			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: "+s.conf.Type)
+			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: %s", s.conf.Type)
 			return
 		}
 		go s.ReceiveData(maxBufferSize, done, pc, w)
@@ -231,7 +271,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	case tcp:
 		TCPSocket := s.initTCPSocket()
 		if TCPSocket == nil {
-			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: "+s.conf.Type)
+			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: %s", s.conf.Type)
 			return
 		}
 		go func() {
@@ -254,7 +294,7 @@ func (s *Socket) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 	default:
 		pc = s.initUnixSocket()
 		if pc == (*net.UnixConn)(nil) {
-			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: "+s.conf.Type)
+			s.logger.Errorf(nil, "Failed to initialize socket transport plugin with type: %s", s.conf.Type)
 			return
 		}
 		go s.ReceiveData(maxBufferSize, done, pc, w)
