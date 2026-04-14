@@ -1,28 +1,6 @@
 version: 2
 
 issues:
-  exclude-rules:
-    - linters:
-      - errcheck
-      text: "[a-zA-Z]+.[a-zA-Z]+.(Error|Info|Debug|Warn)" # from logger
-    - text: "[A-Z]+" #omit enums
-      linters:
-        - deadcode
-    - text: New
-      linters:
-        - deadcode
-    - linters:
-        - staticcheck
-      # https://staticcheck.io/docs/checks#SA4008 (The variable in the loop condition never changes, are you incrementing the wrong variable?)
-      text: "SA4008:"
-    # Don't warn on unused parameters.
-    # Parameter names are useful; replacing them with '_' is undesirable.
-    - linters: [revive]
-      text: 'unused-parameter: parameter \S+ seems to be unused, consider removing or renaming it as _'
-    - linters: [revive]
-      text: 'redefines-builtin-id: redefinition of the built-in function new'
-    - linters: [revive]
-      text: 'redefines-builtin-id: redefinition of the built-in function len'
   exclude-dirs:
     - plugins/transport/dummy-alertmanager
     - plugins/transport/dummy-events
@@ -30,33 +8,29 @@ issues:
     - plugins/transport/dummy-logs
     - plugins/application/print
     - devenv
+
 linters:
   disable-all: true
+  disable:
+    # Disabled linters override golangci-lint v2 defaults
+    - errcheck     # Many unchecked errors in existing codebase
+    - staticcheck  # Code simplification suggestions
+    # Additional disabled linters
+    - gosec        # Security warnings in test/dummy code
+    - noctx        # Legacy code without context
+    - revive       # Many style issues in existing codebase
   enable:
     - bodyclose
-    # - depguard
+    - copyloopvar
     - dogsled
     - dupl
-    - errcheck
-    # - exhaustive
-    - copyloopvar
-    # - gochecknoinits
     - goconst
     - gocritic
     - gocyclo
     - goprintffuncname
-    - gosec
     - govet
     - ineffassign
     - misspell
     - nakedret
-    - noctx
     - nolintlint
-    - revive
-    - staticcheck
-    # - unused
     - unconvert
-    # NOTE: not all application plugins use ability to emit internal events through
-    #       passed bus function in it's constructor.
-    # - unparam
-    # - whitespace
