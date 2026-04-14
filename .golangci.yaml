@@ -1,3 +1,5 @@
+version: 2
+
 issues:
   exclude-rules:
     - linters:
@@ -42,11 +44,8 @@ linters:
     - goconst
     - gocritic
     - gocyclo
-    - gofmt
-    - goimports
     - goprintffuncname
     - gosec
-    - gosimple
     - govet
     - ineffassign
     - misspell
@@ -55,8 +54,6 @@ linters:
     - nolintlint
     - revive
     - staticcheck
-    - stylecheck
-    - typecheck
     # - unused
     - unconvert
     # NOTE: not all application plugins use ability to emit internal events through
