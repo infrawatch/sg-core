@@ -18,7 +18,7 @@ on: [push, pull_request]
 jobs:
   collectd-metrics-bridge:
     name: "[metrics] transport: socket(sg-bridge); handler: collectd-metrics; application: prometheus"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     env:
       QDR_CHANNEL: collectd/metrics
       BRIDGE_SOCKET: /tmp/sg-bridge/test-socket
@@ -26,34 +26,32 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.1.3
-      - name: Prepare environment
+
+      - name: Remove currently installed mysql and postgresql
         run: |
-          mkdir -p /opt/stack/
-          sudo setfacl -Rdm u::7,g::0,o:0 /opt/stack
-      - name: Prepare environment for mysql-server installation # https://stackoverflow.com/a/66026366
+          sudo apt purge -y mysql* postgresql*
+          sudo rm -rf /var/lib/mysql /etc/mysql
+          sudo rm -rf /var/lib/postgresql/ /etc/postgresql/
+          sudo apt autoremove -y
+          sudo apt autoclean
+
+      # workaround for Nova repo:
+      # GnuTLS recv error (-110): The TLS connection was non-properly terminated
+      - name: Update system and configure git
         run: |
-          sudo apt-get -f install -o Dpkg::Options::="--force-overwrite"
-          sudo apt-get purge mysql\*
-          sudo rm -rf /var/lib/mysql
-          sudo rm -rf /etc/mysql
-          sudo dpkg -l | grep -i mysql
-          sudo apt-get clean
-      - name: Prepare environment for postgres-server installation
-        run: |
-          sudo apt remove postgresql-client-common
-          sudo apt install postgresql-client-common=238
-          sudo apt install postgresql-common
-          sudo python -m pip install --upgrade pip
-          sudo python -m pip install --upgrade virtualenv
+          sudo apt-get update && sudo apt upgrade -y
+          sudo apt install -y gnutls-bin && git config --global http.postBuffer 1048576000
+
       - name: Install devstack
         run: |
           SOURCE=$(pwd)
-          git clone -b stable/2024.2 http://github.com/openstack/devstack /opt/stack/devstack
+          git clone -b stable/2025.1 http://github.com/openstack/devstack /opt/stack/devstack
+          mkdir -p /opt/stack/
           pushd /opt/stack/devstack
           cp $SOURCE/ci/integration/metrics/local.conf .
-          sudo apt-get update
           ./stack.sh
           popd
+
       # start message bus services
       - name: Start QDR service
         run: |
@@ -114,7 +112,7 @@ jobs:
 #-------------------------------------------------------------------------------
   ceilometer-metrics-bridge:
     name: "[metrics] transport: socket(sg-bridge); handler: ceilometer-metrics; application: prometheus"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     env:
       QDR_CHANNEL: anycast/ceilometer/metering.sample
       BRIDGE_SOCKET: /tmp/sg-bridge/test-socket
@@ -122,34 +120,32 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.1.3
-      - name: Prepare environment
+
+      - name: Remove currently installed mysql and postgresql
         run: |
-          mkdir -p /opt/stack/
-          sudo setfacl -Rdm u::7,g::0,o:0 /opt/stack
-      - name: Prepare environment for mysql-server installation # https://stackoverflow.com/a/66026366
+          sudo apt purge -y mysql* postgresql*
+          sudo rm -rf /var/lib/mysql /etc/mysql
+          sudo rm -rf /var/lib/postgresql/ /etc/postgresql/
+          sudo apt autoremove -y
+          sudo apt autoclean
+
+      # workaround for Nova repo:
+      # GnuTLS recv error (-110): The TLS connection was non-properly terminated
+      - name: Update system and configure git
         run: |
-          sudo apt-get -f install -o Dpkg::Options::="--force-overwrite"
-          sudo apt-get purge mysql\*
-          sudo rm -rf /var/lib/mysql
-          sudo rm -rf /etc/mysql
-          sudo dpkg -l | grep -i mysql
-          sudo apt-get clean
-      - name: Prepare environment for postgres-server installation
-        run: |
-          sudo apt remove postgresql-client-common
-          sudo apt install postgresql-client-common=238
-          sudo apt install postgresql-common
-          sudo python -m pip install --upgrade pip
-          sudo python -m pip install --upgrade virtualenv
+          sudo apt-get update && sudo apt upgrade -y
+          sudo apt install -y gnutls-bin && git config --global http.postBuffer 1048576000
+
       - name: Install devstack
         run: |
           SOURCE=$(pwd)
-          git clone -b stable/2024.2 http://github.com/openstack/devstack /opt/stack/devstack
+          git clone -b stable/2025.1 http://github.com/openstack/devstack /opt/stack/devstack
+          mkdir -p /opt/stack/
           pushd /opt/stack/devstack
           cp $SOURCE/ci/integration/metrics/local.conf .
-          sudo apt-get update
           ./stack.sh
           popd
+
       # start message bus services
       - name: Start QDR service
         run: |
@@ -183,6 +179,13 @@ jobs:
           cp ci/integration/metrics/ceilometer/bridge/*pipeline.yaml /etc/ceilometer/.
           cat /etc/ceilometer/*
           sudo pip install pyngus
+
+          # oslo.messaging >=15 (OpenStack 2025.1) removed the AMQP1 driver.
+          # Pin the last release that still provides driver=amqp so Ceilometer
+          # can publish meters to QDR for the sg-bridge path. Install into the
+          # DevStack venv (system pip does not affect ceilometer-anotification).
+          /opt/stack/data/venv/bin/pip install 'oslo.messaging>=14.9.0,<15' pyngus
+
           sudo systemctl restart devstack@ceilometer-anotification.service
       - name: Run sg-core to process metrics
         run: |
@@ -216,40 +219,38 @@ jobs:
 #-------------------------------------------------------------------------------
   ceilometer-metrics-tcp:
     name: "[metrics] transport: socket(tcp); handler: ceilometer-metrics; application: prometheus"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     env:
       PROMETHEUS_IMAGE: quay.io/prometheus/prometheus:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.1.3
-      - name: Prepare environment
+
+      - name: Remove currently installed mysql and postgresql
         run: |
-          mkdir -p /opt/stack/
-          sudo setfacl -Rdm u::7,g::0,o:0 /opt/stack
-      - name: Prepare environment for mysql-server installation # https://stackoverflow.com/a/66026366
+          sudo apt purge -y mysql* postgresql*
+          sudo rm -rf /var/lib/mysql /etc/mysql
+          sudo rm -rf /var/lib/postgresql/ /etc/postgresql/
+          sudo apt autoremove -y
+          sudo apt autoclean
+
+      # workaround for Nova repo:
+      # GnuTLS recv error (-110): The TLS connection was non-properly terminated
+      - name: Update system and configure git
         run: |
-          sudo apt-get -f install -o Dpkg::Options::="--force-overwrite"
-          sudo apt-get purge mysql\*
-          sudo rm -rf /var/lib/mysql
-          sudo rm -rf /etc/mysql
-          sudo dpkg -l | grep -i mysql
-          sudo apt-get clean
-      - name: Prepare environment for postgres-server installation
-        run: |
-          sudo apt remove postgresql-client-common
-          sudo apt install postgresql-client-common=238
-          sudo apt install postgresql-common
-          sudo python -m pip install --upgrade pip
-          sudo python -m pip install --upgrade virtualenv
+          sudo apt-get update && sudo apt upgrade -y
+          sudo apt install -y gnutls-bin && git config --global http.postBuffer 1048576000
+
       - name: Install devstack
         run: |
           SOURCE=$(pwd)
-          git clone -b stable/2024.2 http://github.com/openstack/devstack /opt/stack/devstack
+          git clone -b stable/2025.1 http://github.com/openstack/devstack /opt/stack/devstack
+          mkdir -p /opt/stack/
           pushd /opt/stack/devstack
           cp $SOURCE/ci/integration/metrics/local.conf .
-          sudo apt-get update
           ./stack.sh
           popd
+
       - name: Set Ceilometer pipelines to TCP output and restart notification agent
         run: |
           sudo apt-get install -y crudini
@@ -292,7 +293,7 @@ jobs:
     # determine the functionality is useful.
     if: false
     name: "[logging] handler: logs; application: elasticsearch, loki"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     env:
       BRIDGE_SOCKET: /tmp/sg-bridge/test-socket
 
