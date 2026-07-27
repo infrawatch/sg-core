@@ -179,6 +179,13 @@ jobs:
           cp ci/integration/metrics/ceilometer/bridge/*pipeline.yaml /etc/ceilometer/.
           cat /etc/ceilometer/*
           sudo pip install pyngus
+
+          # oslo.messaging >=15 (OpenStack 2025.1) removed the AMQP1 driver.
+          # Pin the last release that still provides driver=amqp so Ceilometer
+          # can publish meters to QDR for the sg-bridge path. Install into the
+          # DevStack venv (system pip does not affect ceilometer-anotification).
+          /opt/stack/data/venv/bin/pip install 'oslo.messaging>=14.9.0,<15' pyngus
+
           sudo systemctl restart devstack@ceilometer-anotification.service
       - name: Run sg-core to process metrics
         run: |
