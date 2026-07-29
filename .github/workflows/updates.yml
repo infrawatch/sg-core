@@ -32,7 +32,7 @@ jobs:
               console.log("No branch name found, skipping badge update.");
               return;
             }
-            
+
             try {
               await github.rest.issues.createComment({
                 issue_number: context.issue.number,
