@@ -23,4 +23,7 @@ LABEL io.k8s.display-name="Smart Gateway" \
 COPY --from=builder /tmp/sg-core /
 COPY --from=builder /tmp/plugins/*.so /usr/lib64/sg-core/
 
+RUN echo "sg:x:1001:0:sg user:/:/sbin/nologin" >> /etc/passwd
+USER 1001
+
 ENTRYPOINT ["/sg-core"]

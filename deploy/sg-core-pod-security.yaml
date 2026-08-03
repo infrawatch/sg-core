@@ -1,0 +1,39 @@
+# Reference-only securityContext for sg-core container deployments.
+# This file is not consumed by any automation. The smart-gateway-operator
+# already applies these settings during reconciliation.
+# Use this as a guide when deploying sg-core outside the operator
+# (vanilla Kubernetes, manual podman, etc.).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sg-core
+  labels:
+    app: sg-core
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: sg-core
+      image: quay.io/infrawatch/sg-core:latest
+      args: ["-config", "/etc/sg-core/sg-core.conf.yaml"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      volumeMounts:
+        - name: socket-dir
+          mountPath: /tmp
+        - name: sg-core-config
+          mountPath: /etc/sg-core
+          readOnly: true
+  volumes:
+    - name: socket-dir
+      emptyDir: {}
+    - name: sg-core-config
+      configMap:
+        name: sg-core-config
