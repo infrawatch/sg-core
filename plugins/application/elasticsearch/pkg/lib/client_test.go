@@ -123,15 +123,18 @@ func TestElasticsearchTLSConf(t *testing.T) {
 	cacrtpath := path.Join(tmpdir, "ca.pem")
 	require.NoError(t, os.WriteFile(cacrtpath, []byte(testCa), 0600))
 
-	t.Run("Test insecure connection.", func(t *testing.T) {
+	t.Run("Test explicit server name.", func(t *testing.T) {
 		tlsConf, err := createTLSConfig("overmind.localdomain", certpath, keypath, cacrtpath)
 		require.NoError(t, err)
 		assert.Equal(t, "overmind.localdomain", tlsConf.ServerName)
-		assert.Equal(t, false, tlsConf.InsecureSkipVerify)
+		assert.False(t, tlsConf.InsecureSkipVerify)
+	})
 
-		tlsConf, err = createTLSConfig("", certpath, keypath, cacrtpath)
+	t.Run("Test empty server name defers to transport.", func(t *testing.T) {
+		tlsConf, err := createTLSConfig("", certpath, keypath, cacrtpath)
 		require.NoError(t, err)
-		assert.Equal(t, true, tlsConf.InsecureSkipVerify)
+		assert.Equal(t, "", tlsConf.ServerName)
+		assert.False(t, tlsConf.InsecureSkipVerify)
 	})
 }
 
