@@ -44,13 +44,9 @@ func createTLSConfig(serverName string, certFile string, keyFile string, caFile 
 
 	tlsConfig := &tls.Config{
 		MinVersion:   tls.VersionTLS13,
+		ServerName:   serverName,
 		Certificates: []tls.Certificate{cert},
 		RootCAs:      certPool,
-	}
-	if len(serverName) == 0 {
-		tlsConfig.InsecureSkipVerify = true
-	} else {
-		tlsConfig.ServerName = serverName
 	}
 
 	return tlsConfig, nil
