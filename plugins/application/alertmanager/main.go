@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/application"
@@ -19,6 +20,7 @@ import (
 
 const (
 	appname = "alertmanager"
+	workers = 10
 )
 
 // AlertManager plugin suites for reporting alerts for Prometheus' alert manager
@@ -26,6 +28,7 @@ type AlertManager struct {
 	configuration lib.AppConfig
 	logger        *logging.Logger
 	dump          chan lib.PrometheusAlert
+	client        *http.Client
 }
 
 // New constructor
@@ -37,6 +40,7 @@ func New(logger *logging.Logger, sendEvent bus.EventPublishFunc) application.App
 		},
 		logger: logger,
 		dump:   make(chan lib.PrometheusAlert, 100),
+		client: &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
@@ -60,20 +64,22 @@ func (am *AlertManager) ReceiveEvent(event data.Event) {
 // Run implements main process of the application
 func (am *AlertManager) Run(ctx context.Context, done chan bool) {
 	wg := sync.WaitGroup{}
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case dumped := <-am.dump:
+					alert, err := json.Marshal(dumped)
+					if err != nil {
+						am.logger.Metadata(logging.Metadata{"plugin": appname, "alert": dumped})
+						am.logger.Warn("failed to marshal alert - disregarding")
+						continue
+					}
 
-	for {
-		select {
-		case <-ctx.Done():
-			goto done
-		case dumped := <-am.dump:
-			wg.Add(1)
-			go func(dumped lib.PrometheusAlert, wg *sync.WaitGroup) {
-				defer wg.Done()
-				alert, err := json.Marshal(dumped)
-				if err != nil {
-					am.logger.Metadata(logging.Metadata{"plugin": appname, "alert": dumped})
-					am.logger.Warn("failed to marshal alert - disregarding")
-				} else {
 					buff := bytes.NewBufferString("[")
 					buff.Write(alert)
 					buff.WriteString("]")
@@ -82,20 +88,20 @@ func (am *AlertManager) Run(ctx context.Context, done chan bool) {
 					if err != nil {
 						am.logger.Metadata(logging.Metadata{"plugin": appname, "error": err})
 						am.logger.Error("failed to create http request")
+						continue
 					}
 					req = req.WithContext(ctx)
 					req.Header.Set("X-Custom-Header", "smartgateway")
 					req.Header.Set("Content-Type", "application/json")
 
-					client := &http.Client{}
-					resp, err := client.Do(req)
+					resp, err := am.client.Do(req)
 					if err != nil {
 						am.logger.Metadata(logging.Metadata{"plugin": appname, "error": err, "alert": buff.String()})
 						am.logger.Error("failed to report alert to AlertManager")
+						continue
 					} else if resp.StatusCode != http.StatusOK {
 						// https://github.com/prometheus/alertmanager/blob/master/api/v2/openapi.yaml#L170
 						body, _ := io.ReadAll(resp.Body)
-						resp.Body.Close()
 						am.logger.Metadata(logging.Metadata{
 							"plugin": appname,
 							"status": resp.Status,
@@ -103,12 +109,11 @@ func (am *AlertManager) Run(ctx context.Context, done chan bool) {
 							"body":   string(body)})
 						am.logger.Error("failed to report alert to AlertManager")
 					}
+					resp.Body.Close()
 				}
-			}(dumped, &wg)
-		}
+			}
+		}()
 	}
-
-done:
 	wg.Wait()
 	am.logger.Metadata(logging.Metadata{"plugin": appname})
 	am.logger.Info("exited")
