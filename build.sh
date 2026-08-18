@@ -19,6 +19,8 @@ BUILD_ARGS=${BUILD_ARGS:-''}
 PRODUCTION_BUILD=${PRODUCTION_BUILD:-false}
 if $PRODUCTION_BUILD; then
     CONTAINER_BUILD=true
+    # skip building dummy plugins tagged with //go:build !production
+    BUILD_ARGS="${BUILD_ARGS} -tags production"
 fi
 
 # add plugins here that should be omitted in production build
