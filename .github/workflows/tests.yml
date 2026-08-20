@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: '1.25.9'
+          go-version: "1.25.13"
       - uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # v4.1.3
       #- name: download libraries
       #  run: go mod download
@@ -79,7 +79,7 @@ jobs:
       - uses: actions/checkout@1d96c772d19495a3b5c517cd2bc0cb401ea0529f # v4.1.3
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: '1.25.9'
+          go-version: "1.25.13"
       - name: Verify image builds
         run: |
           docker build --tag infrawatch/sg-core:latest --file build/Dockerfile .
