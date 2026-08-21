@@ -13,8 +13,7 @@ dnf install -y git golang gcc make qpid-proton-c-devel
 export GOBIN=$GOPATH/bin
 export PATH=$PATH:$GOBIN
 
-go install golang.org/dl/go1.25.13@latest
-go1.25.13 download
+bash ./ci/integration/metrics/bootstrap_go.sh
 
 # install sg-core and start sg-core
 mkdir -p /usr/lib64/sg-core

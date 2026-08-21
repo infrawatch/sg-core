@@ -94,9 +94,14 @@ jobs:
           docker run --name=prometheus -d --network host \
           --volume ${{ github.workspace }}/ci/integration/metrics/prometheus.yml:/etc/prometheus/prometheus.yml:ro \
           $PROMETHEUS_IMAGE
-      - name: Debug output
+      - name: Validate metrics processing
         run: |
-          sleep 360
+          docker run --name=validate -uroot --network host \
+            --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
+            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/collectd/run_validation.sh
+      - name: Debug output
+        if: failure()
+        run: |
           echo "=========================== qdr =========================" && \
           docker exec qdr qdstat -b 127.0.0.1:5666 -a
           docker logs qdr
@@ -106,11 +111,6 @@ jobs:
           docker logs sgbridge
           echo "======================== prometheus =====================" && \
           docker logs prometheus
-      - name: Validate metrics processing
-        run: |
-          docker run --name=validate -uroot --network host \
-            --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
-            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/collectd/run_validation.sh
 #-------------------------------------------------------------------------------
   ceilometer-metrics-bridge:
     name: "[metrics] transport: socket(sg-bridge); handler: ceilometer-metrics; application: prometheus"
@@ -199,9 +199,14 @@ jobs:
           docker run --name=prometheus -d --network host \
           --volume ${{ github.workspace }}/ci/integration/metrics/prometheus.yml:/etc/prometheus/prometheus.yml:ro \
           $PROMETHEUS_IMAGE
-      - name: Debug output
+      - name: Validate metrics processing
         run: |
-          sleep 360
+          docker run --name=validate -uroot --network host \
+            --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
+            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/ceilometer/run_validation.sh
+      - name: Debug output
+        if: failure()
+        run: |
           echo "=========================== qdr =========================" && \
           docker exec qdr qdstat -b 127.0.0.1:5666 -a
           docker logs qdr
@@ -213,11 +218,6 @@ jobs:
           sudo journalctl -xu devstack@ceilometer-anotification.service
           echo "======================== prometheus =====================" && \
           docker logs prometheus
-      - name: Validate metrics processing
-        run: |
-          docker run --name=validate -uroot --network host \
-            --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
-            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/ceilometer/run_validation.sh
 #-------------------------------------------------------------------------------
   ceilometer-metrics-tcp:
     name: "[metrics] transport: socket(tcp); handler: ceilometer-metrics; application: prometheus"
@@ -274,20 +274,20 @@ jobs:
           docker run --name=prometheus -d --network host \
           --volume ${{ github.workspace }}/ci/integration/metrics/prometheus.yml:/etc/prometheus/prometheus.yml:ro \
           $PROMETHEUS_IMAGE
-      - name: Debug output
+      - name: Validate metrics processing
         run: |
-          sleep 360
+          docker run --name=validate -uroot --network host \
+            --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
+            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/ceilometer/run_validation.sh
+      - name: Debug output
+        if: failure()
+        run: |
           echo "========================= sg-core =======================" && \
           docker logs sgcore
           echo "========================= ceilometer ====================" && \
           sudo journalctl -xu devstack@ceilometer-anotification.service
           echo "======================== prometheus =====================" && \
           docker logs prometheus
-      - name: Validate metrics processing
-        run: |
-          docker run --name=validate -uroot --network host \
-            --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
-            $TEST_IMAGE bash $PROJECT_ROOT/ci/integration/metrics/ceilometer/run_validation.sh
 #-------------------------------------------------------------------------------
   logging:
     # Disable Logging CI job, because it's failing. This functionality was never
