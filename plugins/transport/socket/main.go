@@ -340,7 +340,7 @@ func (s *Socket) Config(c []byte) error {
 	}
 
 	if s.conf.DumpMessages.Enabled {
-		s.dumpFile, err = os.OpenFile(s.conf.DumpMessages.Path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		s.dumpFile, err = os.OpenFile(s.conf.DumpMessages.Path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 		if err != nil {
 			return err
 		}

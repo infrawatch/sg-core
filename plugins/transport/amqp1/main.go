@@ -175,7 +175,7 @@ func (at *AMQP1) Config(c []byte) error {
 	}
 
 	if at.conf.DumpMessages.Enabled {
-		at.dumpFile, err = os.OpenFile(at.conf.DumpMessages.Path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		at.dumpFile, err = os.OpenFile(at.conf.DumpMessages.Path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 		if err != nil {
 			return err
 		}
