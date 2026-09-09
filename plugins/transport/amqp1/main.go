@@ -14,6 +14,7 @@ import (
 	"github.com/infrawatch/apputils/logging"
 	"github.com/infrawatch/sg-core/pkg/config"
 	"github.com/infrawatch/sg-core/pkg/data"
+	"github.com/infrawatch/sg-core/pkg/lib"
 	"github.com/infrawatch/sg-core/pkg/transport"
 )
 
@@ -98,7 +99,7 @@ func (at *AMQP1) Run(ctx context.Context, w transport.WriteFn, done chan bool) {
 
 	at.logger.Metadata(logging.Metadata{
 		"plugin":     appname,
-		"connection": fmt.Sprintf("%s/%s", at.conf.URI, at.receiver.Address()),
+		"connection": fmt.Sprintf("%s/%s", lib.RedactURI(at.conf.URI), at.receiver.Address()),
 	})
 	at.logger.Info("listening")
 
