@@ -217,6 +217,9 @@ func RunApplications(ctx context.Context, wg *sync.WaitGroup, done chan bool) {
 func initPlugin(name string) (plugin.Symbol, error) {
 	bin := strings.Join([]string{name, "so"}, ".")
 	path := filepath.Join(pluginPath, bin)
+	if name == "" || name != filepath.Base(name) {
+		return nil, errors.Errorf("failed to open binary %s", path)
+	}
 	p, err := plugin.Open(path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to open binary %s", path)
