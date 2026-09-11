@@ -11,6 +11,7 @@ import (
 	"github.com/infrawatch/sg-core/pkg/bus"
 	"github.com/infrawatch/sg-core/pkg/config"
 	"github.com/infrawatch/sg-core/pkg/data"
+	sglib "github.com/infrawatch/sg-core/pkg/lib"
 	"github.com/pkg/errors"
 
 	"github.com/infrawatch/sg-core/plugins/application/loki/pkg/lib"
@@ -58,7 +59,7 @@ func (l *Loki) ReceiveEvent(log data.Event) {
 
 // Run run loki application plugin
 func (l *Loki) Run(ctx context.Context, done chan bool) {
-	l.logger.Metadata(logging.Metadata{"plugin": "loki", "url": l.config.Connection})
+	l.logger.Metadata(logging.Metadata{"plugin": "loki", "url": sglib.RedactURI(l.config.Connection)})
 	l.logger.Info("storing logs to Loki.")
 	l.client.Start(nil, l.logChannel)
 
