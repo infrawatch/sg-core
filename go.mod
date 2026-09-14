@@ -5,7 +5,7 @@ go 1.25.13
 require (
 	collectd.org v0.5.0
 	github.com/Azure/go-amqp v0.13.9
-	github.com/elastic/go-elasticsearch/v7 v7.10.0
+	github.com/elastic/go-elasticsearch/v7 v7.17.10
 	github.com/go-openapi/errors v0.20.0
 	github.com/google/uuid v1.2.0
 	github.com/infrawatch/apputils v0.0.0-20210809211320-3573b2937d14
