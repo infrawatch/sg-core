@@ -69,7 +69,7 @@ jobs:
             --volume ${{ github.workspace }}:$PROJECT_ROOT:z --workdir $PROJECT_ROOT \
             $TEST_IMAGE bash $PROJECT_ROOT/ci/unit/run_tests.sh
       - name: Send coverage
-        uses: shogo82148/actions-goveralls@7b1bd2871942af030d707d6574e5f684f9891fb2 # v1.8.0
+        uses: shogo82148/actions-goveralls@77a1912dca42260ee3e97f61bd13ea7ef40baa93 # v1.11.2
         with:
           path-to-profile: ${{ github.workspace }}/profile.cov
   image-build:
