@@ -4,7 +4,7 @@ go 1.25.13
 
 require (
 	collectd.org v0.5.0
-	github.com/Azure/go-amqp v0.13.9
+	github.com/Azure/go-amqp v1.7.0
 	github.com/elastic/go-elasticsearch/v7 v7.10.0
 	github.com/go-openapi/errors v0.20.0
 	github.com/google/uuid v1.2.0
@@ -13,7 +13,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.1
 	github.com/prometheus/client_model v0.2.0
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.11.1
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	gopkg.in/errgo.v2 v2.1.0
 	gopkg.in/go-playground/assert.v1 v1.2.1
