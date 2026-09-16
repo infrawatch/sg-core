@@ -1,24 +1,6 @@
-version: 2
-
-issues:
-  exclude-dirs:
-    - plugins/transport/dummy-alertmanager
-    - plugins/transport/dummy-events
-    - plugins/transport/dummy-metrics
-    - plugins/transport/dummy-logs
-    - plugins/application/print
-    - devenv
-
+version: "2"
 linters:
-  disable-all: true
-  disable:
-    # Disabled linters override golangci-lint v2 defaults
-    - errcheck     # Many unchecked errors in existing codebase
-    - staticcheck  # Code simplification suggestions
-    # Additional disabled linters
-    - gosec        # Security warnings in test/dummy code
-    - noctx        # Legacy code without context
-    - revive       # Many style issues in existing codebase
+  default: none
   enable:
     - bodyclose
     - copyloopvar
@@ -34,3 +16,27 @@ linters:
     - nakedret
     - nolintlint
     - unconvert
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - plugins/transport/dummy-alertmanager
+      - plugins/transport/dummy-events
+      - plugins/transport/dummy-metrics
+      - plugins/transport/dummy-logs
+      - plugins/application/print
+      - devenv
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
