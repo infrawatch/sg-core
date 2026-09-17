@@ -38,7 +38,7 @@ func (dam *DummyAM) Run(ctx context.Context, w transport.WriteFn, done chan bool
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 
 		dam.logger.Debug("received HTTP request")
-		out, err := os.OpenFile(dam.conf.Output, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		out, err := os.OpenFile(dam.conf.Output, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0600)
 		if err != nil {
 			dam.logger.Metadata(logging.Metadata{"plugin": "dummy-alertmanager", "error": err})
 			dam.logger.Error("failed to open output file")
